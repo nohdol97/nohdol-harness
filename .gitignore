@@ -1,0 +1,5 @@
+# 세션 산출물 — 하네스가 아님 (team-log.jsonl 포함 전체 미보존, ADR 001)
+_workspace/
+
+# OS
+.DS_Store
