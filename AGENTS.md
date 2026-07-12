@@ -12,7 +12,13 @@
 
 | 이름 | 경로 | 스택 | 역할 | 연관 프로젝트 | 하네스 유무 |
 |---|---|---|---|---|---|
-| _(없음 — 첫 하위 프로젝트 생성 시 metaskill이 행을 추가한다)_ | | | | | |
+| app_project | `project/app_project/` | Flutter (sonaapp), Android | 앱 프로젝트 묶음 (하위: android, flutter) | 미확인 | ✗ |
+| web_project | `project/web_project/` | Next.js (shifteasy) | 웹 프로젝트 묶음 (하위: shifteasy) | 미확인 | ✗ |
+| tool_project | `project/tool_project/` | Go (claude-auto), Python (crypto-bot) 외 | 도구 묶음 (하위: agents, claude-auto, crypto-bot, nohdolbot) | 미확인 | ✗ |
+| ops_project | `project/ops_project/` | 미확인 | 운영·LLM 워크플로 묶음 (하위: ax-llm-eval-workflow, llm-team-admin) | 미확인 | ✗ |
+| ui-live-editor | `project/ui-live-editor/` | 미확인 | UI 라이브 에디터 (독립 git 저장소) | 미확인 | ✗ |
+
+> ⚠️ 위 5행은 2026-07-12 기존 디렉토리 **관찰 기반 임시 등록**이다. "미확인" 항목과 하네스 생성은 metaskill 구체화 인터뷰로 확정해야 하며, 확정 전에는 이 행들을 근거로 크로스 프로젝트 라우팅을 단정하지 않는다. 일부 항목은 단일 프로젝트가 아니라 **카테고리 묶음**이므로 인터뷰 시 레지스트리 단위(묶음 vs 개별 프로젝트)도 함께 확정한다. 또한 ui-live-editor를 제외한 4개 항목은 **독립 git 저장소가 아직 없다**(ADR 002 규약 미충족) — 인터뷰 시 `git init` 여부도 함께 확정한다.
 
 ## 2. 상속과 우선순위
 
@@ -37,9 +43,9 @@
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, `.agents/`, `docs/adr/`, README)만 추적한다. 하위 프로젝트는 `project/<이름>/`의 독립 저장소에서 각자 커밋·푸시한다. 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)만 추적한다. 하위 프로젝트는 `project/<이름>/`의 독립 저장소에서 각자 커밋·푸시한다. 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, CLAUDE.md, `.agents/`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 `_workspace/`뿐이다.
+- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 `_workspace/`, `project/`, `dev/`(및 OS 파일)뿐이다(ADR 002).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - 자동 커밋 금지 — 사용자가 요청할 때만 커밋한다.
 
@@ -47,18 +53,18 @@
 
 - **변경 이력 테이블**(경량 로그): 각 AGENTS.md 하단 필수. 컬럼: 날짜 / 변경 내용 / 대상 / 사유.
 - **ADR**(구조적 결정 기록): `docs/adr/NNN-제목.md`. 형식: 날짜, 변경 내용, 대상, 사유.
-- **ADR 작성 트리거**: ① 에이전트가 8개 이상이 될 때 ② 현재 구조에 대한 질문이 반복될 때 ③ 패턴 전환(예: 파이프라인→팬아웃)이 일어날 때.
+- **ADR 작성 트리거**: ① 에이전트가 8개 이상이 될 때 ② 현재 구조에 대한 질문이 반복될 때 ③ 패턴 전환(예: 파이프라인→팬아웃)이 일어날 때 ④ 저장소·디렉토리 구조 등 구조적 결정이 일어날 때.
 
 ## 7. 라우팅 규칙
 
 1. 요청을 받으면 **프로젝트 레지스트리**에서 관련 프로젝트를 식별한다.
 2. 해당 프로젝트의 AGENTS.md(하네스)를 로드한다.
 3. **단일 프로젝트**면 그 하네스로 직접 작업한다.
-4. **다중 프로젝트**(레지스트리의 "연관 프로젝트" 컬럼이 얽히는 요청)면 `orchestrate` 스킬로 계층적 위임을 구성한다. **위임 깊이는 2단계(총괄→팀장→실무자)를 초과하지 않는다** — 지연이 기하급수적으로 증가하기 때문이다.
+4. **다중 프로젝트**(레지스트리의 "연관 프로젝트" 컬럼이 얽히는 요청)면 `orchestrate` 스킬로 팀을 구성한다. 패턴 선택은 `.agents/skills/metaskill/references/patterns.md`의 플로우차트·전환 신호 표를 따르고, **위임 깊이는 2단계(총괄→팀장→실무자)를 초과하지 않는다** — 지연이 기하급수적으로 증가하기 때문이다.
 
 ## 8. 진화 트리거 (자동화 판단 규칙)
 
-아래 3신호 중 하나라도 감지되면 **에이전트/스킬 신설 또는 개선을 사용자에게 제안**하고, 승인 시 metaskill로 생성한다. 주 1회 이 신호를 관찰하는 것을 운영 습관으로 삼는다.
+아래 3신호 중 하나라도 감지되면 **에이전트/스킬 신설 또는 개선을 사용자에게 제안**하고, 승인 시 metaskill로 생성한다. 주 1회 이 신호를 관찰하는 것을 운영 습관으로 삼으며, 관찰 절차는 `harness-review` 스킬로 실행한다.
 
 | 신호 | 기준 |
 |---|---|
@@ -66,20 +72,7 @@
 | 반복 실패 | 같은 실패가 **2회 이상** 반복 |
 | 우회 관찰 | 하네스를 우회해서 처리한 사례 관찰 |
 
-## 9. 완벽주의 금지 — 패턴 전환 신호
-
-하네스는 단순하게 시작한다. 아래 표는 "감독자까지 꼭 가야 한다"는 로드맵이 **아니라**, 다음 패턴 적용 시 해결되는 문제가 실제로 있는지 확인하는 **체크리스트**다. 전환 신호가 없으면 현재 패턴을 유지하고 오버 엔지니어링을 경계한다.
-
-| 현재 패턴 | 전환 신호 | 다음 패턴 |
-|---|---|---|
-| 단일 에이전트 | 컨텍스트 폭발, 세션 중단 빈발 | 파이프라인 |
-| 파이프라인 | 독립적 작업을 순차 처리하여 시간 낭비 | 팬아웃·팬인 |
-| 팬아웃·팬인 | 작업별 다른 전문성 필요, 동일 역할로 한계 | 전문가 풀 |
-| 전문가 풀 | 산출물 품질 편차, 검증 부재 | 생성-검증 |
-| 생성-검증 | 에이전트 간 실시간 조율 필요, 동적 작업 할당 | 감독자 |
-| 감독자 | 단일 감독자가 5~10명 초과, 도메인이 서브팀으로 분해 가능 | 계층적 위임 |
-
-## 10. 티어→모델 매핑 (이 표가 유일한 매핑 원본)
+## 9. 티어→모델 매핑 (이 표가 유일한 매핑 원본)
 
 에이전트 frontmatter에는 모델명이 아니라 **역할 티어**만 적는다. 이유: 모델명은 CLI·시점마다 바뀌지만 역할은 바뀌지 않기 때문이다. 매핑은 이 표 한 곳에서만 관리한다.
 
@@ -91,13 +84,13 @@
 
 > **Haiku 사용 금지** (사용자 전역 정책): 검증·리뷰·최종 확인에서는 절대 금지. 사용자가 명시적으로 "빠르게/가볍게/Haiku로"를 요청한 경우에만 예외.
 
-## 11. 에이전트 정의 규칙 (metaskill·orchestrate가 팀원 정의 시 따를 것)
+## 10. 에이전트 정의 규칙 (metaskill·orchestrate가 팀원 정의 시 따를 것)
 
 에이전트 정의 파일은 `.agents/agents/<이름>.md`에 두고(`.claude/agents`는 심링크), frontmatter에 `name` / `description`(Pushy 공식) / `tools`(허용 도구 화이트리스트) / `tier`(design·implement·explore)를 명시한다. 상세 템플릿: `.agents/skills/metaskill/references/agent-rules.md`
 
 필수 섹션 10가지: ① 핵심 역할(하지 않는 일 포함) ② 작업 원칙(충돌 시 판단 기준) ③ 입출력 프로토콜(`_workspace/` 경로) ④ 팀 통신 프로토콜(JSON 메시지 형식) ⑤ 에러 핸들링(재시도 1회, 2회 실패 시 누락 명시) ⑥ 협업 위치 ⑦ 품질 자체 검증 체크리스트 ⑧ 재호출 지침 ⑨ tools 최소 권한 ⑩ 역할 티어.
 
-## 12. 멀티 CLI 호환 (Claude Code + Codex 병행)
+## 11. 멀티 CLI 호환 (Claude Code + Codex 병행)
 
 - 에이전트·스킬 정의 원본: `.agents/agents/`, `.agents/skills/` (공용 디렉토리)
 - `.claude/agents`, `.claude/skills`는 위 공용 디렉토리로의 **심볼릭 링크** — Claude와 Codex가 같은 파일을 본다.
@@ -110,4 +103,6 @@
 |---|---|---|---|
 | 2026-07-12 | 루트 하네스 초기 구성 (AGENTS.md, CLAUDE.md, orchestrate, metaskill, ADR 001) | 루트 전체 | harness-bootstrap-prompt.md 기반 초기 구축. 상세 결정은 docs/adr/001-initial-harness.md |
 | 2026-07-12 | `project/`·`dev/` 분리 구조 반영 — 경로 규약·저장소 분리 규칙 추가, README 신설 | 1절, 5절, .gitignore, README.md | 하위 프로젝트를 독립 저장소로 운영하기로 사용자 확정. docs/adr/002-project-dir-separation.md |
-| 2026-07-12 | `.claude/` 직접 생성 금지 규칙 명시. explorer·reviewer 에이전트, harness-review 스킬 신설 | 12절, .agents/agents/, .agents/skills/harness-review/ | 심링크 원본 규칙이 암시에 그침(사용자 지적). orchestrate 반복 역할 2종과 주 1회 진화 관찰 절차의 실행 수단 부재 |
+| 2026-07-12 | `.claude/` 직접 생성 금지 규칙 명시. explorer·reviewer 에이전트, harness-review 스킬 신설 | 11절(구 12절), .agents/agents/, .agents/skills/harness-review/ | 심링크 원본 규칙이 암시에 그침(사용자 지적). orchestrate 반복 역할 2종과 주 1회 진화 관찰 절차의 실행 수단 부재 |
+| 2026-07-12 | "완벽주의 금지" 절 삭제, 절 번호 재조정(10→9, 11→10, 12→11), 전 문서 교차 참조 갱신 | 구 9절, 전 문서 | 사용자 방침 — 완성도에 상한 없음. docs/adr/003-perfectionism-clause-removal.md |
+| 2026-07-12 | reviewer 1차 독립 검증 반영 — gitignore 문구 정정, 추적 대상 열거 보완, ADR 트리거 ④ 추가, 라우팅 문구 완화, 도구 제약 서술 정직화, 레지스트리 임시 등록 5행 | 1·5·6·7·8절, 에이전트 2종, README, ADR 001 | 검증 발견 F1~F11 — `_workspace/harness-perfection-review/phase1_reviewer_verdict.md` |

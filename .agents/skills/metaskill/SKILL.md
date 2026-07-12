@@ -35,7 +35,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - `CLAUDE.md` → AGENTS.md 포인터 (`## 하네스: {도메인}` 섹션 + **목표** + **트리거**(orchestrate 스킬명 명시) + **변경 이력** 테이블 초기 1행)
 - `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시. 하단에 변경 이력 테이블(초기 1행).
 - 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
-- **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 12절).
+- **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
 - orchestrate 연동: 다중 프로젝트·팀 작업 시 루트 orchestrate 스킬을 트리거함을 명시.
 - `docs/adr/` 디렉토리 (구조적 결정 시 NNN-제목.md).
 - 에이전트를 만들 때는 **`references/agent-rules.md`의 10섹션 템플릿**을 따른다.
@@ -51,7 +51,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 
 ## 스킬 공통 규칙 (이 워크스페이스의 모든 스킬에 적용)
 
-1. **description(영문, 500자 이내, Pushy 3단계 공식)**: ① 동사 나열("PDF 관련 작업" ✗ → "pdf 읽기, 추출, 병합, OCR 처리" ✓) ② 트리거 상황 명시("사용자가 ~을 언급하면 이 스킬을 사용할 것") ③ **재실행 키워드 포함** — 새 세션에서도 자동으로 다시 호출되게 한다.
+1. **description(영문 기술, 500자 이내, Pushy 3단계 공식)**: ① 동사 나열("PDF 관련 작업" ✗ → "pdf 읽기, 추출, 병합, OCR 처리" ✓) ② 트리거 상황 명시("사용자가 ~을 언급하면 이 스킬을 사용할 것") ③ **재실행 키워드 포함** — 새 세션에서도 자동으로 다시 호출되게 한다. 재실행 키워드에는 **한국어 트리거 병기를 권장**한다(사용자 요청 문구와 매칭되어야 하므로).
 2. **Progressive Disclosure**: SKILL.md 본문 500줄 이내. metadata → 본문 → `references/` 세 층으로 나누고, 조건부 상세는 `references/`로 분리한다. 이유: 항상 읽히는 본문이 길수록 매 호출의 비용이 늘고 핵심 규칙이 묻힌다.
 3. **Why-First**: 규칙만 나열하지 말고 이유를 함께 싣는다. 규칙에 이유를 붙이는 것이 규칙의 적용 범위를 넓힌다 — LLM이 엣지 케이스에서도 판단을 이어갈 수 있다.
 4. **with/without**: 이 스킬을 뒀을 때/안 뒀을 때의 차이(지표 평가)를 스킬 하단에 명시한다.

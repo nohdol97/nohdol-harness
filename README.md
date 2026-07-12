@@ -13,8 +13,9 @@ nohdol-harness/
 ├── .agents/               # 에이전트·스킬 정의 원본 (공용)
 │   ├── agents/
 │   └── skills/
-│       ├── orchestrate/   # 에이전트 팀 구성·병렬 작업·크로스 프로젝트 오케스트레이션
-│       └── metaskill/     # 하네스 생성·개선·프로젝트 스캐폴딩
+│       ├── orchestrate/     # 에이전트 팀 구성·병렬 작업·크로스 프로젝트 오케스트레이션
+│       ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
+│       └── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
 ├── .claude/               # → .agents/ 심링크 (Claude Code + Codex가 같은 파일을 봄)
 ├── docs/adr/              # 구조적 결정 기록 (ADR)
 ├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적)
