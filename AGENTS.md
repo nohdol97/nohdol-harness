@@ -4,11 +4,13 @@
 > **어떤 작업이든 시작 전에 반드시 이 파일을 읽고, 하위 프로젝트 작업이라면 해당 프로젝트의 AGENTS.md도 읽는다.**
 > 이 파일이 단일 원본(single source of truth)이다. CLAUDE.md는 이 파일을 가리키는 포인터일 뿐이다.
 
-## 1. 프로젝트 레지스트리 → [REGISTRY.md](REGISTRY.md)
+## 1. 프로젝트 레지스트리 → REGISTRY.md (미추적 — 설치처에서 생성)
 
-라우팅 판단의 유일한 근거는 루트의 **REGISTRY.md**다. 어떤 프로젝트를 두는지는 이 하네스를 설치한 워크스페이스마다 다르므로, 설치 환경별 데이터(레지스트리)는 공용 규칙(이 파일)과 분리한다(ADR 004). 프로젝트가 생기거나 없어지면 **metaskill이 REGISTRY.md를 갱신할 의무**가 있다. 크로스 프로젝트 여부는 레지스트리의 "연관 프로젝트" 컬럼으로 판단한다.
+라우팅 판단의 유일한 근거는 루트의 **REGISTRY.md**다. 어떤 프로젝트를 어디에 두는지는 이 하네스를 설치한 컴퓨터마다 다르므로, REGISTRY.md는 **git에 올리지 않는다**(gitignore, ADR 005). 경로 규약(프로젝트 배치 위치, 실험 공간 등)도 설치처별 사항이므로 REGISTRY.md에 기재한다.
 
-**경로 규약 (공용 규칙)**: 하위 프로젝트는 `project/<이름>/`에 두며, **각자 독립 git 저장소**다(ADR 002). 이 루트 저장소는 하네스만 추적하고 `project/`, `dev/`는 gitignore 대상이다. `dev/`는 실험·임시 개발 공간으로 레지스트리에 올리지 않는다.
+**이 하네스를 새 컴퓨터에 설치(클론)하면 가장 먼저 REGISTRY.md를 생성해야 한다** — Claude Code / Codex에 "REGISTRY.md 만들어줘" 또는 "하네스 설치"라고 요청하면 `harness-install` 스킬이 프로젝트 스캔과 인터뷰로 생성한다. REGISTRY.md가 없는 세션은 설치 미완료 상태로 간주하고 harness-install을 먼저 안내한다.
+
+프로젝트가 생기거나 없어지면 **metaskill이 REGISTRY.md를 갱신할 의무**가 있다. 크로스 프로젝트 여부는 레지스트리의 "연관 프로젝트" 컬럼으로 판단한다.
 
 ## 2. 상속과 우선순위
 
@@ -28,14 +30,14 @@
 - 위치는 **루트에 단일**로 둔다. 이유: 크로스 프로젝트 작업의 산출물을 한 곳에서 조율하기 위해서다.
 - 구조: `_workspace/<작업명>/`
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
-- 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only (생성·배치·종료 시각).
+- 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
 - `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정).
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, REGISTRY.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)만 추적한다. 하위 프로젝트는 `project/<이름>/`의 독립 저장소에서 각자 커밋·푸시한다. 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, REGISTRY.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 `_workspace/`, `project/`, `dev/`(및 OS 파일)뿐이다(ADR 002).
+- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`(및 OS 파일) — 뿐이다(ADR 002·005).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하다.
 
@@ -64,15 +66,15 @@
 
 ## 9. 티어→모델 매핑 (이 표가 유일한 매핑 원본)
 
-에이전트 frontmatter에는 모델명이 아니라 **역할 티어**만 적는다. 이유: 모델명은 CLI·시점마다 바뀌지만 역할은 바뀌지 않기 때문이다. 매핑은 이 표 한 곳에서만 관리한다.
+에이전트 frontmatter에는 모델명이 아니라 **역할 티어**만 적는다. 이유: 모델명은 CLI·시점마다 계속 바뀌지만 역할은 바뀌지 않기 때문이다. 구체 모델명을 하네스에 고정하지 않고, **사용 중인 CLI의 현재 라인업에서 아래 선택 기준으로 고른다.**
 
-| 티어 | 용도 | Claude Code | Codex |
-|---|---|---|---|
-| design | 설계·검증·리뷰·최종 판정 | Opus | gpt-5-codex (high reasoning) |
-| implement | 구현·일반 작업 | Sonnet | gpt-5-codex (medium) |
-| explore | 탐색·수집·요약 | Sonnet | gpt-5-codex (low) |
+| 티어 | 용도 | 선택 기준 (CLI 무관) |
+|---|---|---|
+| design | 설계·검증·리뷰·최종 판정 | 해당 CLI의 **최고 성능(최고 추론) 모델** |
+| implement | 구현·일반 작업 | 표준(균형) 모델 |
+| explore | 탐색·수집·요약 | 표준 모델. 경량 모델은 사용자가 명시 요청한 경우에만 |
 
-> **Haiku 사용 금지** (사용자 전역 정책): 검증·리뷰·최종 확인에서는 절대 금지. 사용자가 명시적으로 "빠르게/가볍게/Haiku로"를 요청한 경우에만 예외.
+> **경량(최저가) 모델 사용 금지** (사용자 전역 정책): 검증·리뷰·최종 확인에서는 절대 금지 — false negative 오탐 시 이미 완료된 작업을 재작업하는 손실이 크다. 사용자가 명시적으로 "빠르게/가볍게" 요청한 경우에만 예외.
 
 ## 10. 에이전트 정의 규칙 (metaskill·orchestrate가 팀원 정의 시 따를 것)
 
@@ -98,3 +100,4 @@
 | 2026-07-12 | reviewer 1차 독립 검증 반영 — gitignore 문구 정정, 추적 대상 열거 보완, ADR 트리거 ④ 추가, 라우팅 문구 완화, 도구 제약 서술 정직화, 레지스트리 임시 등록 5행 | 1·5·6·7·8절, 에이전트 2종, README, ADR 001 | 검증 발견 F1~F11 — `_workspace/harness-perfection-review/phase1_reviewer_verdict.md` |
 | 2026-07-12 | 레지스트리를 REGISTRY.md로 분리, implementer·integrator 신설(표준 로스터 4종 완성), orchestrate 개정(로스터 재사용·게이트 단일 원본 이관, team-log 이벤트 계약) | 1·5·7절, REGISTRY.md, .agents/ | 사용자 확정 — AGENTS.md는 공용, 레지스트리는 설치 환경별. reviewer 3차 검증 통과. docs/adr/004-registry-separation-standard-roster.md |
 | 2026-07-12 | 커밋 규칙 변경 — 작업 완료 시 커밋·푸시 기본 진행 | 5절 | 사용자 상시 승인 ("커밋 푸시는 작업 완료하면 무조건 진행") |
+| 2026-07-12 | 이식성 개편 — REGISTRY.md 미추적 전환+설치 시 생성 의무, 경로 규약 REGISTRY.md 이관, 티어 표 탈모델명, harness-install·project-status 스킬 신설 | 1·5·9절, .gitignore, .agents/skills/ | 사용자 확정 — 여러 컴퓨터에서 사용. docs/adr/005-registry-untracked-portable-harness.md |

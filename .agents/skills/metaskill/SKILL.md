@@ -33,7 +33,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 ## 생성물 요건 (신규 하네스에 반드시 포함)
 
 - `CLAUDE.md` → AGENTS.md 포인터 (`## 하네스: {도메인}` 섹션 + **목표** + **트리거**(orchestrate 스킬명 명시) + **변경 이력** 테이블 초기 1행)
-- **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리)를 함께 생성한다. 하위 프로젝트 하네스에는 만들지 않는다.
+- **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리 — git 미추적)를 반드시 생성한다. 절차는 `harness-install` 스킬을 따른다. 하위 프로젝트 하네스에는 만들지 않는다.
 - `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시. 하단에 변경 이력 테이블(초기 1행).
 - 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
 - **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
