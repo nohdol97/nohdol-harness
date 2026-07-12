@@ -8,6 +8,8 @@
 
 라우팅 판단의 유일한 근거. 프로젝트가 생기거나 없어지면 **metaskill이 이 표를 갱신할 의무**가 있다. 크로스 프로젝트 여부는 "연관 프로젝트" 컬럼으로 판단한다.
 
+**경로 규약**: 하위 프로젝트는 `project/<이름>/`에 두며, **각자 독립 git 저장소**다(ADR 002). 이 루트 저장소는 하네스만 추적하고 `project/`, `dev/`는 gitignore 대상이다. `dev/`는 실험·임시 개발 공간으로 레지스트리에 올리지 않는다.
+
 | 이름 | 경로 | 스택 | 역할 | 연관 프로젝트 | 하네스 유무 |
 |---|---|---|---|---|---|
 | _(없음 — 첫 하위 프로젝트 생성 시 metaskill이 행을 추가한다)_ | | | | | |
@@ -35,7 +37,8 @@
 
 ## 5. git 규칙
 
-- **커밋 컨벤션**: Conventional Commits. 모노 워크스페이스이므로 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...`
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, `.agents/`, `docs/adr/`, README)만 추적한다. 하위 프로젝트는 `project/<이름>/`의 독립 저장소에서 각자 커밋·푸시한다. 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
 - 하네스 파일(AGENTS.md, CLAUDE.md, `.agents/`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 `_workspace/`뿐이다.
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - 자동 커밋 금지 — 사용자가 요청할 때만 커밋한다.
@@ -105,3 +108,4 @@
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
 | 2026-07-12 | 루트 하네스 초기 구성 (AGENTS.md, CLAUDE.md, orchestrate, metaskill, ADR 001) | 루트 전체 | harness-bootstrap-prompt.md 기반 초기 구축. 상세 결정은 docs/adr/001-initial-harness.md |
+| 2026-07-12 | `project/`·`dev/` 분리 구조 반영 — 경로 규약·저장소 분리 규칙 추가, README 신설 | 1절, 5절, .gitignore, README.md | 하위 프로젝트를 독립 저장소로 운영하기로 사용자 확정. docs/adr/002-project-dir-separation.md |
