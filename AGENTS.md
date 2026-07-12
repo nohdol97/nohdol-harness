@@ -40,6 +40,7 @@
 - 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`(및 OS 파일) — 뿐이다(ADR 002·005).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하다.
+- **하위 프로젝트 브랜치 규칙**: 하위 프로젝트 작업은 `branch-workflow` 스킬을 따른다 — 시작 시 main 최신화 후 새 브랜치, 마무리 시 PR 직전 rebase → 푸시 → PR 생성(머지는 사용자). **이 루트 하네스 저장소만 main 직커밋 예외**다(문서 중심, 2026-07-12 인터뷰 확정).
 
 ## 6. 문서 규칙
 
@@ -101,3 +102,4 @@
 | 2026-07-12 | 레지스트리를 REGISTRY.md로 분리, implementer·integrator 신설(표준 로스터 4종 완성), orchestrate 개정(로스터 재사용·게이트 단일 원본 이관, team-log 이벤트 계약) | 1·5·7절, REGISTRY.md, .agents/ | 사용자 확정 — AGENTS.md는 공용, 레지스트리는 설치 환경별. reviewer 3차 검증 통과. docs/adr/004-registry-separation-standard-roster.md |
 | 2026-07-12 | 커밋 규칙 변경 — 작업 완료 시 커밋·푸시 기본 진행 | 5절 | 사용자 상시 승인 ("커밋 푸시는 작업 완료하면 무조건 진행") |
 | 2026-07-12 | 이식성 개편 — REGISTRY.md 미추적 전환+설치 시 생성 의무, 경로 규약 REGISTRY.md 이관, 티어 표 탈모델명, harness-install·project-status 스킬 신설 | 1·5·9절, .gitignore, .agents/skills/ | 사용자 확정 — 여러 컴퓨터에서 사용. docs/adr/005-registry-untracked-portable-harness.md |
+| 2026-07-12 | branch-workflow 스킬 신설 + 5절 하위 프로젝트 브랜치 규칙 추가 | 5절, .agents/skills/branch-workflow/ | 반복 실패 관찰(오래된 브랜치 시작→머지 충돌) + 사용자 인터뷰 확정(main 최신화→새 브랜치→PR 직전 rebase→PR 생성, 머지는 사용자) |

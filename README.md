@@ -18,7 +18,8 @@ nohdol-harness/
 │       ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
 │       ├── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
 │       ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
-│       └── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
+│       ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
+│       └── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
 ├── .claude/               # → .agents/ 심링크 (Claude Code + Codex가 같은 파일을 봄)
 ├── docs/adr/              # 구조적 결정 기록 (ADR)
 ├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적)
