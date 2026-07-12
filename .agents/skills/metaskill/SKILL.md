@@ -35,6 +35,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - `CLAUDE.md` → AGENTS.md 포인터 (`## 하네스: {도메인}` 섹션 + **목표** + **트리거**(orchestrate 스킬명 명시) + **변경 이력** 테이블 초기 1행)
 - `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시. 하단에 변경 이력 테이블(초기 1행).
 - 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
+- **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 12절).
 - orchestrate 연동: 다중 프로젝트·팀 작업 시 루트 orchestrate 스킬을 트리거함을 명시.
 - `docs/adr/` 디렉토리 (구조적 결정 시 NNN-제목.md).
 - 에이전트를 만들 때는 **`references/agent-rules.md`의 10섹션 템플릿**을 따른다.

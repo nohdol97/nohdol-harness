@@ -101,6 +101,7 @@
 
 - 에이전트·스킬 정의 원본: `.agents/agents/`, `.agents/skills/` (공용 디렉토리)
 - `.claude/agents`, `.claude/skills`는 위 공용 디렉토리로의 **심볼릭 링크** — Claude와 Codex가 같은 파일을 본다.
+- **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견은 하네스 우회 신호로 취급한다(8절).
 - 심링크가 불가한 환경이면 sync 스크립트로 대체하고 그 사실을 ADR에 기록한다.
 
 ## 변경 이력
@@ -109,3 +110,4 @@
 |---|---|---|---|
 | 2026-07-12 | 루트 하네스 초기 구성 (AGENTS.md, CLAUDE.md, orchestrate, metaskill, ADR 001) | 루트 전체 | harness-bootstrap-prompt.md 기반 초기 구축. 상세 결정은 docs/adr/001-initial-harness.md |
 | 2026-07-12 | `project/`·`dev/` 분리 구조 반영 — 경로 규약·저장소 분리 규칙 추가, README 신설 | 1절, 5절, .gitignore, README.md | 하위 프로젝트를 독립 저장소로 운영하기로 사용자 확정. docs/adr/002-project-dir-separation.md |
+| 2026-07-12 | `.claude/` 직접 생성 금지 규칙 명시. explorer·reviewer 에이전트, harness-review 스킬 신설 | 12절, .agents/agents/, .agents/skills/harness-review/ | 심링크 원본 규칙이 암시에 그침(사용자 지적). orchestrate 반복 역할 2종과 주 1회 진화 관찰 절차의 실행 수단 부재 |
