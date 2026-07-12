@@ -4,21 +4,11 @@
 > **어떤 작업이든 시작 전에 반드시 이 파일을 읽고, 하위 프로젝트 작업이라면 해당 프로젝트의 AGENTS.md도 읽는다.**
 > 이 파일이 단일 원본(single source of truth)이다. CLAUDE.md는 이 파일을 가리키는 포인터일 뿐이다.
 
-## 1. 프로젝트 레지스트리
+## 1. 프로젝트 레지스트리 → [REGISTRY.md](REGISTRY.md)
 
-라우팅 판단의 유일한 근거. 프로젝트가 생기거나 없어지면 **metaskill이 이 표를 갱신할 의무**가 있다. 크로스 프로젝트 여부는 "연관 프로젝트" 컬럼으로 판단한다.
+라우팅 판단의 유일한 근거는 루트의 **REGISTRY.md**다. 어떤 프로젝트를 두는지는 이 하네스를 설치한 워크스페이스마다 다르므로, 설치 환경별 데이터(레지스트리)는 공용 규칙(이 파일)과 분리한다(ADR 004). 프로젝트가 생기거나 없어지면 **metaskill이 REGISTRY.md를 갱신할 의무**가 있다. 크로스 프로젝트 여부는 레지스트리의 "연관 프로젝트" 컬럼으로 판단한다.
 
-**경로 규약**: 하위 프로젝트는 `project/<이름>/`에 두며, **각자 독립 git 저장소**다(ADR 002). 이 루트 저장소는 하네스만 추적하고 `project/`, `dev/`는 gitignore 대상이다. `dev/`는 실험·임시 개발 공간으로 레지스트리에 올리지 않는다.
-
-| 이름 | 경로 | 스택 | 역할 | 연관 프로젝트 | 하네스 유무 |
-|---|---|---|---|---|---|
-| app_project | `project/app_project/` | Flutter (sonaapp), Android | 앱 프로젝트 묶음 (하위: android, flutter) | 미확인 | ✗ |
-| web_project | `project/web_project/` | Next.js (shifteasy) | 웹 프로젝트 묶음 (하위: shifteasy) | 미확인 | ✗ |
-| tool_project | `project/tool_project/` | Go (claude-auto), Python (crypto-bot) 외 | 도구 묶음 (하위: agents, claude-auto, crypto-bot, nohdolbot) | 미확인 | ✗ |
-| ops_project | `project/ops_project/` | 미확인 | 운영·LLM 워크플로 묶음 (하위: ax-llm-eval-workflow, llm-team-admin) | 미확인 | ✗ |
-| ui-live-editor | `project/ui-live-editor/` | 미확인 | UI 라이브 에디터 (독립 git 저장소) | 미확인 | ✗ |
-
-> ⚠️ 위 5행은 2026-07-12 기존 디렉토리 **관찰 기반 임시 등록**이다. "미확인" 항목과 하네스 생성은 metaskill 구체화 인터뷰로 확정해야 하며, 확정 전에는 이 행들을 근거로 크로스 프로젝트 라우팅을 단정하지 않는다. 일부 항목은 단일 프로젝트가 아니라 **카테고리 묶음**이므로 인터뷰 시 레지스트리 단위(묶음 vs 개별 프로젝트)도 함께 확정한다. 또한 ui-live-editor를 제외한 4개 항목은 **독립 git 저장소가 아직 없다**(ADR 002 규약 미충족) — 인터뷰 시 `git init` 여부도 함께 확정한다.
+**경로 규약 (공용 규칙)**: 하위 프로젝트는 `project/<이름>/`에 두며, **각자 독립 git 저장소**다(ADR 002). 이 루트 저장소는 하네스만 추적하고 `project/`, `dev/`는 gitignore 대상이다. `dev/`는 실험·임시 개발 공간으로 레지스트리에 올리지 않는다.
 
 ## 2. 상속과 우선순위
 
@@ -43,11 +33,11 @@
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)만 추적한다. 하위 프로젝트는 `project/<이름>/`의 독립 저장소에서 각자 커밋·푸시한다. 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, REGISTRY.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)만 추적한다. 하위 프로젝트는 `project/<이름>/`의 독립 저장소에서 각자 커밋·푸시한다. 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 `_workspace/`, `project/`, `dev/`(및 OS 파일)뿐이다(ADR 002).
+- 하네스 파일(AGENTS.md, REGISTRY.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 `_workspace/`, `project/`, `dev/`(및 OS 파일)뿐이다(ADR 002).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
-- 자동 커밋 금지 — 사용자가 요청할 때만 커밋한다.
+- **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하다.
 
 ## 6. 문서 규칙
 
@@ -57,7 +47,7 @@
 
 ## 7. 라우팅 규칙
 
-1. 요청을 받으면 **프로젝트 레지스트리**에서 관련 프로젝트를 식별한다.
+1. 요청을 받으면 **REGISTRY.md의 프로젝트 레지스트리**에서 관련 프로젝트를 식별한다.
 2. 해당 프로젝트의 AGENTS.md(하네스)를 로드한다.
 3. **단일 프로젝트**면 그 하네스로 직접 작업한다.
 4. **다중 프로젝트**(레지스트리의 "연관 프로젝트" 컬럼이 얽히는 요청)면 `orchestrate` 스킬로 팀을 구성한다. 패턴 선택은 `.agents/skills/metaskill/references/patterns.md`의 플로우차트·전환 신호 표를 따르고, **위임 깊이는 2단계(총괄→팀장→실무자)를 초과하지 않는다** — 지연이 기하급수적으로 증가하기 때문이다.
@@ -106,3 +96,5 @@
 | 2026-07-12 | `.claude/` 직접 생성 금지 규칙 명시. explorer·reviewer 에이전트, harness-review 스킬 신설 | 11절(구 12절), .agents/agents/, .agents/skills/harness-review/ | 심링크 원본 규칙이 암시에 그침(사용자 지적). orchestrate 반복 역할 2종과 주 1회 진화 관찰 절차의 실행 수단 부재 |
 | 2026-07-12 | "완벽주의 금지" 절 삭제, 절 번호 재조정(10→9, 11→10, 12→11), 전 문서 교차 참조 갱신 | 구 9절, 전 문서 | 사용자 방침 — 완성도에 상한 없음. docs/adr/003-perfectionism-clause-removal.md |
 | 2026-07-12 | reviewer 1차 독립 검증 반영 — gitignore 문구 정정, 추적 대상 열거 보완, ADR 트리거 ④ 추가, 라우팅 문구 완화, 도구 제약 서술 정직화, 레지스트리 임시 등록 5행 | 1·5·6·7·8절, 에이전트 2종, README, ADR 001 | 검증 발견 F1~F11 — `_workspace/harness-perfection-review/phase1_reviewer_verdict.md` |
+| 2026-07-12 | 레지스트리를 REGISTRY.md로 분리, implementer·integrator 신설(표준 로스터 4종 완성), orchestrate 개정(로스터 재사용·게이트 단일 원본 이관, team-log 이벤트 계약) | 1·5·7절, REGISTRY.md, .agents/ | 사용자 확정 — AGENTS.md는 공용, 레지스트리는 설치 환경별. reviewer 3차 검증 통과. docs/adr/004-registry-separation-standard-roster.md |
+| 2026-07-12 | 커밋 규칙 변경 — 작업 완료 시 커밋·푸시 기본 진행 | 5절 | 사용자 상시 승인 ("커밋 푸시는 작업 완료하면 무조건 진행") |

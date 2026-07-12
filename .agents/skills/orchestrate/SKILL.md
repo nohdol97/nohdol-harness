@@ -9,14 +9,25 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 여러 프로젝트·여러 관점이 얽힌 작업을 단일 컨텍스트에서 처리하면 컨텍스트가 폭발하고 검증이 누락된다. 이 스킬은 작업을 팀으로 분해하되, **팀을 파일에 영구 정의하지 않는다**. 팀은 **세션 객체**다 — 시작 시 메모리 위에 만들고 끝나면 해제한다. 이유: 팀 구성은 작업의 모양에 따라 매번 달라야 하며, 영구화된 팀은 다음 작업에 맞지 않는 구조를 강요하기 때문이다.
 
-팀원을 정의할 때는 루트 AGENTS.md 10절(에이전트 정의 규칙 10가지)을 따른다.
+## 표준 팀원 로스터 (재사용 우선)
+
+팀 구성 시 `.agents/agents/`의 **표준 에이전트를 우선 재사용**한다. 매번 즉석 정의하면 팀원마다 규칙이 미묘하게 달라져 실행을 예측할 수 없게 된다.
+
+| 에이전트 | 티어 | 역할 | 전형적 배치 |
+|---|---|---|---|
+| explorer | explore | 수집·검색·요약 (소스 수정 금지, Write는 `_workspace/` 리포트 전용) | 상류 — 병렬 수집, 팬아웃 |
+| implementer | implement | 코드·문서·설정 구현 (유일한 Edit 보유자) | 중류 — 파이프라인 구현, 생성-검증의 생성자 |
+| reviewer | design | 검증·판정 (수정 금지) | 하류 — 생성-검증의 검증자, 독립 검증 |
+| integrator | design | 팬인·통합 게이트·최종 리포트 | 최하류 — 모든 산출물의 종점 |
+
+도메인 특화 팀원(예: k8s 매니페스트 전문가)이 필요할 때만 루트 AGENTS.md 10절(에이전트 정의 규칙 10가지)에 따라 즉석 정의하고, 같은 역할이 3회 이상 반복되면 `.agents/agents/`로 승격을 제안한다(진화 트리거).
 
 ## Phase 0 — 사전 조건 (반드시 먼저)
 
 1. **입력 확인**: 작업 지시가 비어 있거나 모호하면 즉시 중단하고 사유를 보고한다.
 2. **`_workspace/` 감지**: `_workspace/<작업명>/`이 이미 존재하면 이전 세션의 잔여물인지 확인 — 재개할지 새로 시작할지 판단하고, 새로 시작하면 기존 산출물을 덮어쓰지 않도록 작업명을 바꾼다.
 3. **범위 판단**: 범위가 크면(예: 파일 40개 초과) 분할하고, 위험도 높은 묶음만 이번 실행에서 처리한다. 이유: 한 번에 다 하려는 시도가 품질과 추적 가능성을 동시에 망가뜨린다.
-4. **레지스트리 라우팅**: 루트 AGENTS.md의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 각 하네스를 로드한다.
+4. **레지스트리 라우팅**: 루트 REGISTRY.md의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 각 하네스를 로드한다.
 
 ## 프리미티브
 
@@ -54,7 +65,9 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 1. 팀 구성 → 2. 작업 큐 배치 → 3. 실행 중에는 팀원 간 직접 소통을 허용하고, 유휴 알림 처리와 에러 개입만 → 4. 결과 통합 → 5. 팀 해체 + 세션 clean.
 
-## 공통 팀원 규칙 (모든 팀원 프롬프트에 삽입)
+## 공통 팀원 규칙 (에이전트 팀 모드의 모든 팀원 프롬프트에 삽입)
+
+> B. 서브에이전트 모드에서는 SendMessage 채널이 없으므로 ②·④만 적용하고, Critical은 최종 응답으로 오케스트레이터에게 보고한다.
 
 1. 발견 즉시 관련 팀원에게 SendMessage로 알린다.
 2. 최종 판단은 파일에 저장한다.
@@ -63,13 +76,9 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 메시지 형식 고정(JSON): `{type, severity, file, line, claim, request}` — 발견 사실과 수신자가 취해야 할 행동을 모두 담는다.
 
-## 통합 게이트 원칙 (결과 통합 담당)
+## 통합 게이트 (담당: integrator)
 
-1. 심각도 높은 것(Critical·High)을 먼저 배치.
-2. 같은 원인의 중복 이슈는 하나로 병합.
-3. **증거 없는 제안은 제외.** 이유: 증거 없는 항목이 섞이면 리포트 전체의 신뢰가 무너진다.
-4. 경미한 항목은 "권고"로 낮추고, 실제 버그 증거가 있으면 "차단"으로 올림.
-5. 최종 리포트는 `must-fix` / `should-fix` / `watch` 세 섹션만 둔다.
+결과 통합은 **integrator 에이전트가 전담**하며, 게이트 5원칙(심각도 우선 배치 / 중복 병합 / 증거 없는 제안 제외 / 강등·승격 규칙 / must-fix·should-fix·watch 3섹션)의 단일 원본은 `.agents/agents/integrator.md` 2절이다. 소규모 팀에서 리더가 직접 통합하는 경우에도 같은 원칙을 따른다.
 
 ## 실행 모드 3템플릿
 
@@ -94,12 +103,19 @@ Phase마다 모드를 섞는다. **필수 규약: 각 Phase 섹션 상단에 해
 
 실제 하네스는 Phase마다 다른 패턴을 쓴다. Phase 간 경계는 `_workspace/` 파일로 잇는다. 패턴 선택은 `../metaskill/references/patterns.md`의 플로우차트를 따른다.
 
+## team-log.jsonl 이벤트 계약 (고정 스키마)
+
+팀 이벤트는 `_workspace/<작업명>/team-log.jsonl`에 **발생 즉시** append한다 — 종료 시에 몰아 쓰면 중단된 세션의 로그가 유실되고, harness-review의 실패 신호 관찰이 불가능해진다.
+
+- 형식: JSON 한 줄, 필수 필드 `ts`(ISO8601)·`event`, 나머지는 이벤트별 상세.
+- `event` 값(고정): `team_create` / `task_dispatch` / `task_complete` / `task_failed` / `integration_complete` / `shutdown_request` / `team_delete`. harness-review는 `task_failed`와 `team_delete` 부재를 신호로 읽는다.
+
 ## 종료 시퀀스 (세션 clean — 순서 고정)
 
 1. 팀원 전원에게 `shutdown_request` SendMessage.
 2. 진행 중 파일 쓰기 완료 확인.
 3. TeamDelete.
-4. `_workspace/<작업명>/team-log.jsonl`에 생성·배치·종료 시각을 append-only 기록.
+4. `_workspace/<작업명>/team-log.jsonl`에 `shutdown_request`·`team_delete` 이벤트 기록(위 이벤트 계약 준수).
 
 TeamDelete 실패 시 **숨기지 않고** 수동 정리 필요 항목을 보고한다. 이유: 조용히 삼킨 좀비 팀은 다음 세션의 `_workspace/` 감지를 오염시킨다.
 

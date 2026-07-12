@@ -25,14 +25,15 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 1. 구체화 인터뷰
 2. 디렉토리·기본 스캐폴딩 생성 → **`references/scaffold.md` 참조**
 3. 하네스 생성 (아래 "생성물 요건")
-4. **루트 AGENTS.md의 프로젝트 레지스트리에 새 행 추가** (연관 프로젝트 컬럼 포함)
-5. 루트 AGENTS.md 변경 이력 갱신
+4. **루트 REGISTRY.md의 프로젝트 레지스트리에 새 행 추가** (연관 프로젝트 컬럼 포함)
+5. REGISTRY.md 변경 이력 갱신
 
 프로젝트 **삭제·이동** 시에도 레지스트리를 갱신한다. 레지스트리가 현실과 어긋나면 라우팅 전체가 어긋난다.
 
 ## 생성물 요건 (신규 하네스에 반드시 포함)
 
 - `CLAUDE.md` → AGENTS.md 포인터 (`## 하네스: {도메인}` 섹션 + **목표** + **트리거**(orchestrate 스킬명 명시) + **변경 이력** 테이블 초기 1행)
+- **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리)를 함께 생성한다. 하위 프로젝트 하네스에는 만들지 않는다.
 - `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시. 하단에 변경 이력 테이블(초기 1행).
 - 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
 - **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
@@ -70,7 +71,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - [ ] 각 에이전트 정의에 "재호출 지침" 섹션 존재
 - [ ] 진화 트리거 3신호를 주 1회 관찰하는 운영 습관 명시
 - [ ] `.claude/agents`, `.claude/skills`가 공용 디렉토리를 바라봄(심링크 검증)
-- [ ] 루트 AGENTS.md에 프로젝트 레지스트리 표 존재(신규 프로젝트면 행 추가됨)
+- [ ] **루트 하네스 한정**: REGISTRY.md에 프로젝트 레지스트리 표 존재(신규 프로젝트면 행 추가됨). 하위 프로젝트 하네스에는 레지스트리를 두지 않는다(루트 단일 원칙)
 - [ ] 파괴적 작업 사용자 확인 가드레일이 루트 AGENTS.md에 존재
 - [ ] 각 SKILL.md가 500줄 이내이고 with/without 지표가 하단에 존재
 - [ ] ADR 존재(초기 구성이면 001)

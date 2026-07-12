@@ -16,13 +16,13 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 | 신호 | 관찰 방법 |
 |---|---|
 | 반복 요청 3회+ | 최근 세션 기억·`_workspace/` 작업명들·git 커밋 메시지에서 같은 유형 작업의 반복 확인 |
-| 반복 실패 2회+ | team-log.jsonl의 실패 이벤트, 같은 종류의 재작업 커밋(fix 연쇄) 확인 |
+| 반복 실패 2회+ | team-log.jsonl의 `task_failed` 이벤트(orchestrate 이벤트 계약), 같은 종류의 재작업 커밋(fix 연쇄) 확인 |
 | 하네스 우회 | orchestrate 없이 처리된 다중 프로젝트 작업, `.agents/` 밖에 생긴 에이전트·스킬 정의, 레지스트리에 없는 프로젝트 디렉토리 |
 
 ### 2. 구조 무결성 점검
 
 - 심링크: `readlink .claude/agents .claude/skills`가 `../.agents/*`를 가리키는지. **`.claude/` 아래에 심링크가 아닌 실파일이 생겼는지** (생겼다면 우회 신호 — 원본은 `.agents/`에만 있어야 한다).
-- 레지스트리: `project/` 하위 실제 디렉토리 목록과 AGENTS.md 레지스트리 표가 일치하는지.
+- 레지스트리: `project/` 하위 실제 디렉토리 목록과 REGISTRY.md 레지스트리 표가 일치하는지.
 - 잔여물: `_workspace/`에 종료 기록(team-log의 team_delete) 없는 작업 디렉토리가 방치되어 있는지.
 - 변경 이력: 최근 하네스 커밋마다 변경 이력 테이블 갱신이 동반되었는지 (`git log -p -- AGENTS.md`).
 
