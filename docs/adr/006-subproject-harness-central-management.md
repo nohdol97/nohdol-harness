@@ -1,5 +1,7 @@
 # ADR 006 — 하위 프로젝트 하네스 중앙 관리 (원본 루트 일원화 · 미추적 · 배포 장치 없음)
 
+> ⚠️ 이 중 "스킬·에이전트 루트 단일 소스(`<프로젝트>-` 접두어)" 결정과 하위 CLAUDE.md 생성은 **ADR 007로 대체**되었다(지연 생성 + `.agents/projects/<이름>/skills/`·`agents/` 배치). 나머지 결정은 유효하다.
+
 - **날짜**: 2026-07-13
 - **변경 내용**: 하위 프로젝트 하네스의 원본이자 유일본을 루트 `.agents/projects/<이름>/`에 두고, REGISTRY.md처럼 설치처별 데이터로 **git 미추적**한다. `project/<이름>/`와 그 git 저장소에는 하네스 파일을 일절 두지 않는다(심링크·복사본 포함) — 라우팅(REGISTRY.md → 원본 읽기)이 연결한다. 하위 전용 스킬·에이전트는 루트 `.agents/`에 `<프로젝트>-` 접두어로, 하위 전용 훅은 루트 settings에 경로 분기형으로만 둔다.
 - **대상**: AGENTS.md 5·12절, .gitignore, `.agents/projects/`(신설), metaskill SKILL.md·scaffold.md, orchestrate SKILL.md(공통 팀원 규칙 ①), harness-review·harness-install SKILL.md, README
