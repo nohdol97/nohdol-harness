@@ -19,7 +19,9 @@ nohdol-harness/
 │   │   ├── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
 │   │   ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
 │   │   ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
-│   │   └── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
+│   │   ├── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
+│   │   ├── doc-writer/      # 일관 형식 문서 작성 (스펙·리포트·README·런북 템플릿)
+│   │   └── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # → .agents/ 심링크 (Claude Code + Codex가 같은 파일을 봄)
 ├── docs/adr/              # 구조적 결정 기록 (ADR)
@@ -37,7 +39,8 @@ nohdol-harness/
 1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스(`.agents/projects/<이름>/AGENTS.md`)를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md) 하위 프로젝트 하네스는 전부 이 워크스페이스에서 중앙 관리하며, 프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다.
 2. **단일 프로젝트** 작업은 그 프로젝트 하네스로 직접, **다중 프로젝트** 작업은 `orchestrate` 스킬로 팀을 구성해 진행한다. 팀은 표준 로스터 4종(explorer·implementer·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
 3. **새 프로젝트**는 "프로젝트 새로 만들어줘"라고 지시하면 `metaskill`이 인터뷰 → 스캐폴딩 → 하네스 생성 → 레지스트리 등록까지 수행한다.
-4. **진화**: 같은 요청 3회 / 같은 실패 2회 / 하네스 우회 관찰 시 metaskill이 에이전트·스킬 신설을 제안한다.
+4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절).
+5. **진화**: 같은 요청 3회 / 같은 실패 2회 / 하네스 우회 관찰 시 metaskill이 에이전트·스킬 신설을 제안한다.
 
 ## 안전 가드레일
 
