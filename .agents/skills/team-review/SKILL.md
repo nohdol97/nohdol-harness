@@ -42,6 +42,8 @@ description: Review code diffs, PRs, specs, or harness changes with a size-scale
 
 각 리뷰어 프롬프트에 필수 포함: 대상 프로젝트 하네스(`.agents/projects/<이름>/AGENTS.md`) 읽기 지시, 스펙 경로, 출력 경로 `_workspace/<작업명>/phase1_reviewer-<관점>_report.md`(doc-writer 작업 리포트 템플릿).
 
+**동시 발행 (필수)**: 관점 리뷰어들은 서로의 결과에 의존하지 않으므로 **전원을 한 응답(같은 턴)에 동시 발행**한다(orchestrate B모드 동시 발행 규약). 정확성 리뷰가 끝나기를 기다렸다가 테스트 리뷰를 시작하는 것은 직렬 퇴화이며 규약 위반이다 — 순차가 허용되는 유일한 지점은 모든 리뷰가 끝난 뒤의 integrator뿐이다(팬인은 본질적으로 리뷰 완료에 의존).
+
 **통합**: integrator가 게이트 5원칙으로 병합 → `phase2_integrator_verdict.md`. 최종 보고는 orchestrate 고정 형식(must-fix 수·위치 / should-fix 수 / 리포트 경로).
 
 ## 단독 모드
