@@ -40,9 +40,9 @@
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙)만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크, `.gitignore`, `docs/adr/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(및 OS 파일) — 뿐이다(ADR 002·005·006).
+- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(및 OS 파일) — 뿐이다(ADR 002·005·006).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하다.
 - **하위 프로젝트 브랜치 규칙**: 하위 프로젝트 작업은 `branch-workflow` 스킬을 따른다 — 시작 시 main 최신화 후 새 브랜치, 마무리 시 PR 직전 rebase → 푸시 → PR 생성(머지는 사용자). **이 루트 하네스 저장소만 main 직커밋 예외**다(문서 중심, 2026-07-12 인터뷰 확정).
@@ -115,6 +115,15 @@
 1. **스펙 먼저**: 구현 전에 스펙 문서를 확정한다 — `doc-writer` 스킬의 스펙 템플릿(배경·목표·비목표·요구사항·완료 기준) 사용. 위치는 **해당 프로젝트 저장소의 `docs/specs/`** — 스펙은 하네스가 아니라 프로젝트 산출물이므로 코드와 함께 커밋된다. 이유: 스펙 없는 구현은 완료 판정 기준이 없어 리뷰가 취향 싸움이 된다.
 2. **테스트 먼저**: 스펙의 완료 기준을 **실패하는 테스트**로 옮긴 뒤 구현한다. 순서: 실패 테스트 → 최소 구현 → 통과 → 리팩토링. 버그 수정은 재현 테스트부터. **테스트 없이 "구현 완료"를 선언하지 않는다.**
 3. **리뷰는 스펙 대비로**: 리뷰(`team-review` 스킬, reviewer 에이전트)는 스펙의 완료 기준을 판정 기준으로 삼는다 — 기준이 문서에 있으니 판정이 재현 가능해진다.
+4. **실행 계층 게이트(훅)**: 루트 `.claude/settings.json`의 PreToolUse 훅(`.agents/hooks/tdd-gate.py`)이 `git commit` 시점에 코드 파일이 테스트 변경 없이 커밋되는 것을 차단한다. 동작 불변 수정은 **사용자 확인 후** 커밋 메시지에 `[no-test]`를 표기해 통과시킨다. 예외 경로: 루트 하네스 저장소(문서 중심), `dev/`(실험 공간), 최초 커밋. 훅은 Claude Code 세션에만 작동하는 보조 장치이며 규칙의 원본은 이 문서다 — 판단 불가 상황은 통과(fail-open)한다. 훅 수정 시 회귀 테스트(`.agents/hooks/tdd-gate_test.py`)를 통과해야 한다. 상세: docs/adr/008, 스펙: docs/specs/2026-07-13-tdd-gate-hook.md.
+
+## 14. 작업 추적 — 세션 영속 (ccpm 패턴)
+
+`_workspace/`와 세션 컨텍스트는 미보존이므로, **세션을 넘는 작업의 상태는 해당 프로젝트 저장소에 영속화**한다(`work-tracker` 스킬) — GitHub 원격이 있으면 GitHub Issues(에픽 이슈 + 태스크 체크리스트 + 진행 로그 코멘트), 없으면 저장소의 `docs/backlog.md`. 이유: 상태는 코드와 같은 곳에 있어야 어긋나지 않는다.
+
+- **등록 기준**: 한 세션에 끝나지 않을 작업만(여러 PR·며칠 규모·사용자 명시 요청). 전수 등록은 이슈 무덤을 만든다 — 지연 생성(ADR 007)과 같은 철학.
+- **세션 종료·중단 시** 진행 로그(완료/다음/막힘)를 남기는 것이 재개의 시작점이다. `_workspace/` 산출물 중 다음 세션에 필요한 결론은 요약해 코멘트로 옮긴다.
+- **완료는 PR `Closes #N`**로 코드와 상태를 함께 닫는다(branch-workflow 마무리 절차와 연결). 상세: docs/adr/009.
 
 ## 변경 이력
 
@@ -133,3 +142,5 @@
 | 2026-07-13 | 레지스트리 컬럼 채우기 방식 확정 — 역할은 README 등 문서 직접 관찰, 연관 프로젝트는 실작업 관찰 시 갱신(초기 "미기록"), 경로 규약은 인터뷰 유지 | 1절, harness-install, orchestrate, metaskill | 사용자 확정 — 인터뷰 추측 대신 관찰 기반. 추측된 연관은 라우팅을 오염시킨다 |
 | 2026-07-13 | 하위 스킬·에이전트 지연 생성 전환 — 초기 키트 폐지, 위치를 루트 접두어에서 `.agents/projects/<이름>/skills/`·`agents/`(미추적)로 변경, 하위 CLAUDE.md 규격 삭제 | 12절, metaskill, scaffold, .agents/projects/README | 사용자 확정 — 반복 관찰·등록 가치 발견 시에만 생성, 프로젝트 스킬은 git 미포함. docs/adr/007 |
 | 2026-07-13 | 13절 신설(SDD+TDD 개발 방법론), doc-writer·team-review 스킬 신설 | 13절, .agents/skills/doc-writer/, .agents/skills/team-review/, README | 사용자 확정 — 스펙·테스트 주도 작업 규칙, 일관 형식 문서 작성, 규모 스케일링 팀 리뷰 |
+| 2026-07-13 | 13절에 TDD 게이트 훅 추가(4항) — `.agents/hooks/tdd-gate.py`(+회귀 테스트·스펙) + `.claude/settings.json` 신설, 5절 추적 목록에 settings.json·.gitattributes·docs/specs 반영 | 5·13절, .agents/hooks/, .claude/settings.json, docs/specs/, .gitignore | 문서 규칙은 강제력이 없음 — 커밋 시점 차단으로 실행 계층 보증(사용자 승인, Superpowers 패턴). reviewer 1·2차 검증 F1~F12 반영. docs/adr/008 |
+| 2026-07-13 | 14절 신설(세션 영속 작업 추적) + work-tracker 스킬 신설 | 14절, .agents/skills/work-tracker/, CLAUDE.md, README | `_workspace/`·세션 컨텍스트 미보존으로 세션 경계에서 작업 상태 유실 — ccpm 패턴 채택(사용자 승인). docs/adr/009 |
