@@ -46,6 +46,7 @@
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하다.
 - **하위 프로젝트 브랜치 규칙**: 하위 프로젝트 작업은 `branch-workflow` 스킬을 따른다 — 시작 시 main 최신화 후 새 브랜치, 마무리 시 PR 직전 rebase → 푸시 → PR 생성(머지는 사용자). **이 루트 하네스 저장소만 main 직커밋 예외**다(문서 중심, 2026-07-12 인터뷰 확정).
+- **배포·릴리스 규칙**: 머지 이후 배포는 `release` 스킬을 따른다 — 런북 초안(롤백 절 필수) → 변경 단계별 사용자 확인(3절, dev 포함 예외 없음) → 배포 후 검증 → work-tracker 마무리. 외부 배포 스킬(플러그인 등)은 이 절차 안의 보조 도구로만 쓴다.
 
 ## 6. 문서 규칙
 
@@ -147,3 +148,4 @@
 | 2026-07-13 | orchestrate 범용 게이트화 — 7절 3항 개정(구현·다단계 작업은 팀 필요성 판정 필수), orchestrate Phase 0-1 판정 4등급·검증 필수 규칙·하이브리드 표준 스켈레톤 신설, patterns.md 복합 패턴 절 확장, CLAUDE.md 스킬 우선순위 신설(특화>게이트, 하네스>외부), harness-review 우회 신호 확장, 규모 임계 단일 원본 지정 | 7절, .agents/skills/orchestrate/·harness-review/·team-review/·metaskill/, .agents/agents/implementer.md, CLAUDE.md, README | 사용자 요청 — 팀 필요 판정 주체 부재로 복잡 작업이 판정 없이 단일 컨텍스트 처리됨. reviewer 검증 F1~F11(외부 스킬 트리거 충돌 포함 — 사용자 지시 기준) 반영. docs/adr/010 |
 | 2026-07-13 | PR 본문 템플릿 신설 — doc-writer 템플릿 5번 추가, branch-workflow 마무리 4단계가 참조(Closes #N으로 work-tracker 연결) | .agents/skills/doc-writer/, .agents/skills/branch-workflow/ | 사용자 요청 — PR도 문서처럼 고정 형식으로. 템플릿 단일 원본은 doc-writer. docs/adr/010 |
 | 2026-07-13 | 표준 로스터 4종→7종 확장 — architect·troubleshooter·infra-specialist 신설, implementer Edit 서술 정정, orchestrate 로스터 표·스켈레톤 담당 갱신 | .agents/agents/, .agents/skills/orchestrate/, README | 사용자 승인 — 인기 하네스(BMAD·Superpowers 등) 로스터 대조 검토: 스켈레톤 Phase ② 공백(architect), 인과 확정 역할 부재(troubleshooter), 인프라 프로젝트 대응(infra-specialist). docs/adr/011 |
+| 2026-07-13 | release 스킬 신설(머지 이후 배포 워크플로우 — 런북→단계별 확인→검증→work-tracker 마무리) + 5절 배포·릴리스 규칙 앵커 + team-review 관점 축에 UX·접근성 추가 | 5절, .agents/skills/release/, .agents/skills/team-review/, CLAUDE.md, README | 사용자 승인(풀스택 커버리지 점검) — PR 머지 이후 절차 공백은 가드레일 최중요 구간의 무절차, 프론트 diff에 접근성 검증 관점 부재. 5절 앵커는 Codex 세션 구속용(규칙은 문서가 운반 — reviewer phase6 F1) |
