@@ -33,10 +33,10 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 ## 생성물 요건 (신규 하네스에 반드시 포함)
 
 - `CLAUDE.md` → AGENTS.md 포인터 (`## 하네스: {도메인}` 섹션 + **목표** + **트리거**(orchestrate 스킬명 명시) + **변경 이력** 테이블 초기 1행)
-- **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리)를 함께 생성한다. 하위 프로젝트 하네스에는 만들지 않는다.
+- **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리 — git 미추적)를 반드시 생성한다. 절차는 `harness-install` 스킬을 따른다. 하위 프로젝트 하네스에는 만들지 않는다.
 - `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시. 하단에 변경 이력 테이블(초기 1행).
 - **루트 하네스 한정**: 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
-- **하위 프로젝트 하네스는 중앙 관리 방식(루트 AGENTS.md 12절)**: 원본은 루트 `.agents/projects/<이름>/`(AGENTS.md·CLAUDE.md·adr/)에 생성하고, `project/<이름>/`에는 AGENTS.md·CLAUDE.md 심링크와 `.claude/agents`·`.claude/skills` → **루트** `.agents/` 심링크만 배포한다. 하위 전용 `.agents/`는 만들지 않는다. 하위 git 저장소가 있으면 배포한 심링크들을 `.git/info/exclude`에 등록한다 — 하네스는 하위 프로젝트 git에 올라가지 않는다.
+- **하위 프로젝트 하네스는 중앙 관리 방식(루트 AGENTS.md 12절, ADR 006)**: 원본이자 유일본을 루트 `.agents/projects/<이름>/`(AGENTS.md·CLAUDE.md·adr/)에 생성한다. `<이름>`은 REGISTRY.md 행과 일치시킨다. **`project/<이름>/`와 그 git 저장소에는 하네스 파일을 일절 두지 않는다**(심링크·복사본 포함) — 라우팅(REGISTRY.md → 원본 읽기)이 연결하므로 배포 장치가 불필요하다. `.agents/projects/`는 설치처별 데이터라 git 미추적이다.
 - **하위 전용 스킬·에이전트는 루트 `.agents/`에 `<프로젝트>-` 접두어로 생성**한다(예: `web-deploy`). 이유: 스킬은 cwd 기준 로드라 하위에 두면 루트 세션에서 보이지 않는다. 훅이 필요하면 루트 `.claude/settings.json`에 경로 분기형으로만 둔다.
 - **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
 - orchestrate 연동: 다중 프로젝트·팀 작업 시 루트 orchestrate 스킬을 트리거함을 명시.
@@ -72,8 +72,8 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - [ ] 오케스트레이터 초기 Phase에 `_workspace/` 감지 로직 존재
 - [ ] 각 에이전트 정의에 "재호출 지침" 섹션 존재
 - [ ] 진화 트리거 3신호를 주 1회 관찰하는 운영 습관 명시
-- [ ] `.claude/agents`, `.claude/skills`가 공용 디렉토리를 바라봄(심링크 검증 — 하위 프로젝트면 **루트** `.agents/`를 바라봄)
-- [ ] **하위 프로젝트 한정**: 원본이 루트 `.agents/projects/<이름>/`에 있고 `project/<이름>/`에는 심링크만 배포됨. 하위 git 저장소가 있으면 `.git/info/exclude`에 심링크 등록됨
+- [ ] **루트 하네스 한정**: `.claude/agents`, `.claude/skills`가 공용 디렉토리를 바라봄(심링크 검증)
+- [ ] **하위 프로젝트 한정**: 하네스 원본이 루트 `.agents/projects/<이름>/`에 있고, `project/<이름>/`와 그 git 저장소에는 하네스 파일이 없음. REGISTRY.md에 같은 이름의 행 존재
 - [ ] **루트 하네스 한정**: REGISTRY.md에 프로젝트 레지스트리 표 존재(신규 프로젝트면 행 추가됨). 하위 프로젝트 하네스에는 레지스트리를 두지 않는다(루트 단일 원칙)
 - [ ] 파괴적 작업 사용자 확인 가드레일이 루트 AGENTS.md에 존재
 - [ ] 각 SKILL.md가 500줄 이내이고 with/without 지표가 하단에 존재

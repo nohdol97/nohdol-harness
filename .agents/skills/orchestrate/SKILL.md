@@ -27,7 +27,7 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 1. **입력 확인**: 작업 지시가 비어 있거나 모호하면 즉시 중단하고 사유를 보고한다.
 2. **`_workspace/` 감지**: `_workspace/<작업명>/`이 이미 존재하면 이전 세션의 잔여물인지 확인 — 재개할지 새로 시작할지 판단하고, 새로 시작하면 기존 산출물을 덮어쓰지 않도록 작업명을 바꾼다.
 3. **범위 판단**: 범위가 크면(예: 파일 40개 초과) 분할하고, 위험도 높은 묶음만 이번 실행에서 처리한다. 이유: 한 번에 다 하려는 시도가 품질과 추적 가능성을 동시에 망가뜨린다.
-4. **레지스트리 라우팅**: 루트 REGISTRY.md의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 각 하네스를 로드한다.
+4. **레지스트리 라우팅**: 루트 REGISTRY.md의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 각 하네스를 로드한다. REGISTRY.md가 없으면 설치 미완료 — 중단하고 harness-install을 안내한다.
 
 ## 프리미티브
 
@@ -69,7 +69,7 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 > B. 서브에이전트 모드에서는 SendMessage 채널이 없으므로 ①·③·⑤만 적용하고, Critical은 최종 응답으로 오케스트레이터에게 보고한다.
 
-1. **작업 전 대상 프로젝트의 하네스를 읽는다** — `project/<이름>/AGENTS.md`. 팀원·서브에이전트는 하위 프로젝트의 훅·설정을 상속받지 못하므로, 문서를 읽는 것이 그 프로젝트 규칙을 받는 유일한 경로다(루트 AGENTS.md 12절).
+1. **작업 전 대상 프로젝트의 하네스를 읽는다** — `.agents/projects/<이름>/AGENTS.md`. 팀원·서브에이전트는 하위 프로젝트의 훅·설정을 상속받지 못하므로, 문서를 읽는 것이 그 프로젝트 규칙을 받는 유일한 경로다(루트 AGENTS.md 12절).
 2. 발견 즉시 관련 팀원에게 SendMessage로 알린다.
 3. 최종 판단은 파일에 저장한다.
 4. **Critical 발견 시** 오케스트레이터와 관련 팀원에게 동시 보고한다. 나머지 작업은 계속하되, 최종 판정은 차단(must-fix 포함) 상태로 둔다.
@@ -89,7 +89,7 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 ### B. 서브에이전트 모드 (대안)
 
-팀 통신이 불필요한 **병렬 수집**에 사용. Agent 도구를 `run_in_background=true`로 병렬 실행하고 오케스트레이터는 결과 수집가 역할만 한다. **출력 경로와 대상 프로젝트 AGENTS.md 읽기 지시를 프롬프트 본문에 포함**한다(예: "작업 전 `project/<이름>/AGENTS.md`를 읽고, 결과를 `_workspace/<작업명>/phase1_<이름>_report.md`에 저장하라"). 상한 10~20개.
+팀 통신이 불필요한 **병렬 수집**에 사용. Agent 도구를 `run_in_background=true`로 병렬 실행하고 오케스트레이터는 결과 수집가 역할만 한다. **출력 경로와 대상 프로젝트 AGENTS.md 읽기 지시를 프롬프트 본문에 포함**한다(예: "작업 전 `.agents/projects/<이름>/AGENTS.md`를 읽고, 결과를 `_workspace/<작업명>/phase1_<이름>_report.md`에 저장하라"). 상한 10~20개.
 
 ### C. 하이브리드 모드
 

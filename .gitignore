@@ -7,5 +7,12 @@ project/
 # 실험·임시 개발 공간 (ADR 002)
 dev/
 
+# 프로젝트 레지스트리 — 설치 환경별 데이터, 각 설치처에서 harness-install로 생성 (ADR 005)
+REGISTRY.md
+
+# 하위 프로젝트 하네스 원본 — 설치 환경별 데이터, 컴퓨터마다 프로젝트가 다름 (ADR 006)
+.agents/projects/*
+!.agents/projects/README.md
+
 # OS
 .DS_Store
