@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Compose, run, and dissolve agent teams for parallel and multi-project work. Creates session teams, dispatches a shared task queue with depends_on, enables P2P messaging, integrates results through a severity gate, then tears down and cleans the session. Use when the user mentions orchestrate, 팀 구성, 병렬 작업, 멀티 프로젝트 작업, cross-project requests spanning registry entries, or any job needing 2+ cooperating agents. Re-run keywords - orchestrate, team, parallel, multi-project, 오케스트레이션.
+description: Compose, run, and dissolve agent teams for parallel and multi-project work. Creates session teams, dispatches a shared task queue with depends_on, enables P2P messaging, and integrates results through a severity gate. Use when the user mentions orchestrate, 팀 구성, 병렬 작업, 멀티 프로젝트 작업, cross-project requests, or any job needing 2+ cooperating agents. Re-run keywords - orchestrate, team, parallel, multi-project, 오케스트레이션.
 ---
 
 # orchestrate — 에이전트 팀 오케스트레이션

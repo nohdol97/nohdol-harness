@@ -19,10 +19,10 @@ description: Summarize the status of all registered projects in one report. Read
 
 ### Phase 1 — 병렬 수집 (**실행 모드.** 서브에이전트)
 
-레지스트리 행마다 explorer를 병렬 배치한다(orchestrate B 모드, 상한 10~20). 각 explorer의 고정 수집 항목:
+레지스트리 행마다 explorer를 병렬 배치한다(orchestrate B 모드, 상한 10~20 — **전원을 한 턴에 동시 발행**, B모드 동시 발행 규약). 각 explorer의 고정 수집 항목:
 
 1. git 상태: 독립 저장소 여부, 브랜치, 미커밋 변경, 최근 커밋 3건
-2. 하네스: AGENTS.md·CLAUDE.md 존재 여부
+2. 하네스: 루트 `.agents/projects/<이름>/AGENTS.md` 존재 여부와 지연 생성된 `skills/`·`agents/` 목록 (루트 AGENTS.md 12절 — 하네스는 프로젝트 디렉토리가 아니라 중앙에 있다). `project/<이름>/` 안에 하네스 파일이 있으면 우회 신호로 보고
 3. 레지스트리 대조: 실제 디렉토리 구성이 레지스트리 행(스택·하위 구성)과 일치하는지
 4. 특이사항: 근거 있는 것만 (빌드 산출물 비대, 방치 흔적 등)
 
