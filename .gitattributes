@@ -1,0 +1,4 @@
+# 개행을 LF로 강제 — Windows의 core.autocrlf=true가 체크아웃 시 CRLF로 변환하면
+# SKILL.md frontmatter 구분선이 `---\r`이 되어 파싱이 깨지고, 모든 스킬이
+# 목록에 이름만(무설명) 표시된다 (2026-07-13 장애 관찰)
+* text=auto eol=lf
