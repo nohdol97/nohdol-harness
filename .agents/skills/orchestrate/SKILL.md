@@ -67,12 +67,13 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 ## 공통 팀원 규칙 (에이전트 팀 모드의 모든 팀원 프롬프트에 삽입)
 
-> B. 서브에이전트 모드에서는 SendMessage 채널이 없으므로 ②·④만 적용하고, Critical은 최종 응답으로 오케스트레이터에게 보고한다.
+> B. 서브에이전트 모드에서는 SendMessage 채널이 없으므로 ①·③·⑤만 적용하고, Critical은 최종 응답으로 오케스트레이터에게 보고한다.
 
-1. 발견 즉시 관련 팀원에게 SendMessage로 알린다.
-2. 최종 판단은 파일에 저장한다.
-3. **Critical 발견 시** 오케스트레이터와 관련 팀원에게 동시 보고한다. 나머지 작업은 계속하되, 최종 판정은 차단(must-fix 포함) 상태로 둔다.
-4. 역할 범위 밖 수정은 하지 않는다 (예: 리뷰어는 코드 수정 금지).
+1. **작업 전 대상 프로젝트의 하네스를 읽는다** — `.agents/projects/<이름>/AGENTS.md`. 팀원·서브에이전트는 하위 프로젝트의 훅·설정을 상속받지 못하므로, 문서를 읽는 것이 그 프로젝트 규칙을 받는 유일한 경로다(루트 AGENTS.md 12절).
+2. 발견 즉시 관련 팀원에게 SendMessage로 알린다.
+3. 최종 판단은 파일에 저장한다.
+4. **Critical 발견 시** 오케스트레이터와 관련 팀원에게 동시 보고한다. 나머지 작업은 계속하되, 최종 판정은 차단(must-fix 포함) 상태로 둔다.
+5. 역할 범위 밖 수정은 하지 않는다 (예: 리뷰어는 코드 수정 금지).
 
 메시지 형식 고정(JSON): `{type, severity, file, line, claim, request}` — 발견 사실과 수신자가 취해야 할 행동을 모두 담는다.
 
@@ -88,7 +89,7 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 ### B. 서브에이전트 모드 (대안)
 
-팀 통신이 불필요한 **병렬 수집**에 사용. Agent 도구를 `run_in_background=true`로 병렬 실행하고 오케스트레이터는 결과 수집가 역할만 한다. **출력 경로는 프롬프트 본문에 지시**한다(예: "결과를 `_workspace/<작업명>/phase1_<이름>_report.md`에 저장하라"). 상한 10~20개.
+팀 통신이 불필요한 **병렬 수집**에 사용. Agent 도구를 `run_in_background=true`로 병렬 실행하고 오케스트레이터는 결과 수집가 역할만 한다. **출력 경로와 대상 프로젝트 AGENTS.md 읽기 지시를 프롬프트 본문에 포함**한다(예: "작업 전 `.agents/projects/<이름>/AGENTS.md`를 읽고, 결과를 `_workspace/<작업명>/phase1_<이름>_report.md`에 저장하라"). 상한 10~20개.
 
 ### C. 하이브리드 모드
 

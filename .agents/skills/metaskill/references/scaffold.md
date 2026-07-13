@@ -16,26 +16,24 @@
 ## 2. 디렉토리·기본 스캐폴딩
 
 - `project/<프로젝트명>/` 디렉토리 생성 (경로 규약 — 루트 REGISTRY.md, 설치처별). 스택 표준 스캐폴더 사용 (예: `npm create vite`, `uv init`). 스캐폴더가 없으면 최소 구조만 수동 생성.
-- git: `project/<프로젝트명>/`에 **독립 저장소**로 `git init` 한다 (ADR 002). 루트 저장소는 `project/`를 추적하지 않으므로, 프로젝트의 하네스 파일(AGENTS.md 등)은 **그 프로젝트 저장소에** 커밋한다.
+- git: `project/<프로젝트명>/`에 **독립 저장소**로 `git init` 한다 (ADR 002). 루트 저장소는 `project/`를 추적하지 않으며, **프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다** — 하네스는 루트 `.agents/projects/`에서 중앙 관리한다(루트 AGENTS.md 12절, ADR 006).
 
-## 3. 하네스 생성
+## 3. 하네스 생성 (중앙 관리 — 루트 AGENTS.md 12절, ADR 006)
+
+**하네스는 프로젝트 디렉토리가 아니라 루트 `.agents/projects/`에 만든다. 배포(심링크·복사)는 없다 — 라우팅(REGISTRY.md → 원본 읽기)이 프로젝트와 하네스를 연결한다.**
 
 ```
-project/<프로젝트명>/
+.agents/projects/<프로젝트명>/   # 원본이자 유일본 — git 미추적(설치처별 데이터)
 ├── AGENTS.md          # 첫 줄: "이 문서는 루트 AGENTS.md를 상속한다."
 ├── CLAUDE.md          # 포인터: ## 하네스: {도메인} + 목표 + 트리거 + 변경 이력 1행
-├── .agents/
-│   ├── agents/        # 이 프로젝트 전용 에이전트 (agent-rules.md 템플릿)
-│   └── skills/        # 이 프로젝트 전용 스킬 (스킬 공통 규칙 4가지)
-├── .claude/
-│   ├── agents -> ../.agents/agents    # 심링크
-│   └── skills -> ../.agents/skills    # 심링크
-└── docs/adr/          # 구조적 결정 기록
+└── adr/               # 이 프로젝트의 구조적 결정 기록
+
+project/<프로젝트명>/            # 코드만 — 하네스 파일 없음
 ```
 
+- `<프로젝트명>`은 REGISTRY.md 레지스트리 행의 "이름"과 일치시킨다 — 라우팅이 이 이름으로 원본을 찾는다.
 - 하위 AGENTS.md에는 **도메인 특화 규칙만** 담는다. 공통 관심사(git, 문서, 가드레일, 라우팅)는 루트에 있고 상속된다 — 복사하지 않는다. 이유: 복사본은 루트 갱신 시 어긋난다.
-- 심링크 생성: `ln -s ../.agents/agents .claude/agents && ln -s ../.agents/skills .claude/skills`
-- 심링크 검증: `ls -la .claude/` 로 링크 대상 확인. 실패 환경이면 sync 스크립트 대체 + ADR 기록.
+- 프로젝트 전용 `.agents/`·`.claude/`는 만들지 않는다. 전용 스킬·에이전트는 루트 `.agents/`에 `<프로젝트>-` 접두어로 생성한다(예: `web-deploy`). 훅은 루트 `.claude/settings.json`에 경로 분기형으로만.
 
 ## 4. 루트 레지스트리 갱신 (누락 금지)
 

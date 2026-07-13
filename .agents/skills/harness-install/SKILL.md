@@ -7,7 +7,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 ## 왜 이 스킬인가
 
-이 하네스는 클론만으로는 완성되지 않는다. **설치 환경별 요소(REGISTRY.md, `project/`, `dev/`, `_workspace/`)는 의도적으로 git에 없기 때문이다**(ADR 002·005). 이 절차 없이 작업을 시작하면 라우팅 근거(REGISTRY.md)가 없어 크로스 프로젝트 판단이 불가능하고, 심링크가 깨진 채 `.claude/`에 실파일이 생기는 우회가 발생한다.
+이 하네스는 클론만으로는 완성되지 않는다. **설치 환경별 요소(REGISTRY.md, `.agents/projects/`, `project/`, `dev/`, `_workspace/`)는 의도적으로 git에 없기 때문이다**(ADR 002·005·006). 이 절차 없이 작업을 시작하면 라우팅 근거(REGISTRY.md)가 없어 크로스 프로젝트 판단이 불가능하고, 심링크가 깨진 채 `.claude/`에 실파일이 생기는 우회가 발생한다.
 
 **REGISTRY.md가 없는 세션은 설치 미완료 상태다** — 다른 작업 요청이 와도 이 스킬을 먼저 안내한다.
 
@@ -19,11 +19,11 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 ### 2. 미추적 디렉토리 생성
 
-`_workspace/`를 생성하고, 프로젝트·실험 공간은 **기본 규약(`project/`, `dev/`)을 제안값**으로 생성한다(이미 있으면 유지). 4단계 인터뷰에서 다른 경로 규약을 택하면 그에 맞게 조정하고 `.gitignore`도 함께 갱신한다 — 공용 `.gitignore`의 `project/`·`dev/` 항목은 기본 규약 기준이다. `.gitignore`가 미추적 요소 + `REGISTRY.md`를 포함하는지 확인한다.
+`_workspace/`를 생성하고, 프로젝트·실험 공간은 **기본 규약(`project/`, `dev/`)을 제안값**으로 생성한다(이미 있으면 유지). 4단계 인터뷰에서 다른 경로 규약을 택하면 그에 맞게 조정하고 `.gitignore`도 함께 갱신한다 — 공용 `.gitignore`의 `project/`·`dev/` 항목은 기본 규약 기준이다. `.gitignore`가 미추적 요소 + `REGISTRY.md` + `.agents/projects/`를 포함하는지 확인한다.
 
 ### 3. 기존 프로젝트 스캔
 
-`project/` 하위 디렉토리를 나열하고, 각각에 대해 관찰 가능한 사실(하위 구성, git 저장소 여부, 하네스 유무, 스택 단서)을 수집한다. **추측으로 채우지 않는다** — 관찰과 추측이 섞이면 레지스트리 전체를 믿을 수 없게 된다.
+`project/` 하위 디렉토리를 나열하고, 각각에 대해 관찰 가능한 사실(하위 구성, git 저장소 여부, 하네스 유무 — `.agents/projects/<이름>/` 존재 기준(루트 AGENTS.md 12절), 스택 단서)을 수집한다. **추측으로 채우지 않는다** — 관찰과 추측이 섞이면 레지스트리 전체를 믿을 수 없게 된다.
 
 ### 4. 구체화 인터뷰
 

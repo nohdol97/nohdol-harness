@@ -22,6 +22,7 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 ### 2. 구조 무결성 점검
 
 - 심링크: `readlink .claude/agents .claude/skills`가 `../.agents/*`를 가리키는지. **`.claude/` 아래에 심링크가 아닌 실파일이 생겼는지** (생겼다면 우회 신호 — 원본은 `.agents/`에만 있어야 한다).
+- 하위 하네스: `.agents/projects/` 하위 디렉토리 목록과 REGISTRY.md 레지스트리 행("하네스 유무" ✓)이 일치하는지. `project/<이름>/` 안에 하네스 파일(AGENTS.md·CLAUDE.md·`.claude/`·`.agents/`)이 생겼는지 (생겼다면 우회 신호 — 원본은 루트 `.agents/projects/`에만 있어야 한다. 루트 AGENTS.md 12절, ADR 006).
 - 레지스트리: REGISTRY.md가 존재하는지(없으면 설치 미완료 — harness-install 안내), 존재하면 `project/` 하위 실제 디렉토리 목록과 표가 일치하는지.
 - 잔여물: `_workspace/`에서 team-log.jsonl이 **있는데** `team_delete` 이벤트가 없는 작업 디렉토리는 비정상 종료 신호. team-log 자체가 없는 팀 작업 디렉토리는 이벤트 계약 우회 신호(정보성).
 - 변경 이력: 최근 하네스 커밋마다 변경 이력 테이블 갱신이 동반되었는지 (`git log -p -- AGENTS.md`).

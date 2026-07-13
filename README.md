@@ -13,16 +13,17 @@ nohdol-harness/
 ├── CLAUDE.md              # AGENTS.md 포인터
 ├── .agents/               # 에이전트·스킬 정의 원본 (공용)
 │   ├── agents/            # 표준 팀원 4종 — explorer·implementer·reviewer·integrator
-│   └── skills/
-│       ├── orchestrate/     # 에이전트 팀 구성·병렬 작업·크로스 프로젝트 오케스트레이션
-│       ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
-│       ├── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
-│       ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
-│       ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
-│       └── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
+│   ├── skills/
+│   │   ├── orchestrate/     # 에이전트 팀 구성·병렬 작업·크로스 프로젝트 오케스트레이션
+│   │   ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
+│   │   ├── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
+│   │   ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
+│   │   ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
+│   │   └── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
+│   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # → .agents/ 심링크 (Claude Code + Codex가 같은 파일을 봄)
 ├── docs/adr/              # 구조적 결정 기록 (ADR)
-├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적)
+├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적, 하네스 파일 없음)
 ├── dev/                   # 실험·임시 개발 공간 (미추적)
 └── _workspace/            # 세션 산출물 — 팀 작업 중간 결과물 (미추적)
 ```
@@ -33,7 +34,7 @@ nohdol-harness/
 
 ## 동작 방식
 
-1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md)
+1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스(`.agents/projects/<이름>/AGENTS.md`)를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md) 하위 프로젝트 하네스는 전부 이 워크스페이스에서 중앙 관리하며, 프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다.
 2. **단일 프로젝트** 작업은 그 프로젝트 하네스로 직접, **다중 프로젝트** 작업은 `orchestrate` 스킬로 팀을 구성해 진행한다. 팀은 표준 로스터 4종(explorer·implementer·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
 3. **새 프로젝트**는 "프로젝트 새로 만들어줘"라고 지시하면 `metaskill`이 인터뷰 → 스캐폴딩 → 하네스 생성 → 레지스트리 등록까지 수행한다.
 4. **진화**: 같은 요청 3회 / 같은 실패 2회 / 하네스 우회 관찰 시 metaskill이 에이전트·스킬 신설을 제안한다.
