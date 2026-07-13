@@ -22,7 +22,7 @@ description: Review code diffs, PRs, specs, or harness changes with a size-scale
 | 모드 | 기준 | 구성 |
 |---|---|---|
 | **단독** | 변경 파일 ≤5, 위험도 낮음 | reviewer 에이전트 1명 (팀 오버헤드 > 가치) |
-| **팀** | 변경 파일 6+ 또는 위험도 높음(인프라·보안·크로스 프로젝트) | 아래 관점 팬아웃 + integrator |
+| **팀** | 변경 파일 6+ 또는 위험도 높음(인프라·보안·크로스 프로젝트) — 임계 단일 원본: orchestrate Phase 0-1 판정 표 | 아래 관점 팬아웃 + integrator |
 
 경계가 애매하면 단독으로 시작하고, 단독 리뷰어가 "범위 초과"를 보고하면 팀으로 승격한다.
 

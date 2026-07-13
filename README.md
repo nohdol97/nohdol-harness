@@ -14,13 +14,13 @@ nohdol-harness/
 ├── .agents/               # 에이전트·스킬 정의 원본 (공용)
 │   ├── agents/            # 표준 팀원 4종 — explorer·implementer·reviewer·integrator
 │   ├── skills/
-│   │   ├── orchestrate/     # 에이전트 팀 구성·병렬 작업·크로스 프로젝트 오케스트레이션
+│   │   ├── orchestrate/     # 작업 규모 판정 게이트 + 에이전트 팀·병렬·크로스 프로젝트 오케스트레이션
 │   │   ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
 │   │   ├── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
 │   │   ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
 │   │   ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
 │   │   ├── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
-│   │   ├── doc-writer/      # 일관 형식 문서 작성 (스펙·리포트·README·런북 템플릿)
+│   │   ├── doc-writer/      # 일관 형식 문서 작성 (스펙·리포트·README·런북·PR 본문 템플릿)
 │   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   │   └── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
 │   ├── hooks/             # 실행 계층 게이트 — tdd-gate.py (커밋 시점 TDD 강제, ADR 008)
@@ -41,7 +41,7 @@ nohdol-harness/
 ## 동작 방식
 
 1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스(`.agents/projects/<이름>/AGENTS.md`)를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md) 하위 프로젝트 하네스는 전부 이 워크스페이스에서 중앙 관리하며, 프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다.
-2. **단일 프로젝트** 작업은 그 프로젝트 하네스로 직접, **다중 프로젝트** 작업은 `orchestrate` 스킬로 팀을 구성해 진행한다. 팀은 표준 로스터 4종(explorer·implementer·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
+2. **구현·다단계 작업**은 `orchestrate`의 팀 필요성 판정(Phase 0-1)을 거친다 — 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 규모에 맞게 정하고, 구현이 포함되면 reviewer 독립 검증을 반드시 포함한다. 팀은 표준 로스터 4종(explorer·implementer·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
 3. **새 프로젝트**는 "프로젝트 새로 만들어줘"라고 지시하면 `metaskill`이 인터뷰 → 스캐폴딩 → 하네스 생성 → 레지스트리 등록까지 수행한다.
 4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절). TDD는 커밋 시점 훅(`tdd-gate`)이 강제한다 — 코드 변경에 테스트가 없으면 커밋이 차단된다.
 5. **작업 추적**: 세션을 넘는 작업은 `work-tracker`가 프로젝트 저장소의 GitHub Issues에 상태(태스크·진행 로그)를 영속화한다 — "이어서 하자"로 재개한다 (AGENTS.md 14절).

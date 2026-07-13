@@ -57,7 +57,7 @@
 
 1. 요청을 받으면 **REGISTRY.md의 프로젝트 레지스트리**에서 관련 프로젝트를 식별한다.
 2. 해당 프로젝트의 AGENTS.md(하네스)를 로드한다.
-3. **단일 프로젝트**면 그 하네스로 직접 작업한다.
+3. **단일 프로젝트**면 그 하네스로 작업하되, **구현·다단계 작업이면 `orchestrate`의 팀 필요성 판정(Phase 0-1 게이트)을 거쳐** 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 하나로 정한다(ADR 010). 판정 없이 복잡한 작업을 단일 컨텍스트로 처리하는 것은 하네스 우회 신호로 취급한다(8절).
 4. **다중 프로젝트**(레지스트리의 "연관 프로젝트" 컬럼이 얽히는 요청)면 `orchestrate` 스킬로 팀을 구성한다. 패턴 선택은 `.agents/skills/metaskill/references/patterns.md`의 플로우차트·전환 신호 표를 따르고, **위임 깊이는 2단계(총괄→팀장→실무자)를 초과하지 않는다** — 지연이 기하급수적으로 증가하기 때문이다.
 
 ## 8. 진화 트리거 (자동화 판단 규칙)
@@ -144,3 +144,5 @@
 | 2026-07-13 | 13절 신설(SDD+TDD 개발 방법론), doc-writer·team-review 스킬 신설 | 13절, .agents/skills/doc-writer/, .agents/skills/team-review/, README | 사용자 확정 — 스펙·테스트 주도 작업 규칙, 일관 형식 문서 작성, 규모 스케일링 팀 리뷰 |
 | 2026-07-13 | 13절에 TDD 게이트 훅 추가(4항) — `.agents/hooks/tdd-gate.py`(+회귀 테스트·스펙) + `.claude/settings.json` 신설, 5절 추적 목록에 settings.json·.gitattributes·docs/specs 반영 | 5·13절, .agents/hooks/, .claude/settings.json, docs/specs/, .gitignore | 문서 규칙은 강제력이 없음 — 커밋 시점 차단으로 실행 계층 보증(사용자 승인, Superpowers 패턴). reviewer 1·2차 검증 F1~F12 반영. docs/adr/008 |
 | 2026-07-13 | 14절 신설(세션 영속 작업 추적) + work-tracker 스킬 신설 | 14절, .agents/skills/work-tracker/, CLAUDE.md, README | `_workspace/`·세션 컨텍스트 미보존으로 세션 경계에서 작업 상태 유실 — ccpm 패턴 채택(사용자 승인). docs/adr/009 |
+| 2026-07-13 | orchestrate 범용 게이트화 — 7절 3항 개정(구현·다단계 작업은 팀 필요성 판정 필수), orchestrate Phase 0-1 판정 4등급·검증 필수 규칙·하이브리드 표준 스켈레톤 신설, patterns.md 복합 패턴 절 확장, CLAUDE.md 스킬 우선순위 신설(특화>게이트, 하네스>외부), harness-review 우회 신호 확장, 규모 임계 단일 원본 지정 | 7절, .agents/skills/orchestrate/·harness-review/·team-review/·metaskill/, .agents/agents/implementer.md, CLAUDE.md, README | 사용자 요청 — 팀 필요 판정 주체 부재로 복잡 작업이 판정 없이 단일 컨텍스트 처리됨. reviewer 검증 F1~F11(외부 스킬 트리거 충돌 포함 — 사용자 지시 기준) 반영. docs/adr/010 |
+| 2026-07-13 | PR 본문 템플릿 신설 — doc-writer 템플릿 5번 추가, branch-workflow 마무리 4단계가 참조(Closes #N으로 work-tracker 연결) | .agents/skills/doc-writer/, .agents/skills/branch-workflow/ | 사용자 요청 — PR도 문서처럼 고정 형식으로. 템플릿 단일 원본은 doc-writer. docs/adr/010 |

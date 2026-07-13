@@ -49,7 +49,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - **하위 프로젝트 하네스는 중앙 관리 방식(루트 AGENTS.md 12절, ADR 006·007)**: 원본이자 유일본을 루트 `.agents/projects/<이름>/`에 생성한다 — 구성: `AGENTS.md`(스킬 후보 섹션 포함), `adr/`, 그리고 지연 생성되는 `skills/`·`agents/`. `<이름>`은 REGISTRY.md 행과 일치시킨다. **`project/<이름>/`와 그 git 저장소에는 하네스 파일을 일절 두지 않는다**(심링크·복사본 포함) — 라우팅(REGISTRY.md → 원본 읽기)이 연결하므로 배포 장치가 불필요하다. `.agents/projects/`는 설치처별 데이터라 git 미추적이다.
 - **하위 전용 스킬·에이전트는 지연 생성** — 위 "하위 스킬·에이전트 생성 시나리오"가 유일한 생성 경로다. 초기 생성 금지. 훅이 필요하면 루트 `.claude/settings.json`에 경로 분기형으로만 둔다.
 - **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
-- orchestrate 연동: 다중 프로젝트·팀 작업 시 루트 orchestrate 스킬을 트리거함을 명시.
+- orchestrate 연동: 구현·다단계 작업은 루트 orchestrate의 팀 필요성 판정(Phase 0-1)을 거치고, 다중 프로젝트·팀 작업은 orchestrate로 팀을 구성함을 명시(ADR 010).
 - ADR 디렉토리 (구조적 결정 시 NNN-제목.md): 루트 하네스는 `docs/adr/`, 하위 프로젝트는 `.agents/projects/<이름>/adr/`.
 - 에이전트를 만들 때는 **`references/agent-rules.md`의 10섹션 템플릿**을 따른다.
 - 스킬을 만들 때는 아래 "스킬 공통 규칙"을 따른다.

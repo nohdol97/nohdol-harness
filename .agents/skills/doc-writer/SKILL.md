@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: Write project documents in one consistent format - specs (for spec-driven dev), work reports, READMEs, runbooks. Picks the matching template from references/templates.md, drafts in Korean, then self-checks against the template checklist. Use when the user says 문서 작성, 문서 만들어줘, 스펙 써줘, 리포트 정리, README 써줘, or when section 13 (SDD) requires a spec before coding. Re-run keywords - doc, doc-writer, document, spec, 문서, 문서 작성, 스펙.
+description: Write project documents in one consistent format - specs, work reports, READMEs, runbooks, PR bodies. Picks the matching template from references/templates.md, drafts in Korean, then self-checks against the template checklist. Use when the user says 문서 작성, 문서 만들어줘, 스펙 써줘, 리포트 정리, README 써줘, PR 본문 써줘, when creating a PR (branch-workflow finish), or when section 13 (SDD) requires a spec before coding. Re-run keywords - doc, doc-writer, document, spec, PR, 문서, 문서 작성, 스펙, PR 본문.
 ---
 
 # doc-writer — 일관 형식 문서 작성
@@ -24,6 +24,7 @@ description: Write project documents in one consistent format - specs (for spec-
 | **작업 리포트** | 팀·페이즈 산출물 | `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md` |
 | **README** | 프로젝트·디렉토리 소개 | 대상 디렉토리 루트 |
 | **런북(운영 절차서)** | 반복 운영 절차(배포·복구·점검) | 해당 프로젝트 저장소 `docs/runbooks/` |
+| **PR 본문** | PR 생성 시 (branch-workflow 마무리 절차 4단계) | `gh pr create --body` 입력 |
 
 ADR·변경 이력 테이블은 이 스킬 대상이 아니다 — 형식의 단일 원본이 루트 AGENTS.md 6절에 있다(두 곳에 두면 어긋난다).
 

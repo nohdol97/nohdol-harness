@@ -23,7 +23,7 @@ description: Start and finish subproject work on clean feature branches to preve
 1. **검증**: 테스트·빌드 통과 확인 (실패 상태로 PR을 만들지 않는다).
 2. **PR 직전 rebase**: `git fetch origin` → `git rebase origin/main`. 충돌 시 해소 **전에** 충돌 파일·내용을 사용자에게 보고하고 해소 방향을 확인한다.
 3. **푸시**: `git push -u origin <브랜치>`. rebase로 이력이 바뀐 기푸시 브랜치는 `--force-with-lease`를 쓰되 **자신의 feature 브랜치 한정 + 사용자 확인**(3절 가드레일 — force 계열은 예외 없이 확인). main에는 어떤 경우에도 force 금지.
-4. **PR 생성**: `gh pr create` — 제목은 커밋 컨벤션 형식, 본문은 변경 요약 + 검증 결과. PR URL을 보고한다.
+4. **PR 생성**: `gh pr create` — 제목은 커밋 컨벤션 형식, 본문은 **doc-writer PR 템플릿**(`.agents/skills/doc-writer/references/templates.md` 5번: 요약/변경 내용/연결/검증/리뷰 포인트)을 그대로 따른다. work-tracker 등록 작업이면 연결 절에 `Closes #<이슈번호>`를 넣는다(머지 시 이슈 자동 종료). 검증 절에는 실제 명령·결과를 쓴다 — 무증거 "테스트 통과" 금지. PR URL을 보고한다.
 5. **머지는 사용자가 한다.** 머지 후 feature 브랜치 삭제를 권장한다 — 다음 작업의 시작 절차(1~3)가 "브랜치는 일회용"을 전제로 하기 때문이다.
 
 ## 엣지 케이스

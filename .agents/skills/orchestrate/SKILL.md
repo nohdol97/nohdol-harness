@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: Compose, run, and dissolve agent teams for parallel and multi-project work. Creates session teams, dispatches a shared task queue with depends_on, enables P2P messaging, and integrates results through a severity gate. Use when the user mentions orchestrate, 팀 구성, 병렬 작업, 멀티 프로젝트 작업, cross-project requests, or any job needing 2+ cooperating agents. Re-run keywords - orchestrate, team, parallel, multi-project, 오케스트레이션.
+description: "Gate and orchestrate agent work. Phase 0 judges whether a request needs direct handling, one subagent, a generate-verify pair, or a team - then runs session teams with a shared task queue (depends_on), P2P messaging, hybrid phases, and severity-gated integration. Use for ANY implementation or multi-step task (구현해줘, 만들어줘, 수정해줘, implement, build, fix this) and for 팀 구성, 병렬 작업, cross-project work. Re-run keywords - orchestrate, team, parallel, implement, 오케스트레이션, 구현, 작업, 병렬."
 ---
 
 # orchestrate — 에이전트 팀 오케스트레이션
@@ -8,6 +8,8 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 ## 왜 이 스킬인가
 
 여러 프로젝트·여러 관점이 얽힌 작업을 단일 컨텍스트에서 처리하면 컨텍스트가 폭발하고 검증이 누락된다. 이 스킬은 작업을 팀으로 분해하되, **팀을 파일에 영구 정의하지 않는다**. 팀은 **세션 객체**다 — 시작 시 메모리 위에 만들고 끝나면 해제한다. 이유: 팀 구성은 작업의 모양에 따라 매번 달라야 하며, 영구화된 팀은 다음 작업에 맞지 않는 구조를 강요하기 때문이다.
+
+이 스킬은 팀 작업 전용이 아니라 **구현·다단계 작업 요청 전반의 관문**이다(ADR 010). 이유: "팀이 필요한 작업만 이 스킬을 부른다"는 구조는 판정 주체가 없어서, 복잡한 작업이 판정 없이 단일 컨텍스트로 처리되는 우회가 반복됐다. 관문이 되면 모든 작업이 규모 판정을 통과한다 — 판정 결과가 "직접 수행"이면 오버헤드는 표 한 번 읽기뿐이다.
 
 ## 표준 팀원 로스터 (재사용 우선)
 
@@ -24,7 +26,22 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 **티어 적용은 오케스트레이터의 몫 (선언만으로 적용되지 않는다)**: frontmatter의 `tier`는 CLI가 해석하지 않는 하네스 자체 필드다. 팀원 생성(Agent 호출) 시 **`model` 파라미터를 루트 AGENTS.md 9절 표에 따라 명시적으로 지정**한다 — design 티어는 현재 CLI의 최고 성능 모델, implement·explore는 표준 모델. 지정하지 않으면 팀원이 세션 모델을 그대로 상속받아 티어 정책(특히 "검증은 최고 성능, 경량 금지")이 무언 중에 무시된다.
 
-## Phase 0 — 사전 조건 (반드시 먼저)
+## Phase 0 — 게이트 (반드시 먼저)
+
+### 0-1. 팀 필요성 판정 (모든 요청의 첫 판단)
+
+| 판정 | 신호 | 실행 |
+|---|---|---|
+| **직접 수행** | 질문·조회·설명, 파일 ≤2의 사소한 수정(동작 불변), 대화형 반복 작업 | 판정 한 줄 보고 후 스킬 종료 — 세션이 직접 작업 (팀 오버헤드 > 가치) |
+| **단독 서브에이전트** | 단일 프로젝트·단일 관점이지만 컨텍스트 격리가 이득(대량 파일 탐색·수집·요약) | 표준 로스터 1명 (B모드) |
+| **생성-검증 쌍 (구현 최소 단위)** | 기능 추가·동작 변경(13절 대상)인데 다중 관점 팀까지는 불필요 | implementer 1 + reviewer 1 — 아래 "검증 필수 규칙" |
+| **팀** | 다중 프로젝트 / 다중 관점(3+) / 변경 파일 6+ / 가드레일 3절 위험도(인프라·보안) | 패턴 선택(`../metaskill/references/patterns.md`) → 팀 구성 |
+
+- **애매하면 가벼운 쪽에서 시작**하고, patterns.md의 전환 신호 표가 가리킬 때 승격한다(team-review Phase 0과 같은 철학 — 경계 애매 시 단독 시작, 범위 초과 보고 시 승격). 이유: 과판정은 모든 작업을 느리게 만들어 관문 자체를 우회하게 만든다.
+- **규모 임계(변경 파일 6+)의 단일 원본은 이 표다** — team-review 등 다른 스킬의 팀 승격 임계는 이 값을 참조한다(어긋나면 같은 작업이 스킬에 따라 다른 규모 판정을 받는다).
+- **판정 결과와 근거를 한 줄로 사용자에게 보고**하고 진행한다. 무언의 판정은 하네스 우회와 구분되지 않는다.
+
+### 0-2. 사전 조건
 
 1. **입력 확인**: 작업 지시가 비어 있거나 모호하면 즉시 중단하고 사유를 보고한다.
 2. **`_workspace/` 감지**: `_workspace/<작업명>/`이 이미 존재하면 이전 세션의 잔여물인지 확인 — 재개할지 새로 시작할지 판단하고, 새로 시작하면 기존 산출물을 덮어쓰지 않도록 작업명을 바꾼다.
@@ -85,6 +102,10 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 결과 통합은 **integrator 에이전트가 전담**하며, 게이트 5원칙(심각도 우선 배치 / 중복 병합 / 증거 없는 제안 제외 / 강등·승격 규칙 / must-fix·should-fix·watch 3섹션)의 단일 원본은 `.agents/agents/integrator.md` 2절이다. 소규모 팀에서 리더가 직접 통합하는 경우에도 같은 원칙을 따른다.
 
+## 검증 필수 규칙 (생성-검증 내장 — 어떤 판정·패턴에서도)
+
+**기능 추가·동작 변경이 포함된 작업은 판정 등급과 무관하게 마지막에 reviewer 독립 검증 Phase를 포함한다** — 생성-검증 쌍 판정이면 쌍의 reviewer가, 팀 판정이면 검증 Phase가 담당한다(13절 3항 스펙 대비 리뷰 — 스펙의 완료 기준이 판정 기준). 이유: 구현자의 자평은 자기 편향을 통과시킨다 — 검증이 선택 항목이면 바쁜 작업일수록 먼저 생략된다. 규모가 크거나(0-1 판정 표의 팀 임계와 동일 — 변경 파일 6+) 위험도가 높으면 검증 Phase를 team-review 팀 모드(관점 팬아웃)로 승격한다.
+
 ## 실행 모드 3템플릿
 
 ### A. 에이전트 팀 모드 (기본)
@@ -97,18 +118,21 @@ description: Compose, run, and dissolve agent teams for parallel and multi-proje
 
 **동시 발행 규약 (병렬의 실제 구현 — 위반 시 직렬로 퇴화)**: 서로 의존이 없는 서브에이전트들의 Agent 호출은 **반드시 한 응답(같은 턴)에 전부 묶어 발행**한다. 하나 호출하고 결과를 기다린 뒤 다음을 호출하는 것은 병렬이 아니라 직렬이며, 의존 없는 작업에서는 순수한 시간 낭비다. `run_in_background=true`를 지원하는 환경이면 함께 사용하고, 미지원이어도 같은 턴 동시 발행만으로 병렬 실행된다. 이전 에이전트의 결과가 프롬프트에 필요한 경우에만 순차가 정당하다 — 그 경우는 B모드가 아니라 파이프라인이므로 depends_on으로 명시한다.
 
-### C. 하이브리드 모드
+### C. 하이브리드 모드 (팀 판정의 기본형)
 
-Phase마다 모드를 섞는다. **필수 규약: 각 Phase 섹션 상단에 해당 Phase의 실행 모드를 명시한다** (예: `**실행 모드.** 에이전트 팀`). 이 선언이 없으면 디버깅 불가 수준으로 엉킨다 — Phase 경계에서 "여기서 팀이 해체되고 서브에이전트가 돌기 시작한다"를 명시해야 데이터 전달과 검증 범위를 추적할 수 있다.
+Phase마다 모드·패턴을 섞는다. **필수 규약: 각 Phase 섹션 상단에 해당 Phase의 실행 모드를 명시한다** (예: `**실행 모드.** 에이전트 팀`). 이 선언이 없으면 디버깅 불가 수준으로 엉킨다 — Phase 경계에서 "여기서 팀이 해체되고 서브에이전트가 돌기 시작한다"를 명시해야 데이터 전달과 검증 범위를 추적할 수 있다.
 
-예시 구성:
-- Phase 1 병렬 수집 = **서브에이전트** (독립 자료 수집, 팀 통신 불필요)
-- Phase 2 합의 통합 = **에이전트 팀** (상충 데이터 토론·합의 필요)
-- Phase 3 독립 검증 = **서브에이전트** (QA 1명이 객관 검증)
+**표준 스켈레톤** — 팀 판정 작업은 아래 5-Phase에서 필요한 것만 골라 쓰되 **순서는 유지**하고, 구현이 포함되면 검증 Phase는 생략 불가다(위 검증 필수 규칙):
 
-### 복합 패턴
+| Phase | 패턴 | 모드 | 생략 조건 |
+|---|---|---|---|
+| ① 수집 | 팬아웃·팬인 | 서브에이전트 (독립 병렬) | 맥락이 이미 충분하면 |
+| ② 설계·합의 | 팬아웃 + 토론 | 에이전트 팀 (교차 검증 필요) | 설계 쟁점이 없으면 |
+| ③ 구현 | 파이프라인 / 감독자 | 팀 또는 implementer 단독 | 구현 없는 작업이면 |
+| ④ 독립 검증 | 생성-검증 | 서브에이전트 (reviewer — 격리가 독립성) | **구현 포함 시 생략 불가** |
+| ⑤ 통합 | 팬인 | integrator 1명 | 산출물이 하나뿐이면 |
 
-실제 하네스는 Phase마다 다른 패턴을 쓴다. Phase 간 경계는 `_workspace/` 파일로 잇는다. 패턴 선택은 `../metaskill/references/patterns.md`의 플로우차트를 따른다.
+각 Phase의 패턴은 그 Phase의 문제 모양으로 **독립 판정**한다 — 작업 전체에 한 패턴을 강요하지 않는다. 조합 규칙의 상세는 `../metaskill/references/patterns.md`의 "복합 패턴 — 하이브리드 구성 규칙"을 따른다. Phase 간 경계는 `_workspace/` 파일로 잇는다.
 
 ## team-log.jsonl 이벤트 계약 (고정 스키마)
 
@@ -138,6 +162,7 @@ TeamDelete 실패 시 **숨기지 않고** 수동 정리 필요 항목을 보고
 
 | 지표 | 이 스킬 없이 | 이 스킬로 |
 |---|---|---|
+| 호출 범위 | 복잡한 작업이 판정 없이 단일 컨텍스트로 처리 | 모든 구현·다단계 요청이 규모 판정(Phase 0-1)을 통과 |
 | 컨텍스트 | 단일 세션에 전부 적재 → 폭발·중단 | 팀원별 분산, 리더는 통합만 |
 | 크로스 프로젝트 | 하네스 1개만 로드, 나머지 규칙 누락 | 레지스트리 기반 전체 하네스 로드 |
 | 검증 | 생성자가 자기 산출물 자평 | 통합 게이트 + 증거 없는 제안 제외 |
