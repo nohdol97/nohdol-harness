@@ -12,7 +12,7 @@
 학습시켜 게이트 자체가 죽기 때문이다.
 
 스펙: docs/specs/2026-07-13-tdd-gate-hook.md / 결정: docs/adr/008, 014, 015
-회귀 테스트: .agents/hooks/tdd-gate_test.py (수정 시 반드시 통과)
+회귀 테스트: .agents/githooks/tdd-gate_test.py (수정 시 반드시 통과)
 """
 import os
 import re

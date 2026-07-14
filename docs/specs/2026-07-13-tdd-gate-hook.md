@@ -28,7 +28,7 @@
 - R4: fail-open — 메시지 파일 없음, git 실패, 저장소 아님, 예외 발생, 알 수 없는 인자 진입 시 전부 exit 0. 시작 시 stdio를 **UTF-8(errors=replace)로 재구성**한다 — 한글 Windows 콘솔(cp949)은 차단 안내의 em dash를 인코딩하지 못해 write가 예외를 던지고, fail-open이 그것을 삼켜 **차단해야 할 커밋이 통과**한다(2026-07-14 장애 — 게이트 무력화).
 - R5: CODE_EXTS는 앱 코드 확장자 중심으로 한다. `.sh`/`.sql`/`.tf` 등 스크립트·마이그레이션·IaC는 제외한다(테스트 관행이 낮아 게이트 마찰 > 가치 — 범위 결정은 ADR 008에 기록).
 - R6: **전역 등록·체인** — 추적 디렉토리 `.agents/githooks/`의 `commit-msg` shim이 게이트 스크립트 존재 확인(부재 시 통과 — R4) 후 인터프리터 탐색 체인(python3→python→py, 실행 확인 `-c ""` — Windows Store 스텁 배제)으로 게이트를 실행하고, 통과 시 저장소 로컬 `.git/hooks/commit-msg`로 체인한다. `pre-commit`·`prepare-commit-msg`·`post-commit`·`pre-push`·`post-checkout`·`post-merge`는 체인 전용 shim을 둔다(전역 hooksPath가 로컬 훅을 가리는 부작용 방지 — git-lfs가 쓰는 4종 포함. 열거되지 않은 훅 종류는 체인되지 않으며, 필요 시 shim을 추가한다). 로컬 훅 탐색은 `rev-parse --git-dir` 기준이어야 한다 — `--git-path hooks/`는 core.hooksPath를 따라 자기 자신을 돌려줘 무한 재귀한다. 등록은 설치처별 설정 `git config --global core.hooksPath <루트>/.agents/githooks`로 하며 harness-install 1단계가 수행하고, 미등록은 harness-review 주간 무결성 점검이 잡는다.
-- R7: 회귀 테스트가 `.agents/hooks/tdd-gate_test.py`로 영속되어야 하며, 훅 수정 시 이 테스트를 통과해야 한다.
+- R7: 회귀 테스트가 `.agents/githooks/tdd-gate_test.py`로 영속되어야 하며, 훅 수정 시 이 테스트를 통과해야 한다.
 - **알려진 한계**: `--amend`는 훅 시점에 감지할 수 없어, 테스트가 이미 든 커밋에 코드 수정만 추가 스테이징하면 차단된다(HEAD 대비 `diff --cached`만 보므로). 테스트를 함께 스테이징하거나 `[no-test]`로 통과시킨다. sequencer 마커 파일 위조는 무추적 바이패스가 되지만 `--no-verify` 수용과 등가의 한계로 수용한다.
 
 ## 인터페이스 / 설계 개요
@@ -70,3 +70,4 @@
 | 2026-07-14 | stdio UTF-8 재구성, cp949 완료 기준 신설 | 인터페이스, 완료 기준 | 한글 Windows 장애 보고 — cp949 stderr에서 차단 안내의 em dash가 UnicodeEncodeError → fail-open이 차단을 삼켜 게이트 무력화 |
 | 2026-07-14 | git commit-msg 계층 추가(구 R9·R10, C14~C23) — `.agents/githooks/` shim + 전역 core.hooksPath, 비목표의 "Codex 세션 강제"를 목표로 승격 | 목표, 비목표, 요구사항, .agents/githooks/, tdd-gate.py, harness-install | 사용자 요청 — Codex 등 도구 무관 강제. ADR 008의 "Claude Code 한정" 결정을 ADR 014가 대체 |
 | 2026-07-14 | **git 계층 단일화** — PreToolUse 등록·stdin JSON 명령 파싱 계층 제거, 요구사항 R1~R7·완료 기준 C1~C14로 전면 재편, 미등록 감시를 harness-review 주간 무결성에 편입 | 전체 | 사용자 결정 — 이중 계층의 혼란 비용 > 중복 가치, 타 설치처는 최신 코드 기반 harness-install 재실행으로 등록. ADR 014의 "계층 추가(PreToolUse 유지)" 결정을 ADR 015가 대체 |
+| 2026-07-14 | 스크립트·테스트를 `.agents/hooks/` → `.agents/githooks/`로 이동 | tdd-gate.py, tdd-gate_test.py, commit-msg shim, 문서 경로 전반 | 사용자 결정 — 단일화 후 hooks/는 Claude 세션 훅 전용이 됐으므로, git이 부르는 게이트는 진입 shim과 같은 곳에 둔다(git은 훅 이름과 일치하는 파일만 실행하므로 .py 동거 무해) |

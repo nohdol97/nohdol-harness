@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """tdd-gate 회귀 테스트 — 스펙 docs/specs/2026-07-13-tdd-gate-hook.md 완료 기준(C1~C14).
 
-실행: python3 .agents/hooks/tdd-gate_test.py   (훅 수정 시 반드시 통과 — R7)
+실행: python3 .agents/githooks/tdd-gate_test.py   (훅 수정 시 반드시 통과 — R7)
 부수 효과: 임시 디렉토리와 dev/_tddgate_selftest/(예외 경로 검증용)만 사용하며 전부 정리한다.
 """
 import os
@@ -13,7 +13,7 @@ import tempfile
 HERE = os.path.dirname(os.path.realpath(__file__))
 HOOK = os.path.join(HERE, "tdd-gate.py")
 HARNESS_ROOT = os.path.dirname(os.path.dirname(HERE))
-GITHOOKS = os.path.join(os.path.dirname(HERE), "githooks")
+GITHOOKS = HERE
 
 results = []
 
@@ -170,7 +170,8 @@ def main():
         # C13: 게이트 스크립트 부재 → shim이 fail-open (하네스 이동·삭제 시
         # 머신 전역 커밋이 막히면 안 된다 — reviewer F2 회귀)
         orphan = os.path.join(tmp, "orphan-githooks")
-        shutil.copytree(GITHOOKS, orphan)
+        shutil.copytree(GITHOOKS, orphan,
+                        ignore=shutil.ignore_patterns("tdd-gate*"))
         g13 = make_repo(os.path.join(tmp, "g13"))
         put(g13, "app.py"); sh(g13, "add", "app.py")
         p13 = subprocess.run(

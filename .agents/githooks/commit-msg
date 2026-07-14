@@ -4,7 +4,7 @@
 # 인터프리터 탐색은 실행 확인(-c "")으로 판별한다(스펙 R6) — Windows Store 스텁을
 # 걸러내고, 파이썬이 없으면 게이트 없이 통과한다(fail-open).
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-GATE="$HERE/../hooks/tdd-gate.py"
+GATE="$HERE/tdd-gate.py"
 # 게이트 스크립트 부재(하네스 이동·삭제)가 머신 전역의 커밋을 막으면 안 된다(R4 fail-open) —
 # 인터프리터의 "파일 없음" exit 2는 게이트 차단과 구분되지 않으므로 존재를 먼저 확인한다.
 [ -f "$GATE" ] || exit 0
