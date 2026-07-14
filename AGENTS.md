@@ -95,6 +95,7 @@
 - `.claude/agents`, `.claude/skills`는 위 공용 디렉토리로의 **심볼릭 링크** — Claude와 Codex가 같은 파일을 본다.
 - **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견은 하네스 우회 신호로 취급한다(8절).
 - 심링크가 불가한 환경이면 sync 스크립트로 대체하고 그 사실을 ADR에 기록한다.
+- **외부 도구가 스킬을 설치할 때는 전역 경로(홈 디렉토리)로** 설치한다 — 예: `agentsview skills install` → `~/.claude/skills/`·`~/.agents/skills/`. 이 워크스페이스에 프로젝트 모드(`--project` 등)로 설치하지 않는다. 이유: 워크스페이스의 `.claude/`는 심링크라 설치물이 공용 `.agents/skills/`에 떨어져 **설치처별 도구 산출물이 공용 저장소의 커밋 대상**이 된다.
 
 ## 12. 하위 프로젝트 하네스 중앙 관리 (ADR 006)
 
@@ -149,3 +150,5 @@
 | 2026-07-13 | PR 본문 템플릿 신설 — doc-writer 템플릿 5번 추가, branch-workflow 마무리 4단계가 참조(Closes #N으로 work-tracker 연결) | .agents/skills/doc-writer/, .agents/skills/branch-workflow/ | 사용자 요청 — PR도 문서처럼 고정 형식으로. 템플릿 단일 원본은 doc-writer. docs/adr/010 |
 | 2026-07-13 | 표준 로스터 4종→7종 확장 — architect·troubleshooter·infra-specialist 신설, implementer Edit 서술 정정, orchestrate 로스터 표·스켈레톤 담당 갱신 | .agents/agents/, .agents/skills/orchestrate/, README | 사용자 승인 — 인기 하네스(BMAD·Superpowers 등) 로스터 대조 검토: 스켈레톤 Phase ② 공백(architect), 인과 확정 역할 부재(troubleshooter), 인프라 프로젝트 대응(infra-specialist). docs/adr/011 |
 | 2026-07-13 | release 스킬 신설(머지 이후 배포 워크플로우 — 런북→단계별 확인→검증→work-tracker 마무리) + 5절 배포·릴리스 규칙 앵커 + team-review 관점 축에 UX·접근성 추가 | 5절, .agents/skills/release/, .agents/skills/team-review/, CLAUDE.md, README | 사용자 승인(풀스택 커버리지 점검) — PR 머지 이후 절차 공백은 가드레일 최중요 구간의 무절차, 프론트 diff에 접근성 검증 관점 부재. 5절 앵커는 Codex 세션 구속용(규칙은 문서가 운반 — reviewer phase6 F1) |
+| 2026-07-14 | agentsview 연동 — harness-review 신호 실측(session search·stats)·secrets scan 사후 검증, harness-install 3단계(도구+finding-history 스킬 전역 설치) 신설, 11절 외부 도구 스킬 전역 설치 규칙 | 11절, harness-review, harness-install | 사용자 승인(kenn-io/agentsview 검토) — 주간 점검의 신호 관찰이 세션 기억 의존에서 세션 이력 실측으로. 프로젝트 모드 설치는 심링크 경유로 공용 저장소를 오염 |
+| 2026-07-14 | agentsview-daemon SessionStart 훅 신설(스펙+회귀 테스트) — 세션 시작 시 동기화 데몬 자동 기동, 로컬 DB 고정·외부 동기화 금지 문구 보강 | .agents/hooks/, .claude/settings.json, docs/specs/, harness-install, README | 사용자 요청 — 동기화 수동 기동 제거. fail-open으로 미설치 환경 무간섭 |

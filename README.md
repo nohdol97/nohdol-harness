@@ -24,7 +24,7 @@ nohdol-harness/
 │   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   │   ├── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
 │   │   └── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)
-│   ├── hooks/             # 실행 계층 게이트 — tdd-gate.py (커밋 시점 TDD 강제, ADR 008)
+│   ├── hooks/             # 실행 계층 게이트 — tdd-gate.py (커밋 시점 TDD 강제, ADR 008), agentsview-daemon.py (세션 시작 시 동기화 데몬 자동 기동)
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # → .agents/ 심링크 + settings.json(훅 등록) (Claude Code + Codex가 같은 파일을 봄)
 ├── docs/
@@ -37,7 +37,7 @@ nohdol-harness/
 
 ## 새 컴퓨터에 설치하기
 
-클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → 디렉토리 생성 → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다.
+클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다.
 
 ## 동작 방식
 
