@@ -22,8 +22,21 @@ class DaemonRunningJudgement(unittest.TestCase):
     def test_running_output(self):  # C2 판정부
         self.assertTrue(hook.daemon_running(0, "daemon is running (pid 123)"))
 
+    def test_real_running_output(self):  # C2 — 실제 CLI(v0.38.1) 실행 중 문구
+        self.assertTrue(hook.daemon_running(
+            0, "agentsview running at http://127.0.0.1:4664 pid: 1234 version: 0.38.1 uptime: 3h"
+        ))
+
     def test_not_running_phrase(self):  # C3 — rc 0이어도 'not running'이면 미실행
         self.assertFalse(hook.daemon_running(0, "daemon not running"))
+
+    def test_real_stopped_output(self):  # C3 — 실제 CLI(v0.38.1) 정지 문구 (2026-07-14 오판정 장애)
+        # "running"을 포함하지만 부정문("No ... is running.")이다 — 긍정 substring
+        # 단독 판정은 이 문구를 실행 중으로 오판해 재기동을 영원히 건너뛴다.
+        self.assertFalse(hook.daemon_running(0, "No agentsview daemon is running."))
+
+    def test_stopped_phrase(self):  # C3 — 버전별 문구 변형 방어
+        self.assertFalse(hook.daemon_running(0, "daemon stopped"))
 
     def test_nonzero_rc(self):  # C3 — 비정상 종료는 미실행
         self.assertFalse(hook.daemon_running(1, "running"))
@@ -63,6 +76,18 @@ class MainFlow(unittest.TestCase):
              mock.patch.object(hook.subprocess, "run") as run, \
              mock.patch.object(hook, "start_daemon") as start:
             run.return_value = mock.Mock(returncode=1, stdout="", stderr="daemon not running")
+            rc, out = run_main()
+            self.assertEqual(rc, 0)
+            start.assert_called_once()
+            self.assertIn("기동", out)
+
+    def test_c3_real_stopped_output_starts(self):  # C3 — 실제 정지 문구(rc 0)에서 재기동
+        with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
+             mock.patch.object(hook.subprocess, "run") as run, \
+             mock.patch.object(hook, "start_daemon") as start:
+            run.return_value = mock.Mock(
+                returncode=0, stdout="No agentsview daemon is running.\n", stderr=""
+            )
             rc, out = run_main()
             self.assertEqual(rc, 0)
             start.assert_called_once()
