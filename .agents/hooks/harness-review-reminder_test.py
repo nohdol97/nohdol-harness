@@ -68,8 +68,13 @@ class BuildMessage(unittest.TestCase):
         self.assertIn("일일 경량", msg)
         self.assertIn(".harness-review-daily-last", msg)
 
-    def test_silent(self):  # C4
-        self.assertIsNone(hook.build_message(None, 3, 0))
+    def test_status_line_when_fresh(self):  # C4 개정 — 기한 전에도 상태 한 줄
+        msg = hook.build_message(None, 3, 0)
+        self.assertIn("기한 전", msg)
+        self.assertIn("3일 전", msg)
+        self.assertIn("오늘", msg)  # 일일 0일 전은 "오늘"로 표기
+        self.assertIn("harness-ops-log.md", msg)
+        self.assertNotIn("지금 실행", msg)  # 점검 지시가 아님
 
 
 def run_main_in(tmpdir):
@@ -112,14 +117,15 @@ class MainFlow(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertIn("기록이 없습니다", out)
 
-    def test_c4_all_fresh_silent(self):
+    def test_c4_all_fresh_status_line(self):  # C4 개정 — 침묵 대신 상태 한 줄
         with tempfile.TemporaryDirectory() as d:
             today = datetime.date.today().isoformat()
             self._write(d, hook.WEEKLY_MARKER, today)
             self._write(d, hook.DAILY_MARKER, today)
             rc, out = run_main_in(d)
             self.assertEqual(rc, 0)
-            self.assertEqual(out, "")
+            self.assertIn("기한 전", out)
+            self.assertNotIn("지금 실행", out)
 
     def test_c5_garbage_weekly_marker_full(self):
         with tempfile.TemporaryDirectory() as d:

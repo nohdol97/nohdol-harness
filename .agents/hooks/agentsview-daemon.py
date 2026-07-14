@@ -37,16 +37,21 @@ def start_daemon(binary):
 
 
 def main():
+    # 정상 경로는 상태 한 줄을 남긴다(훅 동작 가시화 — 2026-07-14 사용자 요청).
+    # 예외 경로만 무출력 fail-open(R4).
     binary = shutil.which("agentsview")
     if not binary:
+        print("[세션 훅 상태] agentsview 데몬: 미설치 — 건너뜀(설치는 harness-install 3단계)")
         return 0  # 미설치 — no-op (R1)
     try:
         st = subprocess.run(
             [binary, "daemon", "status"], capture_output=True, text=True, timeout=10
         )
         if daemon_running(st.returncode, (st.stdout or "") + (st.stderr or "")):
+            print("[세션 훅 상태] agentsview 데몬: 실행 중")
             return 0
         start_daemon(binary)
+        print("[세션 훅 상태] agentsview 데몬: 미실행 상태여서 새로 기동함")
     except Exception:
         pass  # fail-open (R4)
     return 0

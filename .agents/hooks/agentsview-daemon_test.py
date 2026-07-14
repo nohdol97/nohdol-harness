@@ -3,7 +3,9 @@
 
 스펙: docs/specs/2026-07-14-agentsview-daemon-hook.md
 """
+import contextlib
 import importlib.util
+import io
 import os
 import unittest
 from unittest import mock
@@ -30,45 +32,62 @@ class DaemonRunningJudgement(unittest.TestCase):
         self.assertFalse(hook.daemon_running(0, ""))
 
 
+def run_main():
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        rc = hook.main()
+    return rc, out.getvalue()
+
+
 class MainFlow(unittest.TestCase):
-    def test_c1_missing_binary_noop(self):
+    def test_c1_missing_binary_status_line(self):  # C1 개정 — 미설치도 상태 한 줄
         with mock.patch.object(hook.shutil, "which", return_value=None), \
              mock.patch.object(hook, "start_daemon") as start:
-            self.assertEqual(hook.main(), 0)
+            rc, out = run_main()
+            self.assertEqual(rc, 0)
             start.assert_not_called()
+            self.assertIn("미설치", out)
 
     def test_c2_running_no_start(self):
         with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
              mock.patch.object(hook.subprocess, "run") as run, \
              mock.patch.object(hook, "start_daemon") as start:
             run.return_value = mock.Mock(returncode=0, stdout="daemon is running", stderr="")
-            self.assertEqual(hook.main(), 0)
+            rc, out = run_main()
+            self.assertEqual(rc, 0)
             start.assert_not_called()
+            self.assertIn("실행 중", out)
 
     def test_c3_stopped_starts_once(self):
         with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
              mock.patch.object(hook.subprocess, "run") as run, \
              mock.patch.object(hook, "start_daemon") as start:
             run.return_value = mock.Mock(returncode=1, stdout="", stderr="daemon not running")
-            self.assertEqual(hook.main(), 0)
+            rc, out = run_main()
+            self.assertEqual(rc, 0)
             start.assert_called_once()
+            self.assertIn("기동", out)
 
-    def test_c4_status_exception_fail_open(self):
+    def test_c4_status_exception_fail_open(self):  # 예외 경로는 무출력 유지
         with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
              mock.patch.object(
                  hook.subprocess, "run",
                  side_effect=hook.subprocess.TimeoutExpired(cmd="x", timeout=10),
              ), \
              mock.patch.object(hook, "start_daemon") as start:
-            self.assertEqual(hook.main(), 0)
+            rc, out = run_main()
+            self.assertEqual(rc, 0)
             start.assert_not_called()
+            self.assertEqual(out, "")
 
     def test_c4_start_exception_fail_open(self):
         with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
              mock.patch.object(hook.subprocess, "run") as run, \
              mock.patch.object(hook, "start_daemon", side_effect=OSError):
             run.return_value = mock.Mock(returncode=1, stdout="", stderr="")
-            self.assertEqual(hook.main(), 0)
+            rc, out = run_main()
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")
 
 
 if __name__ == "__main__":
