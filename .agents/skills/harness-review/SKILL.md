@@ -1,13 +1,13 @@
 ---
 name: harness-review
-description: Harness operations review in two modes - daily lite (scan only the three evolution triggers since the last check) and weekly full (adds symlink/registry/frontmatter integrity), proposing concrete metaskill actions. Auto-triggered by the SessionStart reminder hook via markers. Use when the reminder fires or the user says 일일 점검, 주간 점검, 하네스 리뷰, harness review. Re-run keywords - harness-review, daily, weekly, evolve, 일일 점검, 주간 점검, 진화.
+description: Harness operations review in two modes - daily lite (scan the three expansion signals since the last check) and weekly full (adds the shrink/efficiency signal - unused skills, token-waste patterns - plus symlink/registry/frontmatter integrity), proposing concrete metaskill actions. Runs as a delegated background subagent so the user's request is handled in parallel - the main loop only dispatches, reports the summary, and handles proposal approval. Auto-triggered by the SessionStart reminder hook via markers. Use when the reminder fires or the user says 일일 점검, 주간 점검, 하네스 리뷰, harness review. Re-run keywords - harness-review, daily, weekly, evolve, 일일 점검, 주간 점검, 진화.
 ---
 
 # harness-review — 주간 하네스 운영 점검
 
 ## 왜 이 스킬인가
 
-루트 AGENTS.md 8절은 진화 트리거 3신호를 "주 1회 관찰"하는 것을 운영 습관으로 요구한다. 관찰 절차가 스킬로 고정되어 있지 않으면 이 습관은 몇 주 안에 증발한다 — 하네스는 쓰이면서 어긋난 부분이 드러날 때만 진화할 수 있다. 이 스킬은 **관찰과 제안**만 담당한다. 실제 생성·개선의 실행은 metaskill의 몫이다 (역할 분리: 관찰자가 곧바로 실행까지 하면 제안의 근거 검증이 생략된다).
+루트 AGENTS.md 8절은 진화 트리거 4신호를 관찰하는 것을 운영 습관으로 요구한다. 관찰 절차가 스킬로 고정되어 있지 않으면 이 습관은 몇 주 안에 증발한다 — 하네스는 쓰이면서 어긋난 부분이 드러날 때만 진화할 수 있다. 이 스킬은 **관찰과 제안**만 담당한다. 실제 생성·개선의 실행은 metaskill의 몫이다 (역할 분리: 관찰자가 곧바로 실행까지 하면 제안의 근거 검증이 생략된다).
 
 ## 실행 모드 (리마인더 훅이 지정 — 2단 주기)
 
@@ -18,17 +18,26 @@ description: Harness operations review in two modes - daily lite (scan only the 
 
 일일 모드는 **신호가 없으면 "신호 없음" 한 줄 보고 후 마커 갱신으로 끝낸다** — 매일의 비용은 스캔 몇 분이어야 유지된다. 신호가 있으면 주간과 동일하게 3단계(제안 생성)로 넘어간다.
 
+## 실행 방식 (서브에이전트 위임 — 메인 루프 직접 수행 금지)
+
+메인 루프가 점검을 직접 수행하면 첫 응답이 점검에 점유되어 사용자 요청이 밀리고, 메인 컨텍스트가 점검 세부(파일 목록·중간 판단)로 오염된다(2026-07-14 사용자 확정). 관찰은 위임 가능하지만 승인은 대화가 필요하다 — 경계를 여기에 둔다.
+
+1. 점검 지시를 받으면(리마인더 트리거·사용자 직접 요청 동일) 메인 루프는 **explorer 서브에이전트 1기를 백그라운드로 발행**하고 사용자 요청을 병행 처리한다. 서브에이전트 프롬프트에 반드시 포함: ① `.agents/skills/harness-review/SKILL.md`를 읽고 지정 모드(전체/일일)의 절차 1~3단계를 수행하되 **제안은 초안까지만**(생성·수정 실행 금지) ② 산출물은 `_workspace/harness-review-<YYYY-MM-DD>/`에 저장 ③ 4단계 마커·운영 로그 갱신까지 수행 ④ 최종 반환은 출력 형식(신호·무결성·제안 초안·마커 갱신 여부) 요약.
+2. 서브에이전트 완료 시 메인 루프는 요약을 채팅으로 보고하고 마커·운영 로그 갱신을 확인한다(누락 시 직접 갱신).
+3. **제안 승인과 실행(metaskill 호출, 사내 프로필이면 대기 큐 기록)은 메인 루프의 몫** — 서브에이전트는 관찰·초안까지만. 무단 생성 금지는 위임해도 유지된다.
+
 ## 절차
 
-### 1. 신호 수집 (진화 트리거 3신호)
+### 1. 신호 수집 (진화 트리거 4신호 — 일일 모드는 ①~③만)
 
 | 신호 | 관찰 방법 |
 |---|---|
-| 반복 요청 3회+ | 최근 세션 기억·`_workspace/` 작업명들·git 커밋 메시지에서 같은 유형 작업의 반복 확인 |
-| 반복 실패 2회+ | team-log.jsonl의 `task_failed` 이벤트(orchestrate 이벤트 계약), 같은 종류의 재작업 커밋(fix 연쇄) 확인 |
-| 하네스 우회 | **팀 필요성 판정(orchestrate Phase 0-1) 없이 처리된 구현·다단계 작업**(판정 한 줄 보고의 부재가 증거 — 루트 AGENTS.md 7절 3항), orchestrate 없이 처리된 다중 프로젝트 작업, `.agents/` 밖에 생긴 에이전트·스킬 정의, 레지스트리에 없는 프로젝트 디렉토리, **하네스 스킬 트리거가 내장·플러그인·sc:* 외부 스킬로 샌 라우팅**(CLAUDE.md 스킬 우선순위 위반 — 예: PR 생성이 gstack ship으로, 작업 재개가 checkpoint로) |
+| ① 반복 요청 3회+ | 최근 세션 기억·`_workspace/` 작업명들·git 커밋 메시지에서 같은 유형 작업의 반복 확인 |
+| ② 반복 실패 2회+ (같은 정정 2회+ 포함) | team-log.jsonl의 `task_failed` 이벤트(orchestrate 이벤트 계약), 같은 종류의 재작업 커밋(fix 연쇄), **같은 내용의 사용자 정정 반복**("아니 그게 아니라" 류 — agentsview 세션 검색으로 실측) 확인 |
+| ③ 하네스 우회 | **팀 필요성 판정(orchestrate Phase 0-1) 없이 처리된 구현·다단계 작업**(판정 한 줄 보고의 부재가 증거 — 루트 AGENTS.md 7절 3항), orchestrate 없이 처리된 다중 프로젝트 작업, `.agents/` 밖에 생긴 에이전트·스킬 정의, 레지스트리에 없는 프로젝트 디렉토리, **하네스 스킬 트리거가 내장·플러그인·sc:* 외부 스킬로 샌 라우팅**(CLAUDE.md 스킬 우선순위 위반 — 예: PR 생성이 gstack ship으로, 작업 재개가 checkpoint로) |
+| ④ 수축·효율 (주간 전체 한정) | **3주+ 무호출**: 각 스킬·에이전트 이름을 `agentsview session search`로 검색해 최근 호출 이력 확인 — 3주 이상 무호출이면 폐기·통합 제안(미설치면 판정 보류 — 근거 없는 폐기 제안 금지). **토큰 과소모 패턴 2회+**: `agentsview stats`로 토큰·비용 상위 세션을 확인하고, 간단 작업에 팀 구성·같은 정보의 반복 수집·불필요한 전체 파일 로딩이 반복됐는지 세션 로그로 확인 → 절차 개선(판정 하향, 산출물 재사용, references/ 분리) 제안 |
 
-**agentsview 연동 (설치된 경우 신호 수집의 1차 데이터 소스)**: `agentsview`가 설치되어 있으면 세션 기억 대신 실측한다 — `agentsview session search "<요청 유형 키워드>"`로 반복 요청을, `agentsview stats`·`agentsview session list`로 재작업·실패 패턴을 조회한다. Claude Code·Codex 세션 전체가 인덱싱 대상이라 기억·커밋 메시지보다 정확하고 CLI 간 사각지대가 없다. 미설치면 위 표의 관찰 방법을 그대로 쓴다(설치는 harness-install 3단계).
+**agentsview 연동 (설치된 경우 신호 수집의 1차 데이터 소스)**: `agentsview`가 설치되어 있으면 세션 기억 대신 실측한다 — `agentsview session search "<요청 유형 키워드>"`로 반복 요청·정정을, `agentsview stats`·`agentsview session list`로 재작업·실패 패턴과 토큰·비용을 조회한다. Claude Code·Codex 세션 전체가 인덱싱 대상이라 기억·커밋 메시지보다 정확하고 CLI 간 사각지대가 없다. 미설치면 위 표의 관찰 방법을 그대로 쓰되 ④는 판정 보류한다(설치는 harness-install 3단계).
 
 ### 2. 구조 무결성 점검
 
@@ -40,6 +49,8 @@ description: Harness operations review in two modes - daily lite (scan only the 
 - 대기 큐: `_workspace/harness-updates.md`에 상태 `대기` 항목이 있는지(루트 AGENTS.md 5절 설치처 프로필). **개인 설치처**면 이월된 개선이 잠자고 있는 것 — metaskill 적용을 제안한다. **사내 설치처**면 정상(개인 머신 이월 대기 중) — 항목 수만 보고한다.
 - 변경 이력: 최근 하네스 커밋마다 변경 이력 테이블 갱신이 동반되었는지 (`git log -p -- AGENTS.md`).
 - 시크릿 유출(agentsview 설치 시): `agentsview secrets scan`으로 세션 로그에 시크릿이 샜는지 스캔한다 — 3절 가드레일("기록 금지")은 예방 규칙이고 이것이 사후 검증이다. 발견 시 must-fix로 즉시 사용자 보고.
+- 선언-미구현: 선언만 있고 강제 장치(훅·테스트·절차 단계·문구 단정)가 없는 규칙을 목록화한다 — 티어→모델 매핑 미적용, "병렬 실행" 선언의 순차 실행, 침묵 훅이 전부 이 유형이었다. 사용 신호(1단계)로는 안 잡히므로 구조 검사로 잡는다.
+- 로딩 비대(토큰 낭비의 하네스 자체 기여분): SKILL.md 본문 500줄 초과(metaskill 공통 규칙 3 위반), 항상 로드되는 CLAUDE.md·description의 비대를 확인한다 — 매 세션의 고정 토큰 비용이므로, 초과분은 `references/` 분리·압축을 제안한다.
 
 ### 3. 제안 생성
 
@@ -47,14 +58,14 @@ description: Harness operations review in two modes - daily lite (scan only the 
 - **설치처 프로필 분기 (제안 확정 전 REGISTRY.md 프로필 확인 — 루트 AGENTS.md 5절)**: **사내** 설치처면 저장소 수정을 제안하지 않는다 — 사용자 승인 시 제안 내용을 `_workspace/harness-updates.md`에 `대기` 항목으로 기록한다(5절 형식: 대상 파일·변경 내용·사유를 개인 머신에서 맥락 없이 적용 가능한 수준으로). **개인** 설치처면 기존대로 metaskill 실행을 제안한다.
 - 신호가 없으면: "신호 없음 — 현재 구조 유지"라고 보고하고 끝낸다. **무신호에 개선을 지어내지 않는다** — 진화 제안은 8절 신호에 근거할 때만 정당하다.
 
-### 4. 완료 마커·운영 로그 갱신 (누락 금지)
+### 4. 완료 마커·운영 로그 갱신 (누락 금지 — 갱신 주체는 점검 수행자, 위임 시 서브에이전트)
 
 - **마커**: 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
 - **운영 로그**: `_workspace/harness-ops-log.md`에 점검 결과 한 줄을 append한다 — 형식: `- YYYY-MM-DD [전체 점검|일일 점검] 신호 N건(요약) / 무결성 통과|문제 N건 / 제안 N건(요약)`. 이 로그가 "지난 점검에서 뭘 봤고 뭘 개선했는지"의 채팅 밖 단일 기록이다(개선 실행 기록은 metaskill이 `[개선]` 항목으로 append) — 리마인더 훅의 기한 전 상태 한 줄이 이 파일을 가리킨다.
 
 ## 출력 형식
 
-1. 3신호 각각의 감지 여부와 근거
+1. 신호 각각의 감지 여부와 근거 (일일: ①~③, 주간: ①~④)
 2. 구조 무결성 점검 결과 (통과/문제)
 3. metaskill 제안 목록 (없으면 "없음")
 4. 완료 마커 갱신 확인

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """harness-review-reminder — 일일·주간 점검 자동 트리거 (SessionStart).
 
-2단 주기(R3): 주간 전체 점검(7일 — 무결성 포함)이 지났으면 전체 모드 지시를,
-아니고 일일 경량 점검(1일 — 마지막 점검 이후의 3신호 스캔만)이 지났으면 일일
-모드 지시를 세션 시작 컨텍스트에 주입한다. 실행 자체는 세션의 모델이 한다 —
+2단 주기(R3): 주간 전체 점검(7일 — 수축·효율 신호와 무결성 포함)이 지났으면
+전체 모드 지시를, 아니고 일일 경량 점검(1일 — 마지막 점검 이후의 확장 신호
+①~③ 스캔만)이 지났으면 일일 모드 지시를 세션 시작 컨텍스트에 주입한다. 실행 자체는 세션의 모델이 한다 —
 점검 제안은 사용자 승인이 필요해 무인 실행이 아니라 사람이 있는 세션에서
 돌아야 하기 때문이다.
 
@@ -65,22 +65,23 @@ def build_message(mode, weekly_days, daily_days):
         since = "기록이 없습니다" if weekly_days is None else f"{weekly_days}일이 지났습니다"
         return (
             f"[harness-review 리마인더] 주간 전체 점검 — 마지막 전체 점검 {since}. "
-            "이 세션의 첫 응답에서 사용자 요청 처리에 앞서 harness-review 스킬을 "
-            "전체 모드(신호 수집+무결성 점검)로 먼저 실행하세요 — 건너뛰거나 뒤로 "
-            "미루지 말 것(미루려면 사용자에게 명시적으로 확인). 완료 시 "
-            "_workspace/.harness-review-last와 .harness-review-daily-last를 "
-            "오늘 날짜(YYYY-MM-DD)로 갱신하세요. 점검 결과·제안은 채팅으로 보고하고 "
-            "_workspace/harness-ops-log.md에 요약을 남기세요(스킬 4단계)."
+            "이 세션의 첫 응답에서 harness-review 점검 서브에이전트를 백그라운드로 "
+            "즉시 발행하세요(스킬 '실행 방식' 절 — 메인 루프가 직접 점검하지 않는다). "
+            "점검이 도는 동안 사용자 요청을 병행 처리하고, 완료되면 결과(신호·무결성·"
+            "제안)를 채팅으로 보고하세요. 마커(_workspace/.harness-review-last·"
+            ".harness-review-daily-last, 오늘 날짜 YYYY-MM-DD)와 운영 로그"
+            "(_workspace/harness-ops-log.md) 갱신은 서브에이전트가 수행합니다 — "
+            "완료 보고 시 갱신 여부를 확인하세요."
         )
     if mode == "daily":
         return (
-            "[harness-review 리마인더] 일일 경량 점검 — 이 세션의 첫 응답에서 사용자 "
-            "요청 처리에 앞서, 마지막 점검 이후 세션의 3신호(반복 요청·반복 실패·우회)를 "
-            "먼저 스캔하세요(harness-review 일일 모드, 무결성 점검은 주간의 몫 — "
-            "미루려면 사용자에게 명시적으로 확인). 완료 시 "
-            "_workspace/.harness-review-daily-last를 오늘 날짜로 갱신하세요. "
-            "점검 결과는 채팅으로 보고하고 _workspace/harness-ops-log.md에 요약을 "
-            "남기세요(스킬 4단계)."
+            "[harness-review 리마인더] 일일 경량 점검 — 이 세션의 첫 응답에서 "
+            "harness-review 일일 모드(마지막 점검 이후 확장 신호 ①~③ 스캔만) "
+            "서브에이전트를 백그라운드로 즉시 발행하세요(스킬 '실행 방식' 절, "
+            "수축·효율 신호와 무결성 점검은 주간의 몫). "
+            "사용자 요청은 병행 처리하고, 완료되면 결과를 채팅으로 보고하세요. "
+            "일일 마커(_workspace/.harness-review-daily-last)와 운영 로그"
+            "(_workspace/harness-ops-log.md) 갱신은 서브에이전트가 수행합니다."
         )
     # 기한 전 — 점검 지시 대신 상태 한 줄(훅이 동작했다는 증거를 채팅에 남긴다).
     return (
