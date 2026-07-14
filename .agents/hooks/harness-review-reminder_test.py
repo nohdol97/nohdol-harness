@@ -134,6 +134,19 @@ class MainFlow(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertIn("전체", out)
 
+    def test_c8_cp949_stdout_still_outputs(self):  # C8 — 한글 Windows 콘솔(cp949)에서 em dash
+        with tempfile.TemporaryDirectory() as d:
+            buf = io.BytesIO()
+            cp949 = io.TextIOWrapper(buf, encoding="cp949")
+            with mock.patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": d}), \
+                 contextlib.redirect_stdout(cp949):
+                rc = hook.main()  # 마커 부재 → 전체 모드 메시지(em dash 포함)
+            cp949.flush()
+            self.assertEqual(rc, 0)
+            # cp949였다면 print가 예외를 던지고 fail-open이 삼켜 무출력이 됐다 —
+            # UTF-8 재구성 후에는 메시지가 실제로 출력되어야 한다.
+            self.assertIn("리마인더".encode("utf-8"), buf.getvalue())
+
     def test_c6_exception_fail_open(self):
         with mock.patch.object(hook.os.path, "isfile", side_effect=RuntimeError), \
              contextlib.redirect_stdout(io.StringIO()) as out:

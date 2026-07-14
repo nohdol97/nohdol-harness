@@ -15,6 +15,17 @@ import subprocess
 import sys
 
 
+def utf8_stdio():
+    """stdout/stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의
+    기본 인코딩(cp949)은 em dash(U+2014) 등을 못 담아 print 자체가 예외를 던진다
+    (2026-07-14 장애). 훅 출력의 소비자는 콘솔이 아니라 Claude Code(UTF-8)다."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass  # 재구성 불가 스트림(테스트 StringIO 등)은 그대로 둔다
+
+
 def daemon_running(rc, output):
     """status 결과로 실행 여부 판정(R2) — 정상 종료 + running 표기, 'not running'은 미실행."""
     if rc != 0:
@@ -38,12 +49,13 @@ def start_daemon(binary):
 
 def main():
     # 정상 경로는 상태 한 줄을 남긴다(훅 동작 가시화 — 2026-07-14 사용자 요청).
-    # 예외 경로만 무출력 fail-open(R4).
-    binary = shutil.which("agentsview")
-    if not binary:
-        print("[세션 훅 상태] agentsview 데몬: 미설치 — 건너뜀(설치는 harness-install 3단계)")
-        return 0  # 미설치 — no-op (R1)
+    # 예외 경로만 무출력 fail-open(R4) — print 포함 전 구간이 try 안에 있어야 한다.
     try:
+        utf8_stdio()
+        binary = shutil.which("agentsview")
+        if not binary:
+            print("[세션 훅 상태] agentsview 데몬: 미설치 — 건너뜀(설치는 harness-install 3단계)")
+            return 0  # 미설치 — no-op (R1)
         st = subprocess.run(
             [binary, "daemon", "status"], capture_output=True, text=True, timeout=10
         )

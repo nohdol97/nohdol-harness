@@ -42,6 +42,18 @@ def decide_mode(weekly_days, daily_days):
     return None
 
 
+def utf8_stdio():
+    """stdout을 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의 기본
+    인코딩(cp949)은 em dash(U+2014) 등을 못 담아 print가 예외를 던지고, fail-open이
+    그것을 삼켜 리마인더가 무출력으로 죽는다(2026-07-14 장애). 훅 출력의 소비자는
+    콘솔이 아니라 Claude Code(UTF-8)다."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass  # 재구성 불가 스트림(테스트 StringIO 등)은 그대로 둔다
+
+
 def _ago(days):
     if days is None:
         return "기록 없음"
@@ -85,6 +97,7 @@ def read_marker(base, relpath):
 
 def main():
     try:
+        utf8_stdio()
         base = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
         today = datetime.date.today()
         weekly_days = days_since(read_marker(base, WEEKLY_MARKER), today)

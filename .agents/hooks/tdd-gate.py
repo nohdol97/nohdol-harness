@@ -103,7 +103,19 @@ def is_test_file(path):
     )
 
 
+def utf8_stdio():
+    """stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의 기본
+    인코딩(cp949)은 차단 안내의 em dash(U+2014)를 못 담아 write가 예외를 던지고,
+    최상위 fail-open이 그것을 삼켜 차단해야 할 커밋이 통과한다(2026-07-14 장애)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def main():
+    utf8_stdio()
     data = json.load(sys.stdin)
     if data.get("tool_name") != "Bash":
         return 0
