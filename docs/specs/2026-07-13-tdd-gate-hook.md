@@ -32,7 +32,7 @@
 
 ## 인터페이스 / 설계 개요
 
-- 등록: 루트 `.claude/settings.json` → PreToolUse, matcher `Bash`, command `"$CLAUDE_PROJECT_DIR"/.agents/hooks/tdd-gate.py`.
+- 등록: 루트 `.claude/settings.json` → PreToolUse, matcher `Bash`, command는 **인터프리터 탐색 체인** `for p in python3 python py; do command -v "$p" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/tdd-gate.py"; done; exit 0` — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패한다. 어떤 인터프리터도 없으면 exit 0(fail-open, 게이트 비활성).
 - 입력: stdin JSON(`tool_name`, `tool_input.command`, `cwd`). 출력: exit 0(통과) / exit 2 + stderr 안내(차단).
 - 부수 효과 없음 — git 조회 명령만 실행한다.
 
@@ -61,3 +61,4 @@
 |---|---|---|---|
 | 2026-07-13 | 초안 작성 및 구현 반영 (reviewer 1차 검증 F5 — 스펙 부재 지적으로 소급 작성, F1~F4·F6 수정 사항 반영) | 전체 | 13절 1항 — 스펙 없는 구현은 완료 판정 기준이 없다 |
 | 2026-07-13 | R2·C5에 서브커맨드 위치 감지 요건 추가 | R2, C5 | reviewer 2차 검증 F9 — 무따옴표 인자 속 commit 단어 거짓 차단 수정 반영 |
+| 2026-07-14 | 등록 command를 인터프리터 탐색 체인(python3→python→py, 부재 시 exit 0)으로 변경 | 등록(설계 개요), .claude/settings.json | Windows 설치처 장애 보고 — `.py` 직접 실행이 파일 연결·PATHEXT 부재로 OS 수준 실패, 훅이 한 번도 실행되지 않음 |
