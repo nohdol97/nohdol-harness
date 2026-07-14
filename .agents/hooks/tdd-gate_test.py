@@ -18,12 +18,13 @@ HARNESS_ROOT = os.path.dirname(os.path.dirname(HERE))
 results = []
 
 
-def run_hook(command, cwd, raw=None):
+def run_hook(command, cwd, raw=None, env=None):
     payload = raw if raw is not None else json.dumps(
         {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": cwd}
     )
     p = subprocess.run([sys.executable, HOOK], input=payload,
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30,
+                       env={**os.environ, **env} if env else None)
     return p.returncode, p.stderr
 
 
@@ -147,6 +148,15 @@ def main():
 
         # C11: 깨진 JSON → fail-open 통과
         check("C11", "깨진 JSON → 통과", run_hook(None, None, raw="not json")[0], 0)
+
+        # C13: cp949 stdio(한글 Windows 콘솔) → 차단 메시지의 em dash가 인코딩
+        # 예외를 던지면 fail-open이 차단을 삼켜 게이트가 무력화된다(2026-07-14 장애)
+        r13 = make_repo(os.path.join(tmp, "r13"))
+        put(r13, "app.py"); sh(r13, "add", "app.py")
+        code13, err13 = run_hook('git commit -m "feat: x"', r13,
+                                 env={"PYTHONIOENCODING": "cp949"})
+        check("C13", "cp949 stdio에서도 차단 유지", code13, 2)
+        check("C13-msg", "cp949 stdio에서도 차단 안내 출력", "커밋 차단" in err13, True)
 
         # 비커밋 git 명령 → 통과
         check("C-etc", "git status → 통과", run_hook("git status", r4)[0], 0)

@@ -33,7 +33,7 @@
 ## 인터페이스 / 설계 개요
 
 - 등록: 루트 `.claude/settings.json` → PreToolUse, matcher `Bash`, command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/tdd-gate.py"; done; exit 0` — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 어떤 인터프리터도 없으면 exit 0(fail-open, 게이트 비활성).
-- 입력: stdin JSON(`tool_name`, `tool_input.command`, `cwd`). 출력: exit 0(통과) / exit 2 + stderr 안내(차단).
+- 입력: stdin JSON(`tool_name`, `tool_input.command`, `cwd`). 출력: exit 0(통과) / exit 2 + stderr 안내(차단). 시작 시 stderr를 **UTF-8(errors=replace)로 재구성**한다 — 한글 Windows 콘솔(cp949)은 차단 안내의 em dash를 인코딩하지 못해 write가 예외를 던지고, 최상위 fail-open이 그것을 삼켜 **차단해야 할 커밋이 통과**한다(2026-07-14 장애 — 게이트 무력화).
 - 부수 효과 없음 — git 조회 명령만 실행한다.
 
 ## 완료 기준 (테스트 가능한 형태)
@@ -50,6 +50,7 @@
 - [x] C10 (R5): `tests/` 하위 파일은 테스트로 인정(exit 0), `latest.py` 단독 커밋은 코드로 판정(exit 2).
 - [x] C11 (R6): 깨진 JSON 입력 → exit 0.
 - [x] C12 (R8): `python3 .agents/hooks/tdd-gate_test.py` 전 케이스 통과.
+- [x] C13 (R6): cp949 stdio(PYTHONIOENCODING=cp949)에서 코드만 커밋 → 여전히 exit 2 + 차단 안내 출력(게이트 무력화 없음).
 
 ## 미해결 질문
 
@@ -63,3 +64,4 @@
 | 2026-07-13 | R2·C5에 서브커맨드 위치 감지 요건 추가 | R2, C5 | reviewer 2차 검증 F9 — 무따옴표 인자 속 commit 단어 거짓 차단 수정 반영 |
 | 2026-07-14 | 등록 command를 인터프리터 탐색 체인(python3→python→py, 부재 시 exit 0)으로 변경 | 등록(설계 개요), .claude/settings.json | Windows 설치처 장애 보고 — `.py` 직접 실행이 파일 연결·PATHEXT 부재로 OS 수준 실패, 훅이 한 번도 실행되지 않음 |
 | 2026-07-14 | 인터프리터 판별을 존재 확인(command -v)에서 실행 확인(-c "")으로 강화 | 등록, .claude/settings.json | Windows 재발 보고 — Store App Execution Alias 스텁이 존재 확인을 통과해 exec 후 exit 49로 실패 |
+| 2026-07-14 | stdio UTF-8 재구성, C13(cp949) 신설 | 인터페이스, C13 | 한글 Windows 장애 보고 — cp949 stderr에서 차단 안내의 em dash가 UnicodeEncodeError → fail-open이 차단을 삼켜 게이트 무력화 |

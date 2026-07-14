@@ -89,6 +89,16 @@ class MainFlow(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(out, "")
 
+    def test_c5_cp949_stdout_no_crash(self):  # C5 — 한글 Windows 콘솔(cp949)에서 em dash
+        buf = io.BytesIO()
+        cp949 = io.TextIOWrapper(buf, encoding="cp949")
+        with mock.patch.object(hook.shutil, "which", return_value=None), \
+             contextlib.redirect_stdout(cp949):
+            rc = hook.main()  # 크래시 없이 exit 0이어야 한다 (2026-07-14 cp949 장애)
+        cp949.flush()
+        self.assertEqual(rc, 0)
+        self.assertIn("미설치".encode("utf-8"), buf.getvalue())  # 상태 줄이 살아있음
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
