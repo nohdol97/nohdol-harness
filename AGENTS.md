@@ -36,7 +36,7 @@
 - 구조: `_workspace/<작업명>/`
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
 - 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
-- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정).
+- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필)와 점검 마커(`.harness-review-*`)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
 
 ## 5. git 규칙
 
@@ -44,7 +44,8 @@
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
 - 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(및 OS 파일) — 뿐이다(ADR 002·005·006).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
-- **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하다.
+- **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하고, **사내 프로필 설치처에서는 이 기본이 적용되지 않는다**(아래 설치처 프로필 규칙).
+- **설치처 프로필 (개인/사내)**: 이 저장소는 개인 계정 소유이므로, 설치처가 어디냐에 따라 푸시 가능 여부가 갈린다. 프로필은 REGISTRY.md 상단에 기록한다(harness-install 인터뷰) — `개인`(하네스 수정·커밋·푸시 가능) / `사내`(**추적 하네스 파일 수정·커밋·푸시 전면 금지** — 사내 머신에서 개인 원격으로의 푸시는 보안 정책 위반이고, 커밋만 쌓아도 결국 푸시가 필요해 발산한다). **사내에서 하네스 개선이 필요하면 저장소를 고치는 대신 `_workspace/harness-updates.md`(미추적) 대기 큐에 기록한다.** 항목 형식: `## YYYY-MM-DD 제목` 아래 상태(대기/적용됨) / 대상 파일 / 변경 내용 / 사유·근거(신호) — 변경 내용은 **그 세션의 맥락 없이도 개인 머신에서 그대로 적용할 수 있는 수준**으로 구체적으로 쓴다(대상 절·문구·추가 위치까지). 이 파일은 미추적이라 git으로 전달되지 않는다 — 사용자가 내용을 개인 머신으로 직접 옮기고(파일 복사·붙여넣기), 개인 설치처에서 "하네스 업데이트 적용"을 요청하면 metaskill이 항목을 적용하고 상태를 `적용됨`으로 갱신한다. **프로필 미기록 상태에서 하네스 파일을 수정하게 되면 먼저 사용자에게 프로필을 확인해 REGISTRY.md에 기록한다**(단, 이 저장소를 직접 클론해 PR로 작업하는 원격 세션은 개인 프로필로 간주). 이유: 수정 자체를 개인 설치처로 이월해야 사내 정책과 하네스 진화가 양립한다.
 - **하위 프로젝트 브랜치 규칙**: 하위 프로젝트 작업은 `branch-workflow` 스킬을 따른다 — 시작 시 main 최신화 후 새 브랜치, 마무리 시 PR 직전 rebase → 푸시 → PR 생성(머지는 사용자). **이 루트 하네스 저장소만 main 직커밋 예외**다(문서 중심, 2026-07-12 인터뷰 확정).
 - **배포·릴리스 규칙**: 머지 이후 배포는 `release` 스킬을 따른다 — 런북 초안(롤백 절 필수) → 변경 단계별 사용자 확인(3절, dev 포함 예외 없음) → 배포 후 검증 → work-tracker 마무리. 외부 배포 스킬(플러그인 등)은 이 절차 안의 보조 도구로만 쓴다.
 
@@ -154,3 +155,4 @@
 | 2026-07-14 | agentsview-daemon SessionStart 훅 신설(스펙+회귀 테스트) — 세션 시작 시 동기화 데몬 자동 기동, 로컬 DB 고정·외부 동기화 금지 문구 보강 | .agents/hooks/, .claude/settings.json, docs/specs/, harness-install, README | 사용자 요청 — 동기화 수동 기동 제거. fail-open으로 미설치 환경 무간섭 |
 | 2026-07-14 | harness-review-reminder SessionStart 훅 신설(스펙+회귀 테스트) — 마지막 점검 7일 경과 시 세션 시작에 실행 지시 주입, harness-review에 완료 마커 갱신 단계 추가 | 8절, .agents/hooks/, .claude/settings.json, docs/specs/, harness-review, README | 사용자 요청(주간 점검 cron화) — 제안 승인에 사람이 필요하고 신호 데이터가 로컬에 있어, 무인 cron 대신 세션 트리거 방식 채택 |
 | 2026-07-14 | 점검 주기 2단 확장 — 일일 경량 모드(1일, 3신호 스캔만·무신호 시 한 줄) 신설, 리마인더 훅 마커 2개 판정으로 개정 | 8절, .agents/hooks/harness-review-reminder.py, harness-review, docs/specs | 사용자 확정 — "일주일은 너무 길다, 비효율은 매일 새 세션에서 점검" |
+| 2026-07-14 | 설치처 프로필(개인/사내) 신설 — 사내는 추적 하네스 파일 수정·커밋·푸시 금지, 개선 사항은 `_workspace/harness-updates.md` 대기 큐 기록 후 개인 설치처에서 metaskill로 적용. 4절 `_workspace/` 미보존에 큐·마커 예외 명시 | 4·5절, harness-install, harness-review, metaskill, README | 사용자 확정 — 하네스를 사내에서도 쓰는데 저장소는 개인 소유라 사내에서 개인 git 푸시 불가. docs/adr/012 |
