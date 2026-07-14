@@ -13,9 +13,10 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 ## 절차
 
-### 1. 심링크·개행 검증
+### 1. 심링크·개행·git 훅 계층 검증
 
 - **심링크**: `readlink .claude/agents .claude/skills`가 `../.agents/agents`, `../.agents/skills`를 가리키는지 확인한다. 깨져 있으면 재생성(`ln -sfn`), 심링크 불가 환경이면 sync 스크립트로 대체하고 그 사실을 ADR로 기록한다(루트 AGENTS.md 11절). Windows에서 심링크가 **경로 문자열이 담긴 일반 파일**로 클론됐다면 개발자 모드 활성화 또는 `git config core.symlinks true` 후 재체크아웃한다.
+- **git 훅 계층 등록(tdd-gate 도구 무관 강제 — ADR 014)**: `git config --global core.hooksPath <루트 절대경로>/.agents/githooks`를 등록한다. Claude Code 밖(Codex CLI·수동 커밋)에서도 13절 TDD 게이트가 걸리게 하는 설정으로, 전역 git 설정은 저장소로 전파되지 않아 설치 단계에서 잡아야 한다. **이미 다른 값이 설정돼 있으면 덮어쓰지 말고 사용자에게 확인한다**(기존 훅 체계와 충돌 가능). 검증: `git config --global --get core.hooksPath` 확인 후 `python3 .agents/hooks/tdd-gate_test.py` 통과.
 - **개행(CRLF) 검증**: SKILL.md 첫 줄이 CR 없이 `---`인지 확인한다 — CRLF면 frontmatter 파싱이 깨져 **모든 스킬이 목록에 이름만(무설명) 표시되고 자동 트리거가 죽는다**. `.gitattributes`가 LF를 강제하지만, 그 도입 전에 클론한 저장소는 `git config core.autocrlf false` 후 `git rm -rf --cached . && git reset --hard`로 재체크아웃해야 반영된다. 확인: `git config core.autocrlf`(false/input이어야 함), `file .agents/skills/metaskill/SKILL.md`(CRLF 표기 없어야 함).
 
 ### 2. 미추적 디렉토리 생성
@@ -49,6 +50,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 ### 7. 완료 판정
 
 - [ ] 심링크 2개 정상 (`.claude/` 아래 실파일 없음)
+- [ ] 전역 `core.hooksPath`가 `.agents/githooks`를 가리킴 (미등록·거부 시 사유가 완료 보고에 있음)
 - [ ] SKILL.md 개행이 LF — `/skills` 목록에 각 스킬의 description이 표시됨 (무설명이면 CRLF·frontmatter 문제)
 - [ ] agentsview 설치됨 + 로컬 SQLite DB(`~/.agentsview/` 또는 `AGENTSVIEW_DATA_DIR`) 생성 확인 + 외부 DB 동기화 미설정 + finding-history 스킬 전역 설치됨 (건너뛰었으면 사유가 완료 보고에 있음)
 - [ ] REGISTRY.md 존재 + **설치처 프로필(개인/사내)** + 경로 규약 + 표 + 변경 이력 (사내 프로필이면 수정·푸시 금지 의미가 안내됨)
