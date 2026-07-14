@@ -19,3 +19,6 @@ REGISTRY.md
 
 # OS
 .DS_Store
+
+# 파이썬 바이트코드 — 훅 테스트 실행 부산물
+__pycache__/
