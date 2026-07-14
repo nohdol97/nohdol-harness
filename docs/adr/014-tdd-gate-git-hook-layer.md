@@ -1,5 +1,7 @@
 # ADR 014 — TDD 게이트의 git 훅 계층 추가 (도구 무관 강제)
 
+> ⚠️ 이 중 "이관이 아니라 계층 추가(PreToolUse 유지)" 결정은 **ADR 015로 대체**되었다 — git 계층 단일화, PreToolUse 등록·명령 파싱 제거. 나머지 결정(commit-msg 선택, 전역 hooksPath, 체인 shim, 예외, `--no-verify` 수용, 설치처별 등록)은 유효하다.
+
 - **날짜**: 2026-07-14
 - **변경 내용**: `.agents/githooks/`(추적)를 신설하고 전역 `core.hooksPath`로 등록해, `tdd-gate.py`가 git commit-msg 훅으로도 실행되게 한다. 이로써 게이트가 Claude Code 세션(PreToolUse)뿐 아니라 **Codex CLI·수동 커밋 등 모든 도구**의 커밋에 걸린다.
 - **대상**: `.agents/githooks/`(신설·추적 — commit-msg 게이트 shim + pre-commit·prepare-commit-msg·post-commit·pre-push 체인 shim), `.agents/hooks/tdd-gate.py`(이중 모드 리팩토링)·`tdd-gate_test.py`(C14~C21), `docs/specs/2026-07-13-tdd-gate-hook.md`(R9·R10), harness-install 1단계, AGENTS.md 13절 4항

@@ -1,11 +1,11 @@
 #!/bin/sh
-# tdd-gate의 도구 무관 실행 계층 — 전역 core.hooksPath가 이 디렉토리를 가리킨다 (ADR 014).
-# Claude Code뿐 아니라 Codex·수동 커밋에도 같은 게이트가 걸리게 하는 진입점이다.
-# 인터프리터 탐색은 Claude 훅 등록과 동일한 근거(스펙 설계 개요): 실행 확인(-c "")으로
-# Windows Store 스텁을 걸러내고, 파이썬이 없으면 게이트 없이 통과한다(fail-open).
+# tdd-gate의 유일한 실행 계층 — 전역 core.hooksPath가 이 디렉토리를 가리킨다 (ADR 014·015).
+# Claude Code·Codex·수동 커밋 등 도구와 무관하게 같은 게이트가 걸리게 하는 진입점이다.
+# 인터프리터 탐색은 실행 확인(-c "")으로 판별한다(스펙 R6) — Windows Store 스텁을
+# 걸러내고, 파이썬이 없으면 게이트 없이 통과한다(fail-open).
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 GATE="$HERE/../hooks/tdd-gate.py"
-# 게이트 스크립트 부재(하네스 이동·삭제)가 머신 전역의 커밋을 막으면 안 된다(R6 fail-open) —
+# 게이트 스크립트 부재(하네스 이동·삭제)가 머신 전역의 커밋을 막으면 안 된다(R4 fail-open) —
 # 인터프리터의 "파일 없음" exit 2는 게이트 차단과 구분되지 않으므로 존재를 먼저 확인한다.
 [ -f "$GATE" ] || exit 0
 rc=0
