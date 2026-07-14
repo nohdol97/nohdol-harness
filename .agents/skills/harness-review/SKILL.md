@@ -1,6 +1,6 @@
 ---
 name: harness-review
-description: Weekly harness operations review. Scans recent git history, _workspace remnants, and session patterns for the three evolution triggers (3+ repeated request types, 2+ repeated failures, harness bypass), verifies symlink integrity and registry freshness, then proposes concrete metaskill actions. Use when the user says 주간 점검, 하네스 리뷰, weekly review, harness review, or when a week has passed since the last review. Re-run keywords - harness-review, weekly, evolve, 주간 점검, 진화.
+description: Harness operations review in two modes - daily lite (scan only the three evolution triggers since the last check) and weekly full (adds symlink/registry/frontmatter integrity), proposing concrete metaskill actions. Auto-triggered by the SessionStart reminder hook via markers. Use when the reminder fires or the user says 일일 점검, 주간 점검, 하네스 리뷰, harness review. Re-run keywords - harness-review, daily, weekly, evolve, 일일 점검, 주간 점검, 진화.
 ---
 
 # harness-review — 주간 하네스 운영 점검
@@ -8,6 +8,15 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 ## 왜 이 스킬인가
 
 루트 AGENTS.md 8절은 진화 트리거 3신호를 "주 1회 관찰"하는 것을 운영 습관으로 요구한다. 관찰 절차가 스킬로 고정되어 있지 않으면 이 습관은 몇 주 안에 증발한다 — 하네스는 쓰이면서 어긋난 부분이 드러날 때만 진화할 수 있다. 이 스킬은 **관찰과 제안**만 담당한다. 실제 생성·개선의 실행은 metaskill의 몫이다 (역할 분리: 관찰자가 곧바로 실행까지 하면 제안의 근거 검증이 생략된다).
+
+## 실행 모드 (리마인더 훅이 지정 — 2단 주기)
+
+| 모드 | 주기 | 범위 | 완료 마커 |
+|---|---|---|---|
+| **일일 경량** | 1일 | 1단계 신호 수집만 — 마지막 점검 이후 세션 대상. 무결성 점검 생략(주간의 몫) | `.harness-review-daily-last` |
+| **주간 전체** | 7일 | 1~3단계 전부 | `.harness-review-last` + daily 둘 다 |
+
+일일 모드는 **신호가 없으면 "신호 없음" 한 줄 보고 후 마커 갱신으로 끝낸다** — 매일의 비용은 스캔 몇 분이어야 유지된다. 신호가 있으면 주간과 동일하게 3단계(제안 생성)로 넘어간다.
 
 ## 절차
 
@@ -36,11 +45,16 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 - 신호가 감지되면: 어떤 신호가, 어떤 근거로, 어떤 에이전트/스킬 신설·개선으로 이어지는지를 **metaskill 호출 제안** 형태로 정리해 사용자에게 보고한다. 승인 없이 생성하지 않는다.
 - 신호가 없으면: "신호 없음 — 현재 구조 유지"라고 보고하고 끝낸다. **무신호에 개선을 지어내지 않는다** — 진화 제안은 8절 신호에 근거할 때만 정당하다.
 
+### 4. 완료 마커 갱신 (누락 금지)
+
+점검을 마치면 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
+
 ## 출력 형식
 
 1. 3신호 각각의 감지 여부와 근거
 2. 구조 무결성 점검 결과 (통과/문제)
 3. metaskill 제안 목록 (없으면 "없음")
+4. 완료 마커 갱신 확인
 
 ## with / without
 
