@@ -29,7 +29,7 @@
 
 ## 인터페이스 / 설계 개요
 
-- 등록: 루트 `.claude/settings.json` → SessionStart, command는 **인터프리터 탐색 체인** `for p in python3 python py; do command -v "$p" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py"; done; exit 0` (agentsview-daemon과 병렬 등록) — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패한다. 인터프리터 부재 시 exit 0(fail-open).
+- 등록: 루트 `.claude/settings.json` → SessionStart, command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py"; done; exit 0` (agentsview-daemon과 병렬 등록) — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 인터프리터 부재 시 exit 0(fail-open).
 - 입력: 없음(stdin 무시). 출력: 경과 시 stdout 한 줄(세션 컨텍스트로 주입됨), 아니면 무출력. 항상 exit 0.
 - 부수 효과 없음 — 파일 읽기뿐(R5: 쓰기는 스킬이 담당).
 
@@ -54,3 +54,4 @@
 | 2026-07-14 | 초안 작성 및 구현 | 전체 | 사용자 요청(주간 점검 cron화) — 승인 필요성·로컬 데이터·토큰 비용 근거로 세션 트리거 방식 채택 |
 | 2026-07-14 | 2단 주기로 확장 — 일일 경량(1일, 3신호 스캔만) + 주간 전체(7일), 마커 2개·모드 판정 R3 개정 | 목표, R1~R3·R5, C1~C7 | 사용자 확정 — "일주일은 너무 길다, 비효율은 매일 점검" |
 | 2026-07-14 | 등록 command를 인터프리터 탐색 체인(python3→python→py, 부재 시 exit 0)으로 변경 | 인터페이스(등록), .claude/settings.json | Windows 설치처 장애 보고 — `.py` 직접 실행이 파일 연결·PATHEXT 부재로 OS 수준 실패 |
+| 2026-07-14 | 인터프리터 판별을 존재 확인(command -v)에서 실행 확인(-c "")으로 강화 | 등록, .claude/settings.json | Windows 재발 보고 — Store App Execution Alias 스텁이 존재 확인을 통과해 exec 후 exit 49로 실패 |
