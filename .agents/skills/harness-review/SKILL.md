@@ -47,9 +47,10 @@ description: Harness operations review in two modes - daily lite (scan only the 
 - **설치처 프로필 분기 (제안 확정 전 REGISTRY.md 프로필 확인 — 루트 AGENTS.md 5절)**: **사내** 설치처면 저장소 수정을 제안하지 않는다 — 사용자 승인 시 제안 내용을 `_workspace/harness-updates.md`에 `대기` 항목으로 기록한다(5절 형식: 대상 파일·변경 내용·사유를 개인 머신에서 맥락 없이 적용 가능한 수준으로). **개인** 설치처면 기존대로 metaskill 실행을 제안한다.
 - 신호가 없으면: "신호 없음 — 현재 구조 유지"라고 보고하고 끝낸다. **무신호에 개선을 지어내지 않는다** — 진화 제안은 8절 신호에 근거할 때만 정당하다.
 
-### 4. 완료 마커 갱신 (누락 금지)
+### 4. 완료 마커·운영 로그 갱신 (누락 금지)
 
-점검을 마치면 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
+- **마커**: 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
+- **운영 로그**: `_workspace/harness-ops-log.md`에 점검 결과 한 줄을 append한다 — 형식: `- YYYY-MM-DD [전체 점검|일일 점검] 신호 N건(요약) / 무결성 통과|문제 N건 / 제안 N건(요약)`. 이 로그가 "지난 점검에서 뭘 봤고 뭘 개선했는지"의 채팅 밖 단일 기록이다(개선 실행 기록은 metaskill이 `[개선]` 항목으로 append) — 리마인더 훅의 기한 전 상태 한 줄이 이 파일을 가리킨다.
 
 ## 출력 형식
 

@@ -36,7 +36,7 @@
 - 구조: `_workspace/<작업명>/`
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
 - 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
-- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필)와 점검 마커(`.harness-review-*`)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
+- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필), `_workspace/harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
 
 ## 5. git 규칙
 
@@ -156,3 +156,4 @@
 | 2026-07-14 | harness-review-reminder SessionStart 훅 신설(스펙+회귀 테스트) — 마지막 점검 7일 경과 시 세션 시작에 실행 지시 주입, harness-review에 완료 마커 갱신 단계 추가 | 8절, .agents/hooks/, .claude/settings.json, docs/specs/, harness-review, README | 사용자 요청(주간 점검 cron화) — 제안 승인에 사람이 필요하고 신호 데이터가 로컬에 있어, 무인 cron 대신 세션 트리거 방식 채택 |
 | 2026-07-14 | 점검 주기 2단 확장 — 일일 경량 모드(1일, 3신호 스캔만·무신호 시 한 줄) 신설, 리마인더 훅 마커 2개 판정으로 개정 | 8절, .agents/hooks/harness-review-reminder.py, harness-review, docs/specs | 사용자 확정 — "일주일은 너무 길다, 비효율은 매일 새 세션에서 점검" |
 | 2026-07-14 | 설치처 프로필(개인/사내) 신설 — 사내는 추적 하네스 파일 수정·커밋·푸시 금지, 개선 사항은 `_workspace/harness-updates.md` 대기 큐 기록 후 개인 설치처에서 metaskill로 적용. 4절 `_workspace/` 미보존에 큐·마커 예외 명시 | 4·5절, harness-install, harness-review, metaskill, README | 사용자 확정 — 하네스를 사내에서도 쓰는데 저장소는 개인 소유라 사내에서 개인 git 푸시 불가. docs/adr/012 |
+| 2026-07-14 | 훅 동작 가시화 — SessionStart 훅 2종이 기한 전·미설치에도 상태 한 줄을 남기고 첫 응답에서 사용자 보고, 점검·개선 내역은 `_workspace/harness-ops-log.md` 운영 로그에 누적(harness-review 4단계·metaskill 완료 절차) | 4절, .agents/hooks/ 2종(+테스트·스펙), harness-review, metaskill | 사용자 요청 — "동작을 했는지 채팅창에 남아야, 개선했으면 뭘 개선했는지도". 침묵 설계는 정상과 미실행을 구분 불가 |
