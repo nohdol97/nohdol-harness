@@ -59,10 +59,12 @@ class BuildMessage(unittest.TestCase):
         self.assertIn("8일", msg)
         self.assertIn(".harness-review-last", msg)
         self.assertIn(".harness-review-daily-last", msg)  # 전체 완료 시 두 마커 갱신
-        # 첫 턴 우선 실행 지시 — 사용자 요청과 경합할 때 점검이 밀리지 않아야 한다
+        # 서브에이전트 위임 실행 — 메인 루프가 직접 점검하면 첫 응답이 점검에
+        # 점유되어 사용자 요청이 밀린다(2026-07-14 사용자 확정)
         self.assertIn("첫 응답에서", msg)
-        self.assertIn("먼저 실행", msg)
-        self.assertIn("미루", msg)  # 미루려면 명시적 확인
+        self.assertIn("서브에이전트", msg)
+        self.assertIn("발행", msg)
+        self.assertIn("병행", msg)  # 사용자 요청 병행 처리
 
     def test_full_message_no_record(self):  # C3
         self.assertIn("기록이 없습니다", hook.build_message("full", None, None))
@@ -72,7 +74,7 @@ class BuildMessage(unittest.TestCase):
         self.assertIn("일일 경량", msg)
         self.assertIn(".harness-review-daily-last", msg)
         self.assertIn("첫 응답에서", msg)
-        self.assertIn("먼저", msg)
+        self.assertIn("서브에이전트", msg)
 
     def test_status_line_when_fresh(self):  # C4 개정 — 기한 전에도 상태 한 줄
         msg = hook.build_message(None, 3, 0)

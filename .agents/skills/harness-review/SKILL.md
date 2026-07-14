@@ -1,6 +1,6 @@
 ---
 name: harness-review
-description: Harness operations review in two modes - daily lite (scan only the three evolution triggers since the last check) and weekly full (adds symlink/registry/frontmatter integrity), proposing concrete metaskill actions. Auto-triggered by the SessionStart reminder hook via markers. Use when the reminder fires or the user says 일일 점검, 주간 점검, 하네스 리뷰, harness review. Re-run keywords - harness-review, daily, weekly, evolve, 일일 점검, 주간 점검, 진화.
+description: Harness operations review in two modes - daily lite (scan only the three evolution triggers since the last check) and weekly full (adds symlink/registry/frontmatter integrity), proposing concrete metaskill actions. Runs as a delegated background subagent so the user's request is handled in parallel - the main loop only dispatches, reports the summary, and handles proposal approval. Auto-triggered by the SessionStart reminder hook via markers. Use when the reminder fires or the user says 일일 점검, 주간 점검, 하네스 리뷰, harness review. Re-run keywords - harness-review, daily, weekly, evolve, 일일 점검, 주간 점검, 진화.
 ---
 
 # harness-review — 주간 하네스 운영 점검
@@ -17,6 +17,14 @@ description: Harness operations review in two modes - daily lite (scan only the 
 | **주간 전체** | 7일 | 1~3단계 전부 | `.harness-review-last` + daily 둘 다 |
 
 일일 모드는 **신호가 없으면 "신호 없음" 한 줄 보고 후 마커 갱신으로 끝낸다** — 매일의 비용은 스캔 몇 분이어야 유지된다. 신호가 있으면 주간과 동일하게 3단계(제안 생성)로 넘어간다.
+
+## 실행 방식 (서브에이전트 위임 — 메인 루프 직접 수행 금지)
+
+메인 루프가 점검을 직접 수행하면 첫 응답이 점검에 점유되어 사용자 요청이 밀리고, 메인 컨텍스트가 점검 세부(파일 목록·중간 판단)로 오염된다(2026-07-14 사용자 확정). 관찰은 위임 가능하지만 승인은 대화가 필요하다 — 경계를 여기에 둔다.
+
+1. 점검 지시를 받으면(리마인더 트리거·사용자 직접 요청 동일) 메인 루프는 **explorer 서브에이전트 1기를 백그라운드로 발행**하고 사용자 요청을 병행 처리한다. 서브에이전트 프롬프트에 반드시 포함: ① `.agents/skills/harness-review/SKILL.md`를 읽고 지정 모드(전체/일일)의 절차 1~3단계를 수행하되 **제안은 초안까지만**(생성·수정 실행 금지) ② 산출물은 `_workspace/harness-review-<YYYY-MM-DD>/`에 저장 ③ 4단계 마커·운영 로그 갱신까지 수행 ④ 최종 반환은 출력 형식(신호·무결성·제안 초안·마커 갱신 여부) 요약.
+2. 서브에이전트 완료 시 메인 루프는 요약을 채팅으로 보고하고 마커·운영 로그 갱신을 확인한다(누락 시 직접 갱신).
+3. **제안 승인과 실행(metaskill 호출, 사내 프로필이면 대기 큐 기록)은 메인 루프의 몫** — 서브에이전트는 관찰·초안까지만. 무단 생성 금지는 위임해도 유지된다.
 
 ## 절차
 
@@ -47,7 +55,7 @@ description: Harness operations review in two modes - daily lite (scan only the 
 - **설치처 프로필 분기 (제안 확정 전 REGISTRY.md 프로필 확인 — 루트 AGENTS.md 5절)**: **사내** 설치처면 저장소 수정을 제안하지 않는다 — 사용자 승인 시 제안 내용을 `_workspace/harness-updates.md`에 `대기` 항목으로 기록한다(5절 형식: 대상 파일·변경 내용·사유를 개인 머신에서 맥락 없이 적용 가능한 수준으로). **개인** 설치처면 기존대로 metaskill 실행을 제안한다.
 - 신호가 없으면: "신호 없음 — 현재 구조 유지"라고 보고하고 끝낸다. **무신호에 개선을 지어내지 않는다** — 진화 제안은 8절 신호에 근거할 때만 정당하다.
 
-### 4. 완료 마커·운영 로그 갱신 (누락 금지)
+### 4. 완료 마커·운영 로그 갱신 (누락 금지 — 갱신 주체는 점검 수행자, 위임 시 서브에이전트)
 
 - **마커**: 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
 - **운영 로그**: `_workspace/harness-ops-log.md`에 점검 결과 한 줄을 append한다 — 형식: `- YYYY-MM-DD [전체 점검|일일 점검] 신호 N건(요약) / 무결성 통과|문제 N건 / 제안 N건(요약)`. 이 로그가 "지난 점검에서 뭘 봤고 뭘 개선했는지"의 채팅 밖 단일 기록이다(개선 실행 기록은 metaskill이 `[개선]` 항목으로 append) — 리마인더 훅의 기한 전 상태 한 줄이 이 파일을 가리킨다.
