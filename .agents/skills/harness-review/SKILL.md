@@ -36,11 +36,16 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 - 신호가 감지되면: 어떤 신호가, 어떤 근거로, 어떤 에이전트/스킬 신설·개선으로 이어지는지를 **metaskill 호출 제안** 형태로 정리해 사용자에게 보고한다. 승인 없이 생성하지 않는다.
 - 신호가 없으면: "신호 없음 — 현재 구조 유지"라고 보고하고 끝낸다. **무신호에 개선을 지어내지 않는다** — 진화 제안은 8절 신호에 근거할 때만 정당하다.
 
+### 4. 완료 마커 갱신 (누락 금지)
+
+점검을 마치면 `_workspace/.harness-review-last`에 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커로 7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
+
 ## 출력 형식
 
 1. 3신호 각각의 감지 여부와 근거
 2. 구조 무결성 점검 결과 (통과/문제)
 3. metaskill 제안 목록 (없으면 "없음")
+4. 완료 마커 갱신 확인
 
 ## with / without
 
