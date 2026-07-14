@@ -24,7 +24,7 @@ nohdol-harness/
 │   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   │   ├── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
 │   │   └── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)
-│   ├── hooks/             # 실행 계층 게이트 — tdd-gate.py (커밋 시점 TDD 강제, ADR 008)
+│   ├── hooks/             # 실행 계층 게이트 — tdd-gate.py (커밋 시점 TDD 강제, ADR 008), agentsview-daemon.py (세션 시작 시 동기화 데몬 자동 기동)
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # → .agents/ 심링크 + settings.json(훅 등록) (Claude Code + Codex가 같은 파일을 봄)
 ├── docs/
