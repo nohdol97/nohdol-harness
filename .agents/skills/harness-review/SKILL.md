@@ -19,6 +19,8 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 | 반복 실패 2회+ | team-log.jsonl의 `task_failed` 이벤트(orchestrate 이벤트 계약), 같은 종류의 재작업 커밋(fix 연쇄) 확인 |
 | 하네스 우회 | **팀 필요성 판정(orchestrate Phase 0-1) 없이 처리된 구현·다단계 작업**(판정 한 줄 보고의 부재가 증거 — 루트 AGENTS.md 7절 3항), orchestrate 없이 처리된 다중 프로젝트 작업, `.agents/` 밖에 생긴 에이전트·스킬 정의, 레지스트리에 없는 프로젝트 디렉토리, **하네스 스킬 트리거가 내장·플러그인·sc:* 외부 스킬로 샌 라우팅**(CLAUDE.md 스킬 우선순위 위반 — 예: PR 생성이 gstack ship으로, 작업 재개가 checkpoint로) |
 
+**agentsview 연동 (설치된 경우 신호 수집의 1차 데이터 소스)**: `agentsview`가 설치되어 있으면 세션 기억 대신 실측한다 — `agentsview session search "<요청 유형 키워드>"`로 반복 요청을, `agentsview stats`·`agentsview session list`로 재작업·실패 패턴을 조회한다. Claude Code·Codex 세션 전체가 인덱싱 대상이라 기억·커밋 메시지보다 정확하고 CLI 간 사각지대가 없다. 미설치면 위 표의 관찰 방법을 그대로 쓴다(설치는 harness-install 3단계).
+
 ### 2. 구조 무결성 점검
 
 - 심링크: `readlink .claude/agents .claude/skills`가 `../.agents/*`를 가리키는지. **`.claude/` 아래에 심링크가 아닌 실파일이 생겼는지** (생겼다면 우회 신호 — 원본은 `.agents/`에만 있어야 한다).
@@ -27,6 +29,7 @@ description: Weekly harness operations review. Scans recent git history, _worksp
 - 레지스트리: REGISTRY.md가 존재하는지(없으면 설치 미완료 — harness-install 안내), 존재하면 `project/` 하위 실제 디렉토리 목록과 표가 일치하는지.
 - 잔여물: `_workspace/`에서 team-log.jsonl이 **있는데** `team_delete` 이벤트가 없는 작업 디렉토리는 비정상 종료 신호. team-log 자체가 없는 팀 작업 디렉토리는 이벤트 계약 우회 신호(정보성).
 - 변경 이력: 최근 하네스 커밋마다 변경 이력 테이블 갱신이 동반되었는지 (`git log -p -- AGENTS.md`).
+- 시크릿 유출(agentsview 설치 시): `agentsview secrets scan`으로 세션 로그에 시크릿이 샜는지 스캔한다 — 3절 가드레일("기록 금지")은 예방 규칙이고 이것이 사후 검증이다. 발견 시 must-fix로 즉시 사용자 보고.
 
 ### 3. 제안 생성
 

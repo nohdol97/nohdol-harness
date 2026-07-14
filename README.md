@@ -37,7 +37,7 @@ nohdol-harness/
 
 ## 새 컴퓨터에 설치하기
 
-클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → 디렉토리 생성 → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다.
+클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다.
 
 ## 동작 방식
 
