@@ -63,7 +63,7 @@
 
 ## 8. 진화 트리거 (자동화 판단 규칙)
 
-아래 3신호 중 하나라도 감지되면 **에이전트/스킬 신설 또는 개선을 사용자에게 제안**하고, 승인 시 metaskill로 생성한다. 주 1회 이 신호를 관찰하는 것을 운영 습관으로 삼으며, 관찰 절차는 `harness-review` 스킬로 실행한다. **주 1회 실행은 SessionStart 리마인더 훅이 자동 트리거한다** — 마지막 점검(`_workspace/.harness-review-last`) 후 7일이 지나면 다음 세션 시작 시 실행 지시가 주입되므로 기억에 의존하지 않는다.
+아래 3신호 중 하나라도 감지되면 **에이전트/스킬 신설 또는 개선을 사용자에게 제안**하고, 승인 시 metaskill로 생성한다. 관찰 절차는 `harness-review` 스킬로 실행하며, 주기는 **2단** — 일일 경량(마지막 점검 이후의 3신호 스캔만, 무신호면 한 줄 보고)과 주간 전체(무결성 점검 포함). **실행은 SessionStart 리마인더 훅이 자동 트리거한다** — 마커(`_workspace/.harness-review-daily-last`·`.harness-review-last`)로 1일/7일 경과를 판정해 다음 세션 시작 시 실행 지시가 주입되므로 기억에 의존하지 않는다(2026-07-14 사용자 확정 — 비효율은 매일 잡는다).
 
 | 신호 | 기준 |
 |---|---|
@@ -153,3 +153,4 @@
 | 2026-07-14 | agentsview 연동 — harness-review 신호 실측(session search·stats)·secrets scan 사후 검증, harness-install 3단계(도구+finding-history 스킬 전역 설치) 신설, 11절 외부 도구 스킬 전역 설치 규칙 | 11절, harness-review, harness-install | 사용자 승인(kenn-io/agentsview 검토) — 주간 점검의 신호 관찰이 세션 기억 의존에서 세션 이력 실측으로. 프로젝트 모드 설치는 심링크 경유로 공용 저장소를 오염 |
 | 2026-07-14 | agentsview-daemon SessionStart 훅 신설(스펙+회귀 테스트) — 세션 시작 시 동기화 데몬 자동 기동, 로컬 DB 고정·외부 동기화 금지 문구 보강 | .agents/hooks/, .claude/settings.json, docs/specs/, harness-install, README | 사용자 요청 — 동기화 수동 기동 제거. fail-open으로 미설치 환경 무간섭 |
 | 2026-07-14 | harness-review-reminder SessionStart 훅 신설(스펙+회귀 테스트) — 마지막 점검 7일 경과 시 세션 시작에 실행 지시 주입, harness-review에 완료 마커 갱신 단계 추가 | 8절, .agents/hooks/, .claude/settings.json, docs/specs/, harness-review, README | 사용자 요청(주간 점검 cron화) — 제안 승인에 사람이 필요하고 신호 데이터가 로컬에 있어, 무인 cron 대신 세션 트리거 방식 채택 |
+| 2026-07-14 | 점검 주기 2단 확장 — 일일 경량 모드(1일, 3신호 스캔만·무신호 시 한 줄) 신설, 리마인더 훅 마커 2개 판정으로 개정 | 8절, .agents/hooks/harness-review-reminder.py, harness-review, docs/specs | 사용자 확정 — "일주일은 너무 길다, 비효율은 매일 새 세션에서 점검" |
