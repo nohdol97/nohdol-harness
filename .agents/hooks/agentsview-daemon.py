@@ -65,7 +65,10 @@ def main():
             print("[세션 훅 상태] agentsview 데몬: 미설치 — 건너뜀(설치는 harness-install 3단계)")
             return 0  # 미설치 — no-op (R1)
         st = subprocess.run(
-            [binary, "daemon", "status"], capture_output=True, text=True, timeout=10
+            # encoding 명시 — 로케일 기본 인코딩(cp949 등) 의존 디코딩 제거(tdd-gate
+            # C15와 동일 클래스). status 출력은 ASCII지만 비의존을 규약으로 고정한다.
+            [binary, "daemon", "status"], capture_output=True, timeout=10,
+            encoding="utf-8", errors="replace",
         )
         if daemon_running(st.returncode, (st.stdout or "") + (st.stderr or "")):
             print("[세션 훅 상태] agentsview 데몬: 실행 중")

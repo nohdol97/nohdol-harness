@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tdd-gate 회귀 테스트 — 스펙 docs/specs/2026-07-13-tdd-gate-hook.md 완료 기준(C1~C14).
+"""tdd-gate 회귀 테스트 — 스펙 docs/specs/2026-07-13-tdd-gate-hook.md 완료 기준(C1~C15).
 
 실행: python3 .agents/githooks/tdd-gate_test.py   (훅 수정 시 반드시 통과 — R7)
 부수 효과: 임시 디렉토리와 dev/_tddgate_selftest/(예외 경로 검증용)만 사용하며 전부 정리한다.
@@ -15,6 +15,15 @@ HOOK = os.path.join(HERE, "tdd-gate.py")
 HARNESS_ROOT = os.path.dirname(os.path.dirname(HERE))
 GITHOOKS = HERE
 
+# 스위트 자신의 한글 PASS/FAIL 출력도 로케일 비의존이어야 한다(C 로케일에서
+# print가 UnicodeEncodeError로 죽으면 검증 자체가 불가) — 단일 원본을 공유한다.
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "hooks"))
+try:
+    from _common import utf8_stdio
+except Exception:
+    def utf8_stdio():
+        pass
+
 results = []
 
 
@@ -27,8 +36,12 @@ def run_git_hook(repo, message, msg_path=None, env=None):
             f.write(message)
         msg_path = made
     try:
+        # encoding 명시 — 자식(훅)의 한글 안내는 UTF-8 바이트인데, 미지정 text=True는
+        # 로케일 기본 인코딩(cp949 등)으로 디코딩해 리더 스레드가 죽고 stderr가 None이
+        # 된다(2026-07-15 큐 보고 — 한글 Windows에서 스위트가 C1 이후 진행 불가).
         p = subprocess.run([sys.executable, HOOK, "--commit-msg", msg_path],
-                           cwd=repo, capture_output=True, text=True, timeout=30,
+                           cwd=repo, capture_output=True, timeout=30,
+                           encoding="utf-8", errors="replace",
                            env={**os.environ, **env} if env else None)
         return p.returncode, p.stderr
     finally:
@@ -40,7 +53,8 @@ def git_with_hooks(repo, *args):
     """전역 core.hooksPath 등록을 흉내 내 .agents/githooks/ 경유로 git을 실행한다."""
     return subprocess.run(
         ["git", "-c", "core.hooksPath=%s" % GITHOOKS, *args],
-        cwd=repo, capture_output=True, text=True, timeout=30,
+        cwd=repo, capture_output=True, timeout=30,
+        encoding="utf-8", errors="replace",
     )
 
 
@@ -75,6 +89,7 @@ def check(cid, desc, got, want):
 
 
 def main():
+    utf8_stdio()
     tmp = tempfile.mkdtemp(prefix="tdd-gate-test-")
     dev_probe = os.path.join(HARNESS_ROOT, "dev", "_tddgate_selftest")
     try:
@@ -176,22 +191,43 @@ def main():
         put(g13, "app.py"); sh(g13, "add", "app.py")
         p13 = subprocess.run(
             ["git", "-c", "core.hooksPath=%s" % orphan, "commit", "-q", "-m", "feat: x"],
-            cwd=g13, capture_output=True, text=True, timeout=30,
+            cwd=g13, capture_output=True, timeout=30,
+            encoding="utf-8", errors="replace",
         )
         check("C13", "게이트 스크립트 부재 → 커밋 통과", p13.returncode, 0)
 
         # C14: 알 수 없는 진입(구버전 PreToolUse 등록: 무인자 + stdin JSON) → fail-open
         # 혼합 상태(구 settings.json + 신 스크립트)에서 세션·커밋이 깨지면 안 된다 (ADR 015)
         p14 = subprocess.run(
-            [sys.executable, HOOK], cwd=g1, capture_output=True, text=True, timeout=30,
+            [sys.executable, HOOK], cwd=g1, capture_output=True, timeout=30,
+            encoding="utf-8", errors="replace",
             input='{"tool_name": "Bash", "tool_input": {"command": "git commit"}}',
         )
         check("C14a", "구버전 stdin 진입 → 통과", p14.returncode, 0)
         p14b = subprocess.run(
             [sys.executable, HOOK, "--commit-msg"],
-            cwd=g1, capture_output=True, text=True, timeout=30,
+            cwd=g1, capture_output=True, timeout=30,
+            encoding="utf-8", errors="replace",
         )
         check("C14b", "인자 누락 진입 → 통과", p14b.returncode, 0)
+
+        # C15: 비UTF-8 로케일(한글 Windows cp949, C 로케일)에서 한글 파일명 → 차단 유지.
+        # 훅 내부 git 출력 디코딩이 로케일 기본 인코딩에 의존하면 UnicodeDecodeError가
+        # 나고, fail-open이 그것을 삼켜 차단해야 할 커밋이 통과한다(2026-07-15 큐 보고).
+        g15 = make_repo(os.path.join(tmp, "g15"))
+        try:
+            put(g15, "한글코드.py")
+        except UnicodeEncodeError:
+            # 파일시스템 인코딩이 한글 파일명을 못 담는 환경(C 로케일 전체 실행
+            # 시뮬레이션)에서만 발생 — 실제 대상 환경(한글 Windows·UTF-8 리눅스)
+            # 에서는 생성이 되므로 케이스가 돈다. 침묵 누락 금지: SKIP을 남긴다.
+            print("SKIP C15: 파일시스템이 한글 파일명 미지원(비UTF-8 fs 인코딩)")
+        else:
+            sh(g15, "add", "한글코드.py")
+            code15, _ = run_git_hook(g15, "feat: kr", env={
+                "LC_ALL": "C", "LANG": "C",
+                "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0"})
+            check("C15", "비UTF-8 로케일 + 한글 파일명 → 차단 유지", code15, 2)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         shutil.rmtree(dev_probe, ignore_errors=True)
