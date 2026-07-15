@@ -19,6 +19,18 @@ import re
 import subprocess
 import sys
 
+# stdio UTF-8 재구성의 단일 원본은 세션 훅 디렉토리의 `_common.py`다(스펙
+# 2026-07-15-hooks-common-bootstrap) — git 훅은 임의 저장소 cwd에서 실행되므로
+# 이 파일 위치 기준으로 경로를 잡는다. 유실 시 no-op 폴백(fail-open).
+sys.path.insert(
+    0, os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "hooks")
+)
+try:
+    from _common import utf8_stdio
+except Exception:
+    def utf8_stdio():
+        pass
+
 # 앱 코드 확장자 중심. .sh/.sql/.tf 등 스크립트·마이그레이션·IaC는 의도적 제외
 # (테스트 관행이 낮아 게이트 마찰 > 가치 — R5, ADR 008).
 CODE_EXTS = {
@@ -52,17 +64,6 @@ def is_test_file(path):
         or re.search(r"_(test|tests|spec)$", stem)
         or re.search(r"\.(test|spec)\.", base)
     )
-
-
-def utf8_stdio():
-    """stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의 기본
-    인코딩(cp949)은 차단 안내의 em dash(U+2014)를 못 담아 write가 예외를 던지고,
-    최상위 fail-open이 그것을 삼켜 차단해야 할 커밋이 통과한다(2026-07-14 장애)."""
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
 
 
 def exempt_repo(repo_dir):

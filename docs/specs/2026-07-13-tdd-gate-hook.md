@@ -71,3 +71,4 @@
 | 2026-07-14 | git commit-msg 계층 추가(구 R9·R10, C14~C23) — `.agents/githooks/` shim + 전역 core.hooksPath, 비목표의 "Codex 세션 강제"를 목표로 승격 | 목표, 비목표, 요구사항, .agents/githooks/, tdd-gate.py, harness-install | 사용자 요청 — Codex 등 도구 무관 강제. ADR 008의 "Claude Code 한정" 결정을 ADR 014가 대체 |
 | 2026-07-14 | **git 계층 단일화** — PreToolUse 등록·stdin JSON 명령 파싱 계층 제거, 요구사항 R1~R7·완료 기준 C1~C14로 전면 재편, 미등록 감시를 harness-review 주간 무결성에 편입 | 전체 | 사용자 결정 — 이중 계층의 혼란 비용 > 중복 가치, 타 설치처는 최신 코드 기반 harness-install 재실행으로 등록. ADR 014의 "계층 추가(PreToolUse 유지)" 결정을 ADR 015가 대체 |
 | 2026-07-14 | 스크립트·테스트를 `.agents/hooks/` → `.agents/githooks/`로 이동 | tdd-gate.py, tdd-gate_test.py, commit-msg shim, 문서 경로 전반 | 사용자 결정 — 단일화 후 hooks/는 Claude 세션 훅 전용이 됐으므로, git이 부르는 게이트는 진입 shim과 같은 곳에 둔다(git은 훅 이름과 일치하는 파일만 실행하므로 .py 동거 무해) |
+| 2026-07-15 | utf8_stdio를 `.agents/hooks/_common.py` import로 전환 — 교차 디렉토리라 파일 위치 기준 sys.path 삽입, 유실 시 no-op 폴백 | tdd-gate.py | 일일 점검 신호 ②(공통 로직 복제로 fix 3연쇄) — 스펙 2026-07-15-hooks-common-bootstrap |
