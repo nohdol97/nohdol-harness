@@ -21,7 +21,7 @@
 ## 요구사항
 
 - R1: `_common.py`는 `utf8_stdio()`를 제공한다 — stdout·stderr를 UTF-8(errors=replace)로 재구성, 재구성 불가 스트림은 무시. 동작은 기존 훅 내장 구현과 동일(각 훅 스펙의 cp949 완료 기준이 회귀 기준).
-- R2: 훅 3종은 내장 정의를 제거하고 `_common`에서 import한다. 훅 실행 방식(스크립트 직접 실행 → `sys.path[0]`=훅 디렉토리)상 상대 import 장치 없이 `from _common import ...`로 충분하다.
+- R2: 훅 3종은 내장 정의를 제거하고 `_common`에서 import한다. 세션 훅 2종(agentsview-daemon·harness-review-reminder)은 같은 디렉토리라 스크립트 직접 실행(`sys.path[0]`=훅 디렉토리)만으로 충분하고, git 훅 계층의 `githooks/tdd-gate.py`(ADR 015)는 임의 저장소 cwd에서 실행되므로 **파일 위치 기준 sys.path 삽입** 후 import한다.
 - R3: import는 fail-open이어야 한다 — `_common.py` 부재·손상 시 no-op 폴백으로 대체하고 훅 본연의 동작은 계속한다(cp949 보호만 상실, 세션·커밋은 막지 않음).
 - R4: 훅 3종의 기존 회귀 테스트(cp949 케이스 포함)가 수정 없이 전부 통과한다 — 동작 불변 리팩토링임의 증명.
 - R5: 회귀 테스트가 `.agents/hooks/_common_test.py`로 영속되어야 한다.
@@ -49,3 +49,4 @@
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
 | 2026-07-15 | 초안 작성 및 구현 | 전체 | 일일 점검 신호 ②(cp949 수정이 훅 3종 반복 적용된 fix 연쇄) — 공통 로직 단일 원본화, 사용자 승인 |
+| 2026-07-15 | tdd-gate의 git 계층 이동(main ADR 014·015)과 병합 — R2를 세션 훅 동일 디렉토리 / githooks 교차 디렉토리(sys.path 삽입)로 개정 | R2, 훅 경로 | main 선반영 개편과의 충돌 해소 — 의도(단일 원본)를 새 구조로 번역 |

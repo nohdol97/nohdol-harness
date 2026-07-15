@@ -1,5 +1,7 @@
 # ADR 008 — TDD 게이트 훅 (13절 실행 계층 강제)
 
+> ⚠️ 이 중 "Claude Code 한정(Codex 미적용 수용)" 결정은 **ADR 014로 대체**되었고(git commit-msg 계층 추가로 도구 무관 강제), PreToolUse 등록·명령 파싱 계층 자체도 **ADR 015로 제거**되었다(git 계층 단일화). 스크립트 위치도 단일화 후속으로 `.agents/hooks/` → `.agents/githooks/`로 이동했다(2026-07-14 — hooks/는 Claude 세션 훅 전용, git이 부르는 것은 githooks/). 차단 지점(커밋 시점)·fail-open·예외 경로·CODE_EXTS 범위 결정은 유효하다.
+
 - **날짜**: 2026-07-13
 - **변경 내용**: 루트 `.claude/settings.json`을 신설하고 PreToolUse(Bash) 훅으로 `.agents/hooks/tdd-gate.py`를 등록한다. `git commit` 시점에 커밋 대상에 코드 파일이 있는데 테스트 파일 변경이 없으면 차단(exit 2)하고, 13절의 조치(테스트 동반 커밋 / 사용자 확인 후 `[no-test]` 표기)를 안내한다.
 - **대상**: AGENTS.md 5·13절, `.claude/settings.json`(신설·추적), `.agents/hooks/tdd-gate.py`·`tdd-gate_test.py`(신설·추적), `docs/specs/2026-07-13-tdd-gate-hook.md`(스펙)

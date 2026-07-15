@@ -39,7 +39,8 @@ def load_module(name, filename, block_common=False):
 
 
 HOOK_FILES = [
-    ("tdd_gate_hook", "tdd-gate.py"),
+    # tdd-gate는 git 훅 계층(.agents/githooks/ — ADR 015)이라 교차 디렉토리 import다.
+    ("tdd_gate_hook", os.path.join(os.pardir, "githooks", "tdd-gate.py")),
     ("agentsview_daemon_hook", "agentsview-daemon.py"),
     ("harness_review_reminder_hook", "harness-review-reminder.py"),
 ]

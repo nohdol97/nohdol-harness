@@ -46,7 +46,7 @@
 
 ## 미해결 질문
 
-- **대기 관찰 — Codex 훅 계층 (2026-07-15 기록, 훅 3종 공통)**: 비목표의 "Codex 세션 트리거 불가(훅은 Claude Code 계층)" 전제가 바뀌고 있다 — Codex CLI v0.114+(2026-03)에 라이프사이클 훅 시스템이 도입됐고 UserPromptSubmit(v0.116)·SessionStart 등 10개 이벤트, exit 2 차단, systemMessage, transcript_path를 지원한다. 다만 현재 **실험 기능(기본 비활성, hooks.json)·Windows 미지원**이라 채택 보류. 안정화 + Windows 지원이 확인되면 훅 3종(tdd-gate·agentsview-daemon·harness-review-reminder)의 Codex 등록을 재검토한다 — 특히 tdd-gate는 Codex 세션이 게이트 사각지대다.
+- **대기 관찰 — Codex 훅 계층 (2026-07-15 기록, 세션 훅 2종 공통)**: 비목표의 "Codex 세션 트리거 불가(훅은 Claude Code 계층)" 전제가 바뀌고 있다 — Codex CLI v0.114+(2026-03)에 라이프사이클 훅 시스템이 도입됐고 UserPromptSubmit(v0.116)·SessionStart 등 10개 이벤트, exit 2 차단, systemMessage, transcript_path를 지원한다. 다만 현재 **실험 기능(기본 비활성, hooks.json)·Windows 미지원**이라 채택 보류. tdd-gate는 git commit-msg 계층 단일화(ADR 014·015)로 이미 도구 무관이 되어 대상에서 제외 — 남은 공백은 **SessionStart 세션 훅 2종(이 리마인더·agentsview-daemon)이 Codex 세션에서 안 도는 것**이다. Codex 훅 안정화 + Windows 지원이 확인되면 이 2종의 Codex SessionStart 등록을 재검토한다.
 
 ## 변경 이력
 

@@ -1,0 +1,6 @@
+#!/bin/sh
+# 체인 전용 — 전역 core.hooksPath(ADR 014)가 저장소 로컬 훅(.git/hooks)을 가리지
+# 않도록, 같은 이름의 로컬 훅이 있으면 실행을 넘긴다. 게이트 로직은 없다.
+gd=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+[ -x "$gd/hooks/prepare-commit-msg" ] && exec "$gd/hooks/prepare-commit-msg" "$@"
+exit 0
