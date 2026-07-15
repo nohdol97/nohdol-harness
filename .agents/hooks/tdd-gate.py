@@ -22,6 +22,13 @@ import re
 import subprocess
 import sys
 
+try:
+    # stdio UTF-8 재구성의 단일 원본(스펙 2026-07-15-hooks-common-bootstrap).
+    from _common import utf8_stdio
+except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fail-open)
+    def utf8_stdio():
+        pass
+
 # 앱 코드 확장자 중심. .sh/.sql/.tf 등 스크립트·마이그레이션·IaC는 의도적 제외
 # (테스트 관행이 낮아 게이트 마찰 > 가치 — R7, ADR 008).
 CODE_EXTS = {
@@ -101,17 +108,6 @@ def is_test_file(path):
         or re.search(r"_(test|tests|spec)$", stem)
         or re.search(r"\.(test|spec)\.", base)
     )
-
-
-def utf8_stdio():
-    """stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의 기본
-    인코딩(cp949)은 차단 안내의 em dash(U+2014)를 못 담아 write가 예외를 던지고,
-    최상위 fail-open이 그것을 삼켜 차단해야 할 커밋이 통과한다(2026-07-14 장애)."""
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
 
 
 def main():

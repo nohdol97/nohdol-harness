@@ -15,16 +15,12 @@ import shutil
 import subprocess
 import sys
 
-
-def utf8_stdio():
-    """stdout/stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의
-    기본 인코딩(cp949)은 em dash(U+2014) 등을 못 담아 print 자체가 예외를 던진다
-    (2026-07-14 장애). 훅 출력의 소비자는 콘솔이 아니라 Claude Code(UTF-8)다."""
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass  # 재구성 불가 스트림(테스트 StringIO 등)은 그대로 둔다
+try:
+    # stdio UTF-8 재구성의 단일 원본(스펙 2026-07-15-hooks-common-bootstrap).
+    from _common import utf8_stdio
+except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fail-open)
+    def utf8_stdio():
+        pass
 
 
 NOT_RUNNING_RE = re.compile(
