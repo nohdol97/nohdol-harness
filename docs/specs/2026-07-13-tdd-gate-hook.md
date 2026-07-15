@@ -54,6 +54,7 @@
 - [x] C12 (R6): shim 체인 — 게이트 통과 후 저장소 로컬 `.git/hooks/commit-msg`가 실행됨.
 - [x] C13 (R6): shim — 게이트 스크립트 부재(하네스 이동·삭제) 시 커밋 통과(fail-open — 머신 전역 커밋 차단 방지).
 - [x] C14 (R4): 알 수 없는 진입 — 구버전 PreToolUse 방식(무인자 + stdin JSON)·인자 누락 호출 → exit 0(혼합 상태 호환 — ADR 015).
+- [x] C15 (R2·R4): 비UTF-8 로케일(한글 Windows cp949·C 로케일) + 한글 파일명 스테이징 → 차단 유지. 2중 방어: git 경로 출력을 `core.quotepath=false`(8진수 이스케이프가 확장자 판정을 깨는 것 방지) + `encoding="utf-8"` 명시(로케일 의존 디코딩 제거 — UnicodeDecodeError를 fail-open이 삼켜 게이트 무력화 방지)로 받는다. 파일시스템이 한글 파일명을 못 담는 환경에서는 SKIP을 명시 출력한다.
 
 ## 미해결 질문
 
@@ -72,3 +73,4 @@
 | 2026-07-14 | **git 계층 단일화** — PreToolUse 등록·stdin JSON 명령 파싱 계층 제거, 요구사항 R1~R7·완료 기준 C1~C14로 전면 재편, 미등록 감시를 harness-review 주간 무결성에 편입 | 전체 | 사용자 결정 — 이중 계층의 혼란 비용 > 중복 가치, 타 설치처는 최신 코드 기반 harness-install 재실행으로 등록. ADR 014의 "계층 추가(PreToolUse 유지)" 결정을 ADR 015가 대체 |
 | 2026-07-14 | 스크립트·테스트를 `.agents/hooks/` → `.agents/githooks/`로 이동 | tdd-gate.py, tdd-gate_test.py, commit-msg shim, 문서 경로 전반 | 사용자 결정 — 단일화 후 hooks/는 Claude 세션 훅 전용이 됐으므로, git이 부르는 게이트는 진입 shim과 같은 곳에 둔다(git은 훅 이름과 일치하는 파일만 실행하므로 .py 동거 무해) |
 | 2026-07-15 | utf8_stdio를 `.agents/hooks/_common.py` import로 전환 — 교차 디렉토리라 파일 위치 기준 sys.path 삽입, 유실 시 no-op 폴백 | tdd-gate.py | 일일 점검 신호 ②(공통 로직 복제로 fix 3연쇄) — 스펙 2026-07-15-hooks-common-bootstrap |
+| 2026-07-15 | 서브프로세스 출력 로케일 비의존화 + C15 신설 — git() 호출에 `core.quotepath=false`·`encoding="utf-8"` 명시, 테스트 하니스 subprocess.run 5곳 encoding 명시·스위트 stdio UTF-8 재구성(_common 공유) | git(), C15, tdd-gate_test.py | 대기 큐 보고(2026-07-15, 한글 Windows harness-install 재점검) — 미지정 text=True가 cp949 로케일에서 자식 출력 디코딩 크래시(스위트 C1 이후 진행 불가). 조사 중 추가 발견: quotepath 기본값이 한글 파일명 확장자 판정을 깨 로케일 무관하게 게이트 통과(실버그) — 크로스 플랫폼 체크리스트(스펙 템플릿) ③ 실측 검증의 적용 사례 |

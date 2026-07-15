@@ -46,8 +46,14 @@ TEST_DIRS = {
 
 
 def git(args, cwd):
+    # 비ASCII 파일명 방어 2중(C15): ① core.quotepath=false — 기본값(true)은 한글
+    # 경로를 8진수 이스케이프(`"\355..."`)로 감싸 확장자 판정(.py → .py")을 깨뜨려
+    # 어떤 로케일에서든 게이트가 통과된다. ② encoding 명시 — 미지정 text=True는
+    # 로케일 기본 인코딩(한글 Windows cp949, C 로케일 ASCII)으로 디코딩해 원문
+    # UTF-8 경로에서 UnicodeDecodeError가 나고, fail-open이 그것을 삼킨다.
     return subprocess.run(
-        ["git", *args], cwd=cwd, capture_output=True, text=True, timeout=15
+        ["git", "-c", "core.quotepath=false", *args], cwd=cwd, capture_output=True,
+        timeout=15, encoding="utf-8", errors="replace",
     )
 
 
