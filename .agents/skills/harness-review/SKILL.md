@@ -43,6 +43,7 @@ description: Harness operations review in two modes - daily lite (scan the three
 
 - 심링크: `readlink .claude/agents .claude/skills`가 `../.agents/*`를 가리키는지. **`.claude/` 아래에 심링크가 아닌 실파일이 생겼는지** (생겼다면 우회 신호 — 원본은 `.agents/`에만 있어야 한다).
 - git 훅 계층: `git config --global --get core.hooksPath`가 이 하네스의 `.agents/githooks`를 가리키는지 — tdd-gate(13절)의 **유일한 실행 계층**이라 미등록 머신은 게이트가 통째로 꺼진 상태다(pull만 하고 harness-install 1단계를 안 돌린 경우 발생 — ADR 015). 미등록이면 등록 명령을 제안한다.
+- 훅 공통 모듈: `.agents/hooks/_common.py`가 존재하는지 — 훅 3종의 stdio UTF-8 재구성 단일 원본이라(스펙 2026-07-15-hooks-common-bootstrap) 유실되면 각 훅이 no-op 폴백으로 조용히 넘어가 cp949 보호가 사라진다(fail-open이라 에러도 안 남). 부재면 복구를 제안한다.
 - 하위 하네스: `.agents/projects/` 하위 디렉토리 목록과 REGISTRY.md 레지스트리 행("하네스 유무" ✓)이 일치하는지. `project/<이름>/` 안에 하네스 파일(AGENTS.md·CLAUDE.md·`.claude/`·`.agents/`)이 생겼는지 (생겼다면 우회 신호 — 원본은 루트 `.agents/projects/`에만 있어야 한다. 루트 AGENTS.md 12절, ADR 006·007). 하위에 CLAUDE.md가 있으면 구 규격 잔재 — 삭제 제안. 지연 생성된 `skills/`·`agents/`가 있는데 하위 AGENTS.md에 목록·경로 명시가 없으면 로드 불능 상태 — 보고.
 - 스킬 로드 가능성: 각 SKILL.md의 frontmatter가 첫 줄 `---` + `description` 보유인지(무설명 스킬은 자동 트리거 불능 — 2026-07-13 장애), 개행이 LF인지(`file` 명령에 CRLF 표기 없어야 함).
 - 레지스트리: REGISTRY.md가 존재하는지(없으면 설치 미완료 — harness-install 안내), 존재하면 `project/` 하위 실제 디렉토리 목록과 표가 일치하는지.
