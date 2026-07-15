@@ -98,6 +98,7 @@ description: "Gate and orchestrate agent work. Phase 0 judges whether a request 
 3. 최종 판단은 파일에 저장한다.
 4. **Critical 발견 시** 오케스트레이터와 관련 팀원에게 동시 보고한다. 나머지 작업은 계속하되, 최종 판정은 차단(must-fix 포함) 상태로 둔다.
 5. 역할 범위 밖 수정은 하지 않는다 (예: 리뷰어는 코드 수정 금지).
+6. **내부 통신은 영어**(루트 AGENTS.md 15절) — 발행 프롬프트, `_workspace/` 중간 리포트, SendMessage의 claim·request 본문. 예외: integrator 최종 리포트·배포 런북은 한국어(사용자가 직접 읽는 문서), 코드·로그 인용은 원어. 이유: 한국어는 같은 내용에 ~1.5-2배 토큰이고 중간 리포트는 여러 번 재독된다.
 
 메시지 형식 고정(JSON): `{type, severity, file, line, claim, request}` — 발견 사실과 수신자가 취해야 할 행동을 모두 담는다.
 
@@ -160,6 +161,8 @@ TeamDelete 실패 시 **숨기지 않고** 수동 정리 필요 항목을 보고
 1. 차단/필수(must-fix) 항목 수와 위치
 2. 권고(should-fix) 항목 수
 3. 전체 리포트 경로 (`_workspace/<작업명>/...`)
+
+보고는 **한국어로 소화해서** 쓴다 — 팀원 리포트가 영어(15절)라도 인용·직역하지 않고, 전송 직전 사용자 대면 텍스트가 전부 한국어인지 확인한다(언어 섞임 방지 가드).
 
 ## with / without
 

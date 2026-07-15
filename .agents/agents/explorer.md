@@ -20,7 +20,7 @@ tier: explore
 ## 3. 입출력 프로토콜
 
 - **입력**: 수집 대상(경로·질문)과 출력 경로. 출력 경로가 지시되지 않으면 `_workspace/<작업명>/phase{N}_explorer_report.md`.
-- **출력**: 한국어 마크다운 리포트 — 발견 목록(근거 포함), 미확인 항목, severity(Critical/High/Med/Low — 단일 원본: integrator.md 2절) 표기.
+- **출력**: **영어** 마크다운 리포트(내부 산출물 — 루트 15절, 코드·로그 인용은 원어) — 발견 목록(근거 포함), 미확인 항목, severity(Critical/High/Med/Low — 단일 원본: integrator.md 2절) 표기.
 
 ## 4. 팀 통신 프로토콜
 

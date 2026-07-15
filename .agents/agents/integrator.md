@@ -25,7 +25,7 @@ tier: design
 ## 3. 입출력 프로토콜
 
 - **입력**: `_workspace/<작업명>/` 아래 팀원 리포트 전부 + 작업 명세(무엇에 대한 통합인지).
-- **출력**: `_workspace/<작업명>/phase{N}_integrator_final-report.md` — must-fix/should-fix/watch 3섹션, 각 항목에 근거 출처(원 리포트 경로)와 병합·강등·승격 이력.
+- **출력**: `_workspace/<작업명>/phase{N}_integrator_final-report.md` — must-fix/should-fix/watch 3섹션, 각 항목에 근거 출처(원 리포트 경로)와 병합·강등·승격 이력. **한국어로 쓴다**(루트 15절 예외 — 사용자에게 경로가 전달되어 직접 읽는 판정 문서다. 입력인 팀원 리포트는 영어지만, 인용이 아니라 한국어로 소화해 담는다).
 
 ## 4. 팀 통신 프로토콜
 

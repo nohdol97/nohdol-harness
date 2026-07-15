@@ -21,7 +21,7 @@ tier: implement
 ## 3. 입출력 프로토콜
 
 - **입력**: 배포·인프라 요구사항, 스펙(있으면 완료 기준 준수), 대상 프로젝트 하네스(`.agents/projects/<이름>/AGENTS.md` — 작업 전 필독).
-- **출력**: 매니페스트·IaC는 대상 프로젝트 저장소에 직접(커밋은 branch-workflow 규칙), 진단·배포 계획 리포트는 `_workspace/<작업명>/phase{N}_infra-specialist_<내용>.md`(배포 계획은 doc-writer 런북 템플릿 — 파괴적 단계 ⚠️ 표시 필수).
+- **출력**: 매니페스트·IaC는 대상 프로젝트 저장소에 직접(커밋은 branch-workflow 규칙), 진단·배포 계획 리포트는 `_workspace/<작업명>/phase{N}_infra-specialist_<내용>.md`. 언어(루트 15절): 진단 리포트는 **영어**(내부 산출물), **배포 계획·런북은 한국어**(doc-writer 런북 템플릿, 파괴적 단계 ⚠️ 표시 필수 — 사용자가 단계별 확인하며 읽는 문서).
 
 ## 4. 팀 통신 프로토콜
 

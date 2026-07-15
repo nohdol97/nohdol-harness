@@ -48,6 +48,8 @@
 
 파일명: `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md`
 
+> **영어로 작성한다**(루트 AGENTS.md 15절 — 모델만 읽는 내부 산출물, 코드·로그 인용은 원어). 절 구조는 아래와 동일(Summary / Findings / Judgement·Recommendations / Limits). **예외**: integrator 최종 리포트·배포 런북·harness-review 제안서는 사용자가 직접 읽으므로 한국어.
+
 ```markdown
 # <작업명> — <내용> (phase{N}, {에이전트명})
 

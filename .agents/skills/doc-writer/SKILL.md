@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: Write project documents in one consistent format - specs, work reports, READMEs, runbooks, PR bodies. Picks the matching template from references/templates.md, drafts in Korean, then self-checks against the template checklist. Use when the user says 문서 작성, 문서 만들어줘, 스펙 써줘, 리포트 정리, README 써줘, PR 본문 써줘, when creating a PR (branch-workflow finish), or when section 13 (SDD) requires a spec before coding. Re-run keywords - doc, doc-writer, document, spec, PR, 문서, 문서 작성, 스펙, PR 본문.
+description: Write project documents in one consistent format - specs, work reports, READMEs, runbooks, PR bodies. Picks the matching template from references/templates.md, drafts in Korean (internal _workspace team reports in English per root AGENTS.md section 15), then self-checks against the template checklist. Use when the user says 문서 작성, 문서 만들어줘, 스펙 써줘, 리포트 정리, README 써줘, PR 본문 써줘, when creating a PR (branch-workflow finish), or when section 13 (SDD) requires a spec before coding. Re-run keywords - doc, doc-writer, document, spec, PR, 문서, 문서 작성, 스펙, PR 본문.
 ---
 
 # doc-writer — 일관 형식 문서 작성
@@ -30,7 +30,7 @@ ADR·변경 이력 테이블은 이 스킬 대상이 아니다 — 형식의 단
 
 ## 공통 문체 규칙 (모든 타입)
 
-- 한국어, 평서문. 한 문장에 한 주장.
+- 한국어, 평서문. 한 문장에 한 주장. **예외**: `_workspace/` 팀 중간 리포트(작업 리포트 템플릿)는 영어로 쓴다(루트 AGENTS.md 15절 — 모델만 읽는 내부 산출물, 절 구조는 동일). 사용자가 직접 읽는 문서(스펙·런북·README·PR 본문·integrator 최종 리포트·제안서)는 한국어 그대로다.
 - **Why-First**: 규칙·결정에는 이유를 붙인다.
 - 제목만 있고 내용 없는 절 금지. 추측은 "미확인"으로 정직하게 표기.
 - 코드·명령·경로는 백틱. 날짜는 YYYY-MM-DD.

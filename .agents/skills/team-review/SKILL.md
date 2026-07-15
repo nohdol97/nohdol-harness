@@ -41,7 +41,7 @@ description: Review code diffs, PRs, specs, or harness changes with a size-scale
 | 성능 | 명백한 비효율(N+1, 불필요 반복) — 추측성 최적화 제안 금지 |
 | UX·접근성 | UI 변경 diff에만 선발 — 접근성(WCAG 대비, 터치 타깃 크기, 키보드 내비게이션, ARIA), 사용자 안전 장치(자동저장·실행취소·에러 복구 UX). 기준은 대상 프로젝트 하네스·사용자 전역 정책의 접근성 요구 |
 
-각 리뷰어 프롬프트에 필수 포함: 대상 프로젝트 하네스(`.agents/projects/<이름>/AGENTS.md`) 읽기 지시, 스펙 경로, 출력 경로 `_workspace/<작업명>/phase1_reviewer-<관점>_report.md`(doc-writer 작업 리포트 템플릿). 리뷰어·integrator는 **design 티어**이므로 Agent 호출 시 `model`을 9절 표에 따라 최고 성능 모델로 지정한다(orchestrate 티어 적용 규칙 — 미지정 시 세션 모델 상속으로 티어 정책이 무시된다).
+각 리뷰어 프롬프트에 필수 포함: 대상 프로젝트 하네스(`.agents/projects/<이름>/AGENTS.md`) 읽기 지시, 스펙 경로, 출력 경로 `_workspace/<작업명>/phase1_reviewer-<관점>_report.md`(doc-writer 작업 리포트 템플릿 — **영어**, 루트 15절. integrator 최종 verdict와 사용자 보고는 한국어). 리뷰어·integrator는 **design 티어**이므로 Agent 호출 시 `model`을 9절 표에 따라 최고 성능 모델로 지정한다(orchestrate 티어 적용 규칙 — 미지정 시 세션 모델 상속으로 티어 정책이 무시된다).
 
 **동시 발행 (필수)**: 관점 리뷰어들은 서로의 결과에 의존하지 않으므로 **전원을 한 응답(같은 턴)에 동시 발행**한다(orchestrate B모드 동시 발행 규약). 정확성 리뷰가 끝나기를 기다렸다가 테스트 리뷰를 시작하는 것은 직렬 퇴화이며 규약 위반이다 — 순차가 허용되는 유일한 지점은 모든 리뷰가 끝난 뒤의 integrator뿐이다(팬인은 본질적으로 리뷰 완료에 의존).
 
