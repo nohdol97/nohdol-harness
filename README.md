@@ -23,14 +23,18 @@ nohdol-harness/
 │   │   ├── doc-writer/      # 일관 형식 문서 작성 (스펙·리포트·README·런북·PR 본문 템플릿)
 │   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   │   ├── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
-│   │   └── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)
-│   ├── hooks/             # Claude 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일 경량·주간 전체 점검 자동 트리거)
+│   │   ├── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)
+│   │   └── defuddle/        # 웹 본문만 추출 (토큰 절감, 실패 시 WebFetch 폴백 — kepano/obsidian-skills 착안)
+│   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성, 스펙 2026-07-15)
 │   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
-├── .claude/               # → .agents/ 심링크 + settings.json(훅 등록) (Claude Code + Codex가 같은 파일을 봄)
+├── .claude/               # → .agents/ 심링크 + settings.json(세션 훅 등록) (Claude Code + Codex가 같은 파일을 봄)
+├── .codex/                # Codex 훅 등록(hooks.json)·활성화(config.toml) — 리마인더 2종 병행, 항상 켜짐 (ADR 019). 그 외 미추적
 ├── docs/
+│   ├── README.md          # 문서 지도(MOC) — ADR·스펙·제안 탐색 인덱스 (상태·대체 관계·대상 코드)
 │   ├── adr/               # 구조적 결정 기록 (ADR)
-│   └── specs/             # 루트 자체 코드(훅 등)의 스펙 (SDD, AGENTS.md 13절)
+│   ├── specs/             # 루트 자체 코드(훅 등)의 스펙 (SDD, AGENTS.md 13절)
+│   └── proposals/         # 외부 도구 분석·채택 설계 (ponytail·claude-mem 등 → ADR로 확정)
 ├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적, 하네스 파일 없음)
 ├── dev/                   # 실험·임시 개발 공간 (미추적)
 └── _workspace/            # 세션 산출물 — 팀 작업 중간 결과물 (미추적)
@@ -38,16 +42,18 @@ nohdol-harness/
 
 ## 새 컴퓨터에 설치하기
 
-클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다.
+클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → **git 훅 계층 등록**(`core.hooksPath` → `.agents/githooks`, tdd-gate의 유일한 실행 계층이라 미등록이면 커밋 게이트가 꺼진 상태) → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다. 전역 git 설정은 저장소로 전파되지 않으므로 **머신마다 한 번씩** 필요하다.
 
 ## 동작 방식
 
 1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스(`.agents/projects/<이름>/AGENTS.md`)를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md) 하위 프로젝트 하네스는 전부 이 워크스페이스에서 중앙 관리하며, 프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다.
 2. **구현·다단계 작업**은 `orchestrate`의 팀 필요성 판정(Phase 0-1)을 거친다 — 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 규모에 맞게 정하고, 구현이 포함되면 reviewer 독립 검증을 반드시 포함한다. 팀은 표준 로스터 7종(explorer·architect·troubleshooter·implementer·infra-specialist·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
 3. **새 프로젝트**는 "프로젝트 새로 만들어줘"라고 지시하면 `metaskill`이 인터뷰 → 스캐폴딩 → 하네스 생성 → 레지스트리 등록까지 수행한다.
-4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절). TDD는 커밋 시점 훅(`tdd-gate`)이 강제한다 — 코드 변경에 테스트가 없으면 커밋이 차단된다.
-5. **작업 추적**: 세션을 넘는 작업은 `work-tracker`가 프로젝트 저장소의 GitHub Issues에 상태(태스크·진행 로그)를 영속화한다 — "이어서 하자"로 재개한다 (AGENTS.md 14절).
+4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절). TDD는 전역 `core.hooksPath`의 git commit-msg 훅(`tdd-gate`)이 강제한다 — 코드 변경에 테스트가 없으면 커밋이 차단되며, Claude Code·Codex·수동 커밋 등 **도구와 무관**하게 걸린다(ADR 014·015).
+5. **작업 추적**: 세션을 넘는 작업은 `work-tracker`가 프로젝트 저장소의 GitHub Issues에 상태(태스크·진행 로그)를 영속화한다 — "이어서 하자"로 재개한다 (AGENTS.md 14절). 세션이 미커밋 작업을 남긴 채 닫히면 다음 세션 시작 시 `worklog-reminder` 훅이 진행 로그·재개를 환기한다(claude-mem 착안, ADR 018).
 6. **진화**: 같은 요청 3회 / 같은 실패·정정 2회 / 하네스 우회 / 수축·효율(3주+ 무호출 스킬, 토큰 과소모 패턴 — 주간 점검 한정) 관찰 시 metaskill이 에이전트·스킬 신설·개선·폐기를 제안한다.
+7. **내부 통신 언어**: 모델만 읽는 산출물(서브에이전트 발행 프롬프트·`_workspace/` 팀 중간 리포트·P2P 메시지)은 영어, 사용자가 읽는 것(채팅 보고·PR·하네스 문서·판정 문서·트리거 키워드)은 한국어 — 한국어가 같은 내용에 ~1.5-2배 토큰이라 중간 산출물만 영어화해 절감한다 (AGENTS.md 15절, ADR 016).
+8. **코드 최소주의**: 하위 프로젝트 제품 코드는 쓰기 전에 결정 사다리(필요성→재사용→표준 라이브러리→네이티브→기존 의존성→한 줄→최소 구현)를 밟는다 — 단 문제 이해·검증·에러 처리·보안·명시 요청 기능은 최소화 예외(전면 엄밀성 유지). 판정은 `team-review`의 "단순성/과설계" 관점이 담당한다 (AGENTS.md 16절, ADR 017 — ponytail 착안).
 
 ## 안전 가드레일
 
@@ -57,4 +63,4 @@ nohdol-harness/
 
 ## 규칙 상세
 
-모든 규칙의 단일 원본은 [AGENTS.md](AGENTS.md)다. 구조적 결정의 배경은 [docs/adr/](docs/adr/)를 본다.
+모든 규칙의 단일 원본은 [AGENTS.md](AGENTS.md)다. 구조적 결정·스펙·외부 도구 채택 설계는 [docs/README.md](docs/README.md)의 문서 지도(MOC)에서 상태·대체 관계와 함께 탐색한다.
