@@ -34,6 +34,10 @@ class DaysSince(unittest.TestCase):
         self.assertIsNone(hook.days_since("어제쯤", TODAY))
         self.assertIsNone(hook.days_since("", TODAY))
 
+    def test_kst_offset(self):  # C9 — 경과 판정의 '오늘'은 KST(UTC+9) 기준
+        self.assertEqual(hook.KST.utcoffset(None), datetime.timedelta(hours=9))
+        self.assertEqual(hook.today_kst(), datetime.datetime.now(hook.KST).date())
+
 
 class DecideMode(unittest.TestCase):
     def test_weekly_overdue_wins(self):  # C1 — 전체가 일일보다 우선
@@ -76,13 +80,9 @@ class BuildMessage(unittest.TestCase):
         self.assertIn("첫 응답에서", msg)
         self.assertIn("서브에이전트", msg)
 
-    def test_status_line_when_fresh(self):  # C4 개정 — 기한 전에도 상태 한 줄
-        msg = hook.build_message(None, 3, 0)
-        self.assertIn("기한 전", msg)
-        self.assertIn("3일 전", msg)
-        self.assertIn("오늘", msg)  # 일일 0일 전은 "오늘"로 표기
-        self.assertIn("harness-ops-log.md", msg)
-        self.assertNotIn("지금 실행", msg)  # 점검 지시가 아님
+    def test_silent_when_fresh(self):  # C4 재개정(2026-07-16) — 기한 전엔 무출력(노이즈 제거)
+        self.assertIsNone(hook.build_message(None, 3, 0))
+        self.assertIsNone(hook.build_message(None, 0, 0))
 
 
 def run_main_in(tmpdir):
@@ -101,8 +101,8 @@ class MainFlow(unittest.TestCase):
 
     def test_c1_weekly_stale_full_instruction(self):
         with tempfile.TemporaryDirectory() as d:
-            old = (datetime.date.today() - datetime.timedelta(days=8)).isoformat()
-            today = datetime.date.today().isoformat()
+            old = (hook.today_kst() - datetime.timedelta(days=8)).isoformat()
+            today = hook.today_kst().isoformat()
             self._write(d, hook.WEEKLY_MARKER, old)
             self._write(d, hook.DAILY_MARKER, today)
             rc, out = run_main_in(d)
@@ -111,8 +111,8 @@ class MainFlow(unittest.TestCase):
 
     def test_c2_daily_stale_daily_instruction(self):
         with tempfile.TemporaryDirectory() as d:
-            recent = (datetime.date.today() - datetime.timedelta(days=2)).isoformat()
-            yesterday = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
+            recent = (hook.today_kst() - datetime.timedelta(days=2)).isoformat()
+            yesterday = (hook.today_kst() - datetime.timedelta(days=1)).isoformat()
             self._write(d, hook.WEEKLY_MARKER, recent)
             self._write(d, hook.DAILY_MARKER, yesterday)
             rc, out = run_main_in(d)
@@ -125,15 +125,14 @@ class MainFlow(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertIn("기록이 없습니다", out)
 
-    def test_c4_all_fresh_status_line(self):  # C4 개정 — 침묵 대신 상태 한 줄
+    def test_c4_all_fresh_silent(self):  # C4 재개정(2026-07-16) — 기한 전엔 무출력
         with tempfile.TemporaryDirectory() as d:
-            today = datetime.date.today().isoformat()
+            today = hook.today_kst().isoformat()
             self._write(d, hook.WEEKLY_MARKER, today)
             self._write(d, hook.DAILY_MARKER, today)
             rc, out = run_main_in(d)
             self.assertEqual(rc, 0)
-            self.assertIn("기한 전", out)
-            self.assertNotIn("지금 실행", out)
+            self.assertEqual(out, "")
 
     def test_c5_garbage_weekly_marker_full(self):
         with tempfile.TemporaryDirectory() as d:

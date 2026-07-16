@@ -30,6 +30,14 @@ DAILY_DAYS = 1
 WEEKLY_MARKER = os.path.join("_workspace", ".harness-review-last")
 DAILY_MARKER = os.path.join("_workspace", ".harness-review-daily-last")
 
+# 경과일의 '오늘'은 한국 표준시(KST, UTC+9 — DST 없음) 기준이다. 컨테이너가
+# UTC면 일일/주간 경계가 사용자 타임존과 하루 어긋난다(2026-07-16 사용자 지적).
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
+
+def today_kst():
+    return datetime.datetime.now(KST).date()
+
 
 def days_since(marker_content, today):
     """마커 내용(YYYY-MM-DD)으로 경과일 계산. 파싱 불가·빈 값은 None(기록 없음)."""
@@ -47,12 +55,6 @@ def decide_mode(weekly_days, daily_days):
     if daily_days is None or daily_days >= DAILY_DAYS:
         return "daily"
     return None
-
-
-def _ago(days):
-    if days is None:
-        return "기록 없음"
-    return "오늘" if days == 0 else f"{days}일 전"
 
 
 def build_message(mode, weekly_days, daily_days):
@@ -78,13 +80,10 @@ def build_message(mode, weekly_days, daily_days):
             "일일 마커(_workspace/.harness-review-daily-last)와 운영 로그"
             "(_workspace/harness-ops-log.md) 갱신은 서브에이전트가 수행합니다."
         )
-    # 기한 전 — 점검 지시 대신 상태 한 줄(훅이 동작했다는 증거를 채팅에 남긴다).
-    return (
-        f"[세션 훅 상태] harness-review 리마인더 정상 동작 — 마지막 전체 점검 "
-        f"{_ago(weekly_days)}·일일 점검 {_ago(daily_days)}, 기한 전이라 점검을 "
-        "건너뜁니다(주기: 일일 1일·전체 7일). 첫 응답에서 사용자에게 세션 훅 상태를 "
-        "한 줄로 알리세요. 지난 점검·개선 내역은 _workspace/harness-ops-log.md에 있습니다."
-    )
+    # 기한 전(둘 다 최신) — 점검할 게 없으면 침묵한다(무출력).
+    # 사용자 요청(2026-07-16): "오늘은 이미 했다"는 상태 줄은 매 세션 노이즈다.
+    # 가시성은 점검이 필요할 때(full·daily)만 남기고, 설치 검증은 harness-install의 몫.
+    return None
 
 
 def read_marker(base, relpath):
@@ -99,7 +98,7 @@ def main():
     try:
         utf8_stdio()
         base = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-        today = datetime.date.today()
+        today = today_kst()
         weekly_days = days_since(read_marker(base, WEEKLY_MARKER), today)
         daily_days = days_since(read_marker(base, DAILY_MARKER), today)
         msg = build_message(decide_mode(weekly_days, daily_days), weekly_days, daily_days)
