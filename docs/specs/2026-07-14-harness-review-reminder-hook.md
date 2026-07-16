@@ -46,7 +46,7 @@
 
 ## 미해결 질문
 
-- **Codex 훅 계층 — 리마인더 부분 채택됨(2026-07-16, ADR 019)**: Codex CLI v0.114+가 동일 포맷(`hooks.EventName[].hooks[].command`)의 SessionStart 훅과 **stdout → developer context 주입**을 지원함을 확인해, 이 리마인더와 `worklog-reminder`를 `.codex/hooks.json`(추적)에 등록했다. 훅 스크립트는 이미 도구 무관(fail-open·stdout·`os.getcwd()` 폴백)이라 무변경. 활성화는 머신 로컬(`~/.codex/config.toml`의 `[features] codex_hooks = true`, harness-install 1단계)이고 **실험 기능·Windows 미지원**이라 macOS·Linux 한정이다. **남은 대기 관찰**: ① macOS Codex 세션에서 실제 주입되는지 실측 검증(원격 컨테이너엔 Codex 미설치 — harness-updates.md 대기 항목). ② `agentsview-daemon`은 agentsview가 Codex 세션을 관측하는지 미확인이라 Codex 병행에서 제외 — 확인 시 편입. tdd-gate는 git commit-msg 계층 단일화(ADR 014·015)로 이미 도구 무관.
+- **Codex 훅 계층 — 리마인더 부분 채택됨(2026-07-16, ADR 019)**: Codex CLI v0.114+가 동일 포맷(`hooks.EventName[].hooks[].command`)의 SessionStart 훅과 **stdout → developer context 주입**을 지원함을 확인해, 이 리마인더와 `worklog-reminder`를 `.codex/hooks.json`(추적)에 등록했다. 훅 스크립트는 이미 도구 무관(fail-open·stdout·`os.getcwd()` 폴백)이라 무변경. 활성화는 **저장소 커밋(`.codex/config.toml`의 `[features] codex_hooks = true`)으로 항상 켜짐**(2026-07-16 사용자 지시)이고 **실험 기능·Windows 미지원**이라 macOS·Linux 한정이다(안 뜨면 `~/.codex/config.toml` 전역 폴백 — #17532). **남은 대기 관찰**: ① macOS Codex 세션에서 실제 주입되는지 실측 검증(원격 컨테이너엔 Codex 미설치 — harness-updates.md 대기 항목). ② `agentsview-daemon`은 agentsview가 Codex 세션을 관측하는지 미확인이라 Codex 병행에서 제외 — 확인 시 편입. tdd-gate는 git commit-msg 계층 단일화(ADR 014·015)로 이미 도구 무관.
 
 ## 변경 이력
 

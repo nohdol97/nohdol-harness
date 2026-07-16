@@ -17,7 +17,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 - **심링크**: `readlink .claude/agents .claude/skills`가 `../.agents/agents`, `../.agents/skills`를 가리키는지 확인한다. 깨져 있으면 재생성(`ln -sfn`), 심링크 불가 환경이면 sync 스크립트로 대체하고 그 사실을 ADR로 기록한다(루트 AGENTS.md 11절). Windows에서 심링크가 **경로 문자열이 담긴 일반 파일**로 클론됐다면 개발자 모드 활성화 또는 `git config core.symlinks true` 후 재체크아웃한다.
 - **git 훅 계층 등록(tdd-gate 도구 무관 강제 — ADR 014·015)**: `git config --global core.hooksPath <루트 절대경로>/.agents/githooks`를 등록한다. 13절 TDD 게이트의 **유일한 실행 계층**이라(단일화 — ADR 015) 미등록 머신은 게이트가 없는 상태이며, 전역 git 설정은 저장소로 전파되지 않아 설치 단계에서 잡아야 한다(이후 공백은 harness-review 주간 무결성 점검이 감시). **이미 다른 값이 설정돼 있으면 덮어쓰지 말고 사용자에게 확인한다**(기존 훅 체계와 충돌 가능). 검증: `git config --global --get core.hooksPath` 확인 후 `python3 .agents/githooks/tdd-gate_test.py` 통과.
-- **Codex 세션 훅 활성화 (macOS·Linux만 — 실험 기능·Windows 미지원, ADR 019)**: 이 설치처에서 **Codex CLI도 쓰면**, `.codex/hooks.json`(추적됨 — 리마인더 2종 등록)이 뜨도록 `~/.codex/config.toml`에 `[features]` 섹션의 `codex_hooks = true`를 추가한다(전역 git 설정처럼 저장소로 전파되지 않는 머신 로컬 활성화라 설치 단계가 등록 지점 — tdd-gate `core.hooksPath`와 같은 성격). **기존 `[features]`·다른 키를 덮어쓰지 말고 병합**한다. 검증: Codex 세션을 새로 열어 리마인더/상태 한 줄이 주입되는지 확인한다(훅은 SessionStart cwd=프로젝트 루트를 전제로 `$PWD` 경로를 쓴다 — 안 뜨면 그 전제부터 점검). Codex를 안 쓰는 설치처면 건너뛴다(파일은 무해한 비활성 상태로 남는다).
+- **Codex 세션 훅 검증 (macOS·Linux만 — 실험 기능·Windows 미지원, ADR 019)**: 활성화(`.codex/config.toml`의 `[features] codex_hooks = true`)와 등록(`.codex/hooks.json`)은 **둘 다 추적돼 클론 즉시 켜진다**(항상 활성) — 머신마다 켜는 단계가 없다. 이 설치처에서 **Codex CLI도 쓰면** 새 Codex 세션을 열어 리마인더/상태 한 줄이 주입되는지 확인한다(훅은 SessionStart cwd=프로젝트 루트를 전제로 `$PWD` 경로를 쓴다 — 안 뜨면 그 전제부터 점검). **폴백**: repo-local config.toml 활성화가 인터랙티브에서 안 먹는 이슈(openai/codex #17532) 가능성이 있으므로, 안 뜨면 `~/.codex/config.toml`(전역)에 `[features] codex_hooks = true`를 병합(기존 키 보존)하고 재확인한다. Codex를 안 쓰는 설치처면 건너뛴다(파일은 무해한 비활성 상태로 남는다).
 - **개행(CRLF) 검증**: SKILL.md 첫 줄이 CR 없이 `---`인지 확인한다 — CRLF면 frontmatter 파싱이 깨져 **모든 스킬이 목록에 이름만(무설명) 표시되고 자동 트리거가 죽는다**. `.gitattributes`가 LF를 강제하지만, 그 도입 전에 클론한 저장소는 `git config core.autocrlf false` 후 `git rm -rf --cached . && git reset --hard`로 재체크아웃해야 반영된다. 확인: `git config core.autocrlf`(false/input이어야 함), `file .agents/skills/metaskill/SKILL.md`(CRLF 표기 없어야 함).
 
 ### 2. 미추적 디렉토리 생성
@@ -52,7 +52,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 - [ ] 심링크 2개 정상 (`.claude/` 아래 실파일 없음)
 - [ ] 전역 `core.hooksPath`가 `.agents/githooks`를 가리킴 (미등록·거부 시 사유가 완료 보고에 있음)
-- [ ] (Codex 사용 + macOS/Linux 설치처면) `~/.codex/config.toml`에 `[features] codex_hooks = true` 등록 + Codex 세션에서 리마인더 주입 확인 (Codex 미사용·Windows면 사유가 완료 보고에 있음)
+- [ ] (Codex 사용 + macOS/Linux 설치처면) 새 Codex 세션에서 리마인더 주입 확인 — 활성화는 저장소 커밋(`.codex/config.toml`)이라 별도 등록 불요, 안 뜨면 `~/.codex/config.toml` 폴백(#17532) (Codex 미사용·Windows면 사유가 완료 보고에 있음)
 - [ ] SKILL.md 개행이 LF — `/skills` 목록에 각 스킬의 description이 표시됨 (무설명이면 CRLF·frontmatter 문제)
 - [ ] agentsview 설치됨 + 로컬 SQLite DB(`~/.agentsview/` 또는 `AGENTSVIEW_DATA_DIR`) 생성 확인 + 외부 DB 동기화 미설정 + finding-history 스킬 전역 설치됨 (건너뛰었으면 사유가 완료 보고에 있음)
 - [ ] REGISTRY.md 존재 + **설치처 프로필(개인/사내)** + 경로 규약 + 표 + 변경 이력 (사내 프로필이면 수정·푸시 금지 의미가 안내됨)
