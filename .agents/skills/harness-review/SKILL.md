@@ -51,7 +51,7 @@ description: Harness operations review in two modes - daily lite (scan the three
 - 레지스트리: REGISTRY.md가 존재하는지(없으면 설치 미완료 — harness-install 안내), 존재하면 `project/` 하위 실제 디렉토리 목록과 표가 일치하는지.
 - 잔여물: `_workspace/`에서 team-log.jsonl이 **있는데** `team_delete` 이벤트가 없는 작업 디렉토리는 비정상 종료 신호. team-log 자체가 없는 팀 작업 디렉토리는 이벤트 계약 우회 신호(정보성).
 - 대기 큐: `_workspace/harness-updates.md`에 상태 `대기` 항목이 있는지(루트 AGENTS.md 5절 설치처 프로필). **개인 설치처**면 이월된 개선이 잠자고 있는 것 — metaskill 적용을 제안한다. **사내 설치처**면 정상(개인 머신 이월 대기 중) — 항목 수만 보고한다.
-- 변경 이력: 최근 하네스 커밋마다 변경 이력 테이블 갱신이 동반되었는지 (`git log -p -- AGENTS.md`).
+- 변경 이력: 최근 하네스 커밋마다 변경 이력 갱신이 동반되었는지 — **루트는 `git log -p -- docs/harness-changelog.md`**(ADR 021로 분리), 하위 프로젝트는 해당 AGENTS.md 하단 테이블. CLAUDE.md 첫 줄 `@AGENTS.md` 임포트 존재도 함께 확인(ADR 021 — 산문 링크로 회귀하면 단일 원본이 항상-온이 아니게 된다).
 - 시크릿 유출(agentsview 설치 시): `agentsview secrets scan`으로 세션 로그에 시크릿이 샜는지 스캔한다 — 3절 가드레일("기록 금지")은 예방 규칙이고 이것이 사후 검증이다. 발견 시 must-fix로 즉시 사용자 보고.
 - 선언-미구현: 선언만 있고 강제 장치(훅·테스트·절차 단계·문구 단정)가 없는 규칙을 목록화한다 — 티어→모델 매핑 미적용, "병렬 실행" 선언의 순차 실행, 침묵 훅이 전부 이 유형이었다. 사용 신호(1단계)로는 안 잡히므로 구조 검사로 잡는다.
 - 로딩 비대(토큰 낭비의 하네스 자체 기여분): SKILL.md 본문 500줄 초과(metaskill 공통 규칙 3 위반), 항상 로드되는 CLAUDE.md·description의 비대를 확인한다 — 매 세션의 고정 토큰 비용이므로, 초과분은 `references/` 분리·압축을 제안한다.
@@ -64,8 +64,8 @@ description: Harness operations review in two modes - daily lite (scan the three
 
 ### 4. 완료 마커·운영 로그 갱신 (누락 금지 — 갱신 주체는 점검 수행자, 위임 시 서브에이전트)
 
-- **마커**: 오늘 날짜(`YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다 — 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
-- **운영 로그**: `_workspace/harness-ops-log.md`에 점검 결과 한 줄을 append한다 — 형식: `- YYYY-MM-DD [전체 점검|일일 점검] 신호 N건(요약) / 무결성 통과|문제 N건 / 제안 N건(요약)`. 이 로그가 "지난 점검에서 뭘 봤고 뭘 개선했는지"의 채팅 밖 단일 기록이다(개선 실행 기록은 metaskill이 `[개선]` 항목으로 append) — 리마인더 훅의 기한 전 상태 한 줄이 이 파일을 가리킨다.
+- **마커**: 오늘 날짜(**KST 기준** `YYYY-MM-DD`) 한 줄을 기록한다 — **일일 모드**는 `_workspace/.harness-review-daily-last`, **주간 전체 모드**는 `.harness-review-last`와 `.harness-review-daily-last` 둘 다. SessionStart 리마인더 훅(`harness-review-reminder.py`)이 이 마커들로 1일/7일 경과를 판정해 다음 점검을 자동 트리거한다(경과 판정도 KST — 읽기·쓰기 타임존을 맞춘다). 마커를 갱신하지 않으면 매 세션 리마인더가 반복된다.
+- **운영 로그**: `_workspace/harness-ops-log.md`에 점검 결과 한 줄을 append한다 — 형식: `- YYYY-MM-DD [전체 점검|일일 점검] 신호 N건(요약) / 무결성 통과|문제 N건 / 제안 N건(요약)`. 이 로그가 "지난 점검에서 뭘 봤고 뭘 개선했는지"의 채팅 밖 단일 기록이다(개선 실행 기록은 metaskill이 `[개선]` 항목으로 append). 리마인더 훅은 기한 전이면 무출력이므로(노이즈 제거, 2026-07-16), 지난 내역은 이 로그로 직접 확인한다.
 
 ## 출력 형식
 

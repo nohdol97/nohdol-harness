@@ -29,6 +29,8 @@
 | [017](adr/017-code-minimalism-product-code.md) | 2026-07-15 | 활성 | 코드 최소주의 — 제품 코드 (ponytail 이식) |
 | [018](adr/018-claude-mem-adoption.md) | 2026-07-16 | 활성 | claude-mem 최소 채택 (세션 경계 리마인더·점진적 공개·private 마커) |
 | [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 활성 | Codex SessionStart 훅 병행 (리마인더 2종) |
+| [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
+| [021](adr/021-claude-md-agents-import.md) | 2026-07-16 | 활성 | CLAUDE.md `@AGENTS.md` 임포트 (단일 원본 항상-온) + 변경 이력 분리 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했다. 008·014의 나머지 결정(차단 지점·fail-open·예외·commit-msg 선택·전역 hooksPath 등)은 유효하다.
 

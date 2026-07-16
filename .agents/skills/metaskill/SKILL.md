@@ -52,9 +52,9 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 
 ## 생성물 요건 (신규 하네스에 반드시 포함)
 
-- **루트 하네스 한정**: `CLAUDE.md` → AGENTS.md 포인터 (`## 하네스: {도메인}` 섹션 + **목표** + **트리거**(orchestrate 스킬명 명시) + **변경 이력** 테이블 초기 1행). **하위 프로젝트에는 CLAUDE.md를 만들지 않는다** — 그 경로에서 세션을 시작할 일이 없어 로더가 없는 죽은 파일이다(루트 AGENTS.md 12절).
+- **루트 하네스 한정**: `CLAUDE.md`는 첫 줄 **`@AGENTS.md`** 임포트(단일 원본 전문을 세션 시작 시 항상-온 주입 — ADR 021) + Claude 전용 **항상-온 앵커**(`## 하네스: {도메인}` 섹션 + **출력 언어** + **라우팅 요약**(orchestrate 등 스킬명) + **스킬 우선순위**). **변경 이력 테이블은 CLAUDE.md에 두지 않는다**(루트 변경 이력은 `docs/harness-changelog.md`). CLAUDE.md엔 전문 규칙을 복사하지 말고 매 턴 최우선 앵커만 한 줄씩 둔다(재비대 방지 — 루트 AGENTS.md 11절). **하위 프로젝트에는 CLAUDE.md를 만들지 않는다** — 그 경로에서 세션을 시작할 일이 없어 로더가 없는 죽은 파일이다(루트 AGENTS.md 12절).
 - **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리 — git 미추적)를 반드시 생성한다. 절차는 `harness-install` 스킬을 따른다. 하위 프로젝트 하네스에는 만들지 않는다.
-- `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시. 하단에 변경 이력 테이블(초기 1행).
+- `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시(하위). **하위 프로젝트 AGENTS.md**는 하단에 변경 이력 테이블(초기 1행). **루트 AGENTS.md는 변경 이력을 `docs/harness-changelog.md`로 분리**한다(ADR 021 — `@AGENTS.md`로 항상-온 주입되므로 감사 로그를 임포트 footprint에서 뺀다).
 - **루트 하네스 한정**: 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
 - **하위 프로젝트 하네스는 중앙 관리 방식(루트 AGENTS.md 12절, ADR 006·007)**: 원본이자 유일본을 루트 `.agents/projects/<이름>/`에 생성한다 — 구성: `AGENTS.md`(스킬 후보 섹션 포함), `adr/`, 그리고 지연 생성되는 `skills/`·`agents/`. `<이름>`은 REGISTRY.md 행과 일치시킨다. **`project/<이름>/`와 그 git 저장소에는 하네스 파일을 일절 두지 않는다**(심링크·복사본 포함) — 라우팅(REGISTRY.md → 원본 읽기)이 연결하므로 배포 장치가 불필요하다. `.agents/projects/`는 설치처별 데이터라 git 미추적이다.
 - **하위 전용 스킬·에이전트는 지연 생성** — 위 "하위 스킬·에이전트 생성 시나리오"가 유일한 생성 경로다. 초기 생성 금지. 훅이 필요하면 루트 `.claude/settings.json`에 경로 분기형으로만 둔다.
@@ -88,8 +88,8 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 
 ## 완료 판정 체크리스트 (생성·개선 후 자체 검증)
 
-- [ ] **루트 하네스 한정**: CLAUDE.md에 `## 하네스: {도메인}` 섹션 존재 + **트리거:**에 오케스트레이터 스킬명 명시 (하위 프로젝트에는 CLAUDE.md 없음)
-- [ ] **변경 이력:** 테이블 존재(최소 초기 구성 1행)
+- [ ] **루트 하네스 한정**: CLAUDE.md 첫 줄에 **`@AGENTS.md`** 임포트 존재 + `## 하네스: {도메인}` 섹션 + 항상-온 앵커(출력 언어·라우팅 스킬명·우선순위) (하위 프로젝트에는 CLAUDE.md 없음)
+- [ ] **변경 이력:** 하위 프로젝트 AGENTS.md는 하단 테이블 존재(초기 1행); **루트는 `docs/harness-changelog.md`에 표 존재**(ADR 021 — CLAUDE.md·루트 AGENTS.md 하단엔 테이블 없음, 포인터만)
 - [ ] 오케스트레이터 description에 재실행 키워드 포함
 - [ ] 오케스트레이터 초기 Phase에 `_workspace/` 감지 로직 존재
 - [ ] 각 에이전트 정의에 "재호출 지침" 섹션 존재
