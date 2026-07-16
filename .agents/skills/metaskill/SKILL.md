@@ -37,7 +37,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 트리거: **반복되는 작업이 관찰되거나, 작업 중 "스킬/에이전트로 등록하면 좋겠다" 싶은 절차·역할이 나타났을 때** (진화 트리거 4신호 포함). 절차:
 
 1. 사용자에게 후보를 제안한다(무단 생성 금지). 하위 AGENTS.md의 "스킬 후보" 섹션에 기록된 항목이 우선 후보다.
-2. 승인 시 **`.agents/projects/<이름>/skills/<스킬>/SKILL.md`** 또는 **`.agents/projects/<이름>/agents/<에이전트>.md`**에 생성한다 — `.agents/projects/`는 미추적이므로 git에 들어가지 않는다. 형식은 루트와 동일(스킬 공통 규칙 4가지, agent-rules.md 10섹션).
+2. 승인 시 **`.agents/projects/<이름>/skills/<스킬>/SKILL.md`** 또는 **`.agents/projects/<이름>/agents/<에이전트>.md`**에 생성한다 — `.agents/projects/`는 미추적이므로 git에 들어가지 않는다. 형식은 루트와 동일(아래 "스킬 공통 규칙" 6가지 전부, agent-rules.md 10섹션).
 3. **하위 AGENTS.md에 스킬·에이전트 목록과 경로를 명시**한다 — 이 위치는 CLI가 자동 발견하지 못하므로, 라우팅으로 하위 AGENTS.md를 읽는 것이 스킬을 로드하는 유일한 경로다. 실제 명령어를 본문에 싣는다(명령 없는 스킬은 안 만드느니만 못하다).
 4. 여러 프로젝트·설치처에 일반화되는 스킬만 루트 `.agents/skills/`로 승격한다(추적됨 — 프로젝트 특화 내용 제거 후).
 

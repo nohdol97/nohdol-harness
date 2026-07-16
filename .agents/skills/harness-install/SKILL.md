@@ -40,7 +40,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 #### 3b. defuddle (선택 — 웹 본문 추출)
 
-`defuddle` 스킬이 쓰는 CLI다. 웹페이지에서 본문만 추출해 WebFetch 대비 토큰을 줄인다(네비·광고·사이드바 제거). **이 설치처에서 웹 리서치·문서 수집(deep-research·doc-writer)을 자주 하면** `npm i -g defuddle`로 전역 설치한다.
+`defuddle` 스킬이 쓰는 CLI다. 웹페이지에서 본문만 추출해 WebFetch 대비 토큰을 줄인다(네비·광고·사이드바 제거). **이 설치처에서 웹 리서치·문서 수집(deep-research(Claude Code 내장)·doc-writer)을 자주 하면** `npm i -g defuddle`로 전역 설치한다.
 
 - **필수가 아니다**: 미설치여도 `defuddle` 스킬이 자동으로 WebFetch로 폴백하므로 건너뛰어도 기능이 죽지 않는다 — 순수 토큰 최적화용이다.
 - 설치 여부 확인: `command -v defuddle`. 오프라인·전역 npm 권한 부재·사용자 거부 시 건너뛰고 완료 보고에 남긴다.

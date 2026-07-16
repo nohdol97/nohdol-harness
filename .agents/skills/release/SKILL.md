@@ -1,6 +1,6 @@
 ---
 name: release
-description: "Post-merge release workflow - verify the merged state, draft a deploy runbook (doc-writer template), execute each mutating step only with explicit user confirmation (root guardrail 3), verify the deployment, then close the work-tracker issue. Branches per project type: web/backend via k8s GitOps, Flutter app via store submission. Use when the user says 배포해줘, 릴리스, 배포 준비, deploy this, release. Re-run keywords - release, deploy, rollout, 배포, 릴리스, 롤백."
+description: "Post-merge release workflow - verify the merged state, draft a deploy runbook (doc-writer template), execute each mutating step only with explicit user confirmation (root guardrail 3), verify the deployment, then close the work-tracker issue. Branches per project type: web/backend via k8s GitOps or a managed platform (Vercel etc.), Flutter app via store submission; DB migrations get a backup/verify/rollback step. Use when the user says 배포해줘, 릴리스, 배포 준비, deploy this, release. Re-run keywords - release, deploy, rollout, 배포, 릴리스, 롤백."
 ---
 
 # release — 머지 이후 배포·릴리스 워크플로우
@@ -21,9 +21,12 @@ branch-workflow는 PR 생성에서 끝난다 — 머지(사용자) 이후의 배
 
 | 타입 | 절차 골격 |
 |---|---|
-| 웹·백엔드 (k8s) | 이미지 태그 확정 → 매니페스트 갱신(선언적 우선 — `kubectl edit/patch` 금지) → GitOps 반영 → 롤아웃 관찰. 모든 kubectl에 `--context`·`-n` 명시 |
+| 웹·백엔드 — k8s GitOps인 경우 | 이미지 태그 확정 → 매니페스트 갱신(선언적 우선 — `kubectl edit/patch` 금지) → GitOps 반영 → 롤아웃 관찰. 모든 kubectl에 `--context`·`-n` 명시 |
+| 웹 — 관리형 플랫폼(Vercel 등)인 경우 | 배포 트리거 확인(머지 자동 배포면 배포 진행 관찰, 수동 트리거면 변경 계열 — 사용자 확인) → 프리뷰/프로덕션 환경 구분 확인 → 배포 검증(Phase 3) |
 | 앱 (Flutter 등) | 버전·빌드 넘버 범프 → 릴리스 빌드 → 스토어 제출(제출 자체가 외부 발행 — 사용자 확인) → 심사 추적은 work-tracker 이슈로 |
 | 기타 | 프로젝트 하네스의 배포 절차. 없으면 사용자 인터뷰로 확정하고 하위 AGENTS.md에 기록 제안 |
+
+**DB 마이그레이션 동반 배포 (타입 무관 공통)**: 마이그레이션이 포함되면 런북에 마이그레이션 단계를 별도 항목으로 넣는다 — **실행 전 백업·PITR 가용성 확인 → 실행(변경 계열, 사용자 확인 — 3절) → 스키마·데이터 검증**, 롤백 절에는 코드 롤백만이 아니라 **데이터 복구 절차**를 명시한다. 이유: 코드는 되돌려도 스키마·데이터는 자동으로 안 돌아온다 — 마이그레이션 복구 없는 롤백 절은 롤백이 아니다.
 
 **롤백 절차 없는 계획은 계획이 아니다** — 런북 템플릿의 롤백 절이 비어 있으면 Phase 2로 넘어가지 않는다(불가하면 "롤백 불가 — 대안" 명시).
 

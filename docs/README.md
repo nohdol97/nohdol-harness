@@ -26,7 +26,7 @@
 | [014](adr/014-tdd-gate-git-hook-layer.md) | 2026-07-14 | 부분 대체(→015) | TDD 게이트의 git 훅 계층 추가 (도구 무관 강제) |
 | [015](adr/015-tdd-gate-single-git-layer.md) | 2026-07-14 | 활성 | TDD 게이트 git 계층 단일화 (008·014 일부 대체) |
 | [016](adr/016-internal-communication-language.md) | 2026-07-15 | 활성 | 내부 통신 언어 정책 (모델만 읽으면 영어, 사용자면 한국어) |
-| [017](adr/017-code-minimalism-product-code.md) | 2026-07-15 | 활성 | 코드 최소주의 — 제품 코드 (ponytail 이식) |
+| [017](adr/017-code-minimalism-product-code.md) | 2026-07-16 | 활성 | 코드 최소주의 — 제품 코드 (ponytail 이식) |
 | [018](adr/018-claude-mem-adoption.md) | 2026-07-16 | 활성 | claude-mem 최소 채택 (세션 경계 리마인더·점진적 공개·private 마커) |
 | [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 활성 | Codex SessionStart 훅 병행 (리마인더 2종) |
 | [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
