@@ -53,15 +53,15 @@ def run_main():
 
 
 class MainFlow(unittest.TestCase):
-    def test_c1_missing_binary_status_line(self):  # C1 개정 — 미설치도 상태 한 줄
+    def test_c1_missing_binary_silent(self):  # C1 재개정(2026-07-16) — nominal은 침묵
         with mock.patch.object(hook.shutil, "which", return_value=None), \
              mock.patch.object(hook, "start_daemon") as start:
             rc, out = run_main()
             self.assertEqual(rc, 0)
             start.assert_not_called()
-            self.assertIn("미설치", out)
+            self.assertEqual(out, "")  # 미설치는 매 세션 노이즈였다(감사 HOOK-F4)
 
-    def test_c2_running_no_start(self):
+    def test_c2_running_no_start_silent(self):  # C2 재개정 — 이미 실행 중도 침묵
         with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
              mock.patch.object(hook.subprocess, "run") as run, \
              mock.patch.object(hook, "start_daemon") as start:
@@ -69,7 +69,7 @@ class MainFlow(unittest.TestCase):
             rc, out = run_main()
             self.assertEqual(rc, 0)
             start.assert_not_called()
-            self.assertIn("실행 중", out)
+            self.assertEqual(out, "")
 
     def test_c3_stopped_starts_once(self):
         with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
@@ -114,15 +114,20 @@ class MainFlow(unittest.TestCase):
             self.assertEqual(rc, 0)
             self.assertEqual(out, "")
 
-    def test_c5_cp949_stdout_no_crash(self):  # C5 — 한글 Windows 콘솔(cp949)에서 em dash
+    def test_c6_cp949_stdout_no_crash(self):  # C6(구 중복 C5 정리) — cp949에서 기동 줄 출력
+        # nominal이 침묵으로 바뀌어(2026-07-16) 출력이 남는 경로는 재기동뿐 —
+        # 그 한 줄이 cp949 콘솔에서 죽지 않고 UTF-8로 나가는지 검증한다.
         buf = io.BytesIO()
         cp949 = io.TextIOWrapper(buf, encoding="cp949")
-        with mock.patch.object(hook.shutil, "which", return_value=None), \
+        with mock.patch.object(hook.shutil, "which", return_value="/usr/bin/agentsview"), \
+             mock.patch.object(hook.subprocess, "run") as run, \
+             mock.patch.object(hook, "start_daemon"), \
              contextlib.redirect_stdout(cp949):
+            run.return_value = mock.Mock(returncode=0, stdout="No agentsview daemon is running.", stderr="")
             rc = hook.main()  # 크래시 없이 exit 0이어야 한다 (2026-07-14 cp949 장애)
         cp949.flush()
         self.assertEqual(rc, 0)
-        self.assertIn("미설치".encode("utf-8"), buf.getvalue())  # 상태 줄이 살아있음
+        self.assertIn("기동".encode("utf-8"), buf.getvalue())  # 기동 줄이 살아있음
 
 
 if __name__ == "__main__":

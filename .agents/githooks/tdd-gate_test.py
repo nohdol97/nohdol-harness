@@ -93,11 +93,11 @@ def main():
     tmp = tempfile.mkdtemp(prefix="tdd-gate-test-")
     dev_probe = os.path.join(HARNESS_ROOT, "dev", "_tddgate_selftest")
     try:
-        # C1: 코드만 스테이징 → 차단 + stderr 안내
+        # C1: 코드만 스테이징 → 차단(전용 코드 65 — 인터프리터 rc 1/2와 구분, R4)
         g1 = make_repo(os.path.join(tmp, "g1"))
         put(g1, "app.py"); sh(g1, "add", "app.py")
         code1, err1 = run_git_hook(g1, "feat: x")
-        check("C1", "코드만 스테이징 → 차단", code1, 2)
+        check("C1", "코드만 스테이징 → 차단", code1, 65)
         check("C1-msg", "stderr에 차단 안내 포함", "커밋 차단" in err1, True)
 
         # C2: 코드+테스트 → 통과 (git commit -a 경로는 C11 shim 통합이 실커밋으로 검증)
@@ -147,14 +147,30 @@ def main():
         check("C9a", "tests/ 하위 파일 인정 → 통과", run_git_hook(g9, "feat: y")[0], 0)
         g9b = make_repo(os.path.join(tmp, "g9b"))
         put(g9b, "latest.py"); sh(g9b, "add", "latest.py")
-        check("C9b", "latest.py 단독 → 차단", run_git_hook(g9b, "feat: latest")[0], 2)
+        check("C9b", "latest.py 단독 → 차단", run_git_hook(g9b, "feat: latest")[0], 65)
+
+        # C9c: 정확 파일명 allowlist — Django `tests.py`·pytest `conftest.py`는
+        # 테스트로 인정(구분자 규약 밖의 주류 관행 — false block이 [no-test] 남용을
+        # 학습시킨다). 유사 이름(contest.py)은 여전히 코드다(allowlist는 정확 일치만).
+        g9c = make_repo(os.path.join(tmp, "g9c"))
+        put(g9c, "app/models.py"); put(g9c, "app/tests.py", "def test_m(): pass\n")
+        sh(g9c, "add", "-A")
+        check("C9c", "app/models.py + app/tests.py → 통과", run_git_hook(g9c, "feat: dj")[0], 0)
+        g9d = make_repo(os.path.join(tmp, "g9d"))
+        put(g9d, "util.py"); put(g9d, "conftest.py", "import pytest\n")
+        sh(g9d, "add", "-A")
+        check("C9d", "util.py + conftest.py → 통과", run_git_hook(g9d, "feat: cf")[0], 0)
+        g9e = make_repo(os.path.join(tmp, "g9e"))
+        put(g9e, "contest.py"); sh(g9e, "add", "contest.py")
+        check("C9e", "contest.py 단독 → 차단(allowlist 정확 일치만)",
+              run_git_hook(g9e, "feat: c")[0], 65)
 
         # C10: cp949 stdio(한글 Windows 콘솔) → 차단 메시지의 em dash가 인코딩
         # 예외를 던지면 fail-open이 차단을 삼켜 게이트가 무력화된다(2026-07-14 장애)
         g10 = make_repo(os.path.join(tmp, "g10"))
         put(g10, "app.py"); sh(g10, "add", "app.py")
         code10, err10 = run_git_hook(g10, "feat: x", env={"PYTHONIOENCODING": "cp949"})
-        check("C10", "cp949 stdio에서도 차단 유지", code10, 2)
+        check("C10", "cp949 stdio에서도 차단 유지", code10, 65)
         check("C10-msg", "cp949 stdio에서도 차단 안내 출력", "커밋 차단" in err10, True)
 
         # C11: shim 통합 — core.hooksPath 경유 실제 git commit이 차단/통과
@@ -196,6 +212,23 @@ def main():
         )
         check("C13", "게이트 스크립트 부재 → 커밋 통과", p13.returncode, 0)
 
+        # C13b: 게이트 스크립트 손상(SyntaxError → 인터프리터 rc 1) → 커밋 통과.
+        # shim이 모든 비0 rc를 차단으로 전파하면 손상 시 머신 전역 커밋이 막히고,
+        # 게이트 수정 커밋조차 막힌다(2026-07-16 감사 HOOK-F1 재현) — 의도적
+        # 차단(65)만 차단하고 나머지는 fail-open이어야 한다(R4).
+        broken = os.path.join(tmp, "broken-githooks")
+        shutil.copytree(GITHOOKS, broken, ignore=shutil.ignore_patterns("__pycache__"))
+        with open(os.path.join(broken, "tdd-gate.py"), "a") as f:
+            f.write("\ndef broken(:\n")
+        g13b = make_repo(os.path.join(tmp, "g13b"))
+        put(g13b, "note.md", "hi\n"); sh(g13b, "add", "note.md")
+        p13b = subprocess.run(
+            ["git", "-c", "core.hooksPath=%s" % broken, "commit", "-q", "-m", "docs: note"],
+            cwd=g13b, capture_output=True, timeout=30,
+            encoding="utf-8", errors="replace",
+        )
+        check("C13b", "게이트 스크립트 손상 → 커밋 통과(fail-open)", p13b.returncode, 0)
+
         # C14: 알 수 없는 진입(구버전 PreToolUse 등록: 무인자 + stdin JSON) → fail-open
         # 혼합 상태(구 settings.json + 신 스크립트)에서 세션·커밋이 깨지면 안 된다 (ADR 015)
         p14 = subprocess.run(
@@ -227,7 +260,7 @@ def main():
             code15, _ = run_git_hook(g15, "feat: kr", env={
                 "LC_ALL": "C", "LANG": "C",
                 "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0"})
-            check("C15", "비UTF-8 로케일 + 한글 파일명 → 차단 유지", code15, 2)
+            check("C15", "비UTF-8 로케일 + 한글 파일명 → 차단 유지", code15, 65)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         shutil.rmtree(dev_probe, ignore_errors=True)

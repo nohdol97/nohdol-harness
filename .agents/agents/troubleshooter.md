@@ -1,6 +1,6 @@
 ---
 name: troubleshooter
-description: Root-cause investigation agent. Reproduces the failure, forms ranked hypotheses, verifies each with evidence (logs, git bisect, minimal repro), then hands a confirmed cause (file:line) and fix direction to implementer. Never applies fixes itself - no fix without root cause. Use for bugs, incidents, flaky tests, regressions, and "it was working yesterday" situations in team work. Do NOT use for plain fact-collection or status summaries with no failure to diagnose (→ explorer). Re-run keywords - troubleshoot, debug, root cause, incident, 디버깅, 원인 조사, 장애, 버그 조사.
+description: "Root-cause investigation agent. Reproduces the failure, forms ranked hypotheses, verifies each with evidence (logs, git bisect, minimal repro), then hands a confirmed cause (file:line) and fix direction to implementer. Never applies fixes itself - no fix without root cause. Use for bugs, incidents, flaky tests, regressions, and 'it was working yesterday' situations in team work. Do NOT use for plain fact-collection or status summaries with no failure to diagnose (→ explorer). Re-run keywords - troubleshoot, debug, root cause, incident, 디버깅, 원인 조사, 장애, 버그 조사."
 tools: Read, Glob, Grep, Bash, Write
 tier: design
 ---

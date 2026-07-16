@@ -1,5 +1,7 @@
 # ADR 004 — 레지스트리 분리(REGISTRY.md)와 표준 팀원 로스터 완성
 
+> ⚠️ 이 중 "REGISTRY.md를 git으로 추적한다"는 결정은 **ADR 005로 대체**되었다(미추적 전환 — 설치처별 데이터). 나머지 결정(레지스트리 분리 자체, implementer·integrator 신설, orchestrate 로스터 재사용·게이트 단일 원본 이관)은 유효하다.
+
 - **날짜**: 2026-07-12
 - **변경 내용**: ① 프로젝트 레지스트리를 AGENTS.md 1절에서 루트 `REGISTRY.md`로 분리 ② implementer·integrator 에이전트 신설로 표준 팀원 로스터 4종 완성 ③ orchestrate 스킬 개정 — 표준 로스터 재사용 우선 원칙, 통합 게이트 단일 원본을 integrator.md로 이관.
 - **대상**: AGENTS.md 1·5·7절, REGISTRY.md(신설), .agents/agents/(2종 추가), orchestrate SKILL.md, metaskill·harness-review·scaffold·k8s 참조 갱신, README

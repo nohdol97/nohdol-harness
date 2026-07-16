@@ -1,12 +1,13 @@
-"""훅 공통 부트스트랩 — 훅 3종이 공유하는 로직의 단일 원본.
+"""훅 공통 부트스트랩 — 훅 4종이 공유하는 로직의 단일 원본.
 
 같은 수정을 훅마다 반복 적용하는 fix 연쇄(2026-07-14 cp949 장애가 3개 파일
 동시 수정을 요구)를 없애기 위해 공통 로직을 이 파일 한 곳에만 둔다.
 훅이 아니므로 .claude/settings.json에 등록하지 않는다. import 경로는 위치에
-따라 다르다: 같은 디렉토리의 세션 훅 2종(agentsview-daemon·harness-review-
-reminder)은 스크립트 직접 실행이라 sys.path[0]만으로 `from _common import ...`가
-되지만, 다른 디렉토리의 git 훅(.agents/githooks/tdd-gate.py)과 각 테스트
-스위트는 이 파일이 있는 hooks/ 경로를 sys.path에 명시 삽입한 뒤 import한다.
+따라 다르다: 같은 디렉토리의 세션 훅 3종(agentsview-daemon·harness-review-
+reminder·worklog-reminder)은 스크립트 직접 실행이라 sys.path[0]만으로
+`from _common import ...`가 되지만, 다른 디렉토리의 git 훅
+(.agents/githooks/tdd-gate.py)과 각 테스트 스위트는 이 파일이 있는 hooks/
+경로를 sys.path에 명시 삽입한 뒤 import한다.
 유실 시에도 훅이 죽지 않도록 각 importer는 no-op 폴백을 갖는다.
 
 스펙: docs/specs/2026-07-15-hooks-common-bootstrap.md

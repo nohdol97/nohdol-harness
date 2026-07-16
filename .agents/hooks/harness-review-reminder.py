@@ -35,8 +35,11 @@ DAILY_MARKER = os.path.join("_workspace", ".harness-review-daily-last")
 KST = datetime.timezone(datetime.timedelta(hours=9))
 
 
-def today_kst():
-    return datetime.datetime.now(KST).date()
+def today_kst(now=None):
+    """KST 기준 오늘. aware datetime을 주면 그 시각의 KST 날짜(테스트 결정성 — C9)."""
+    if now is None:
+        now = datetime.datetime.now(KST)
+    return now.astimezone(KST).date()
 
 
 def days_since(marker_content, today):
@@ -88,10 +91,13 @@ def build_message(mode, weekly_days, daily_days):
 
 def read_marker(base, relpath):
     path = os.path.join(base, relpath)
-    if not os.path.isfile(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        # 부재·읽기 실패(권한 등) 모두 "기록 없음"(R2) — 실패 방향은 침묵이 아니라
+        # 점검 유도다. 예외가 main까지 새면 fail-open이 삼켜 리마인더가 영구 침묵한다.
         return None
-    with open(path, encoding="utf-8") as f:
-        return f.read()
 
 
 def main():

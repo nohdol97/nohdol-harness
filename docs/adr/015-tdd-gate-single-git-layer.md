@@ -1,5 +1,7 @@
 # ADR 015 — TDD 게이트 git 계층 단일화 (PreToolUse 계층 제거)
 
+> 경로 주의: 본문의 `.agents/hooks/tdd-gate.py`는 이 결정 직후 `.agents/githooks/`로 이동했다(2026-07-14, docs/harness-changelog.md — hooks/는 Claude 세션 훅 전용으로 정리).
+
 - **날짜**: 2026-07-14
 - **변경 내용**: tdd-gate의 Claude Code PreToolUse 계층(`.claude/settings.json` 등록 + stdin JSON 명령 파싱 ~90줄)을 제거하고 git commit-msg 계층(ADR 014)만 남긴다. 회귀 테스트·스펙을 git 계층 기준으로 재편(R1~R7, C1~C14)하고, 미등록 머신 감시를 harness-review 주간 무결성 점검에 편입한다.
 - **대상**: `.claude/settings.json`(PreToolUse 블록 삭제), `.agents/hooks/tdd-gate.py`(단일 모드화)·`tdd-gate_test.py`(재편), `docs/specs/2026-07-13-tdd-gate-hook.md`(전면 개정), `.agents/skills/harness-review/SKILL.md`(무결성 점검 항목 추가), AGENTS.md 13절 4항

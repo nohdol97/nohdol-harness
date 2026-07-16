@@ -21,7 +21,7 @@ description: "Gate and orchestrate agent work. Phase 0 judges whether a request 
 | architect | design | 스펙 초안·작업 분해(depends_on)·인터페이스 설계 (구현 금지) | 상류 — 스켈레톤 Phase ② 주도 |
 | troubleshooter | design | 근본 원인 조사 — 재현→가설→검증→확정 원인 (수정 금지) | 상류 — 버그·장애 작업에서 explorer 대신 |
 | implementer | implement | 코드·문서·설정 구현 (Edit 보유 — 구현 계열) | 중류 — 파이프라인 구현, 생성-검증의 생성자 |
-| infra-specialist | implement | k8s·AWS 매니페스트·IaC 작성, 인프라 진단·배포 계획 (Edit 보유, 변경 명령은 사용자 확인) | 중류 — 크로스 배포 파이프라인의 인프라 구간 |
+| infra-specialist | implement (리뷰 모드 배치 시 design — team-review 인프라 특화 규약) | k8s·AWS 매니페스트·IaC 작성, 인프라 진단·배포 계획 (Edit 보유, 변경 명령은 사용자 확인) | 중류 — 크로스 배포 파이프라인의 인프라 구간 |
 | reviewer | design | 검증·판정 (수정 금지) | 하류 — 생성-검증의 검증자, 독립 검증 |
 | integrator | design | 팬인·통합 게이트·최종 리포트 | 최하류 — 모든 산출물의 종점 |
 

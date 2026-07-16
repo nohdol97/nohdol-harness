@@ -57,13 +57,21 @@ def git(args, cwd):
     )
 
 
+# 구분자 규약 밖의 주류 테스트 관행 — 정확 일치만 인정한다(R3). substring 판정은
+# latest/backtest 오분류를 다시 연다(contest.py는 여전히 코드).
+TEST_BASENAMES = {"tests.py", "conftest.py"}
+
+
 def is_test_file(path):
-    """테스트 판정(R3): 테스트 디렉토리 세그먼트 또는 구분자 있는 파일명 규약만.
+    """테스트 판정(R3): 테스트 디렉토리 세그먼트, 구분자 있는 파일명 규약,
+    또는 정확 파일명 allowlist(Django tests.py·pytest conftest.py)만.
     구분자 없는 포함 문자열(latest, backtest)은 테스트로 취급하지 않는다."""
     parts = [p.lower() for p in path.split("/")[:-1]]
     if any(p in TEST_DIRS for p in parts):
         return True
     base = os.path.basename(path).lower()
+    if base in TEST_BASENAMES:
+        return True
     stem = base.split(".")[0]
     return bool(
         re.match(r"^(test|spec)_", stem)
@@ -82,8 +90,14 @@ def exempt_repo(repo_dir):
     return repo_dir.startswith(os.path.join(harness_root, "dev") + os.sep)
 
 
+# 의도적 차단 전용 exit 코드(R4). 인터프리터가 자체 실패에 쓰는 코드와 겹치면
+# 안 된다 — 스크립트 손상(SyntaxError)은 rc 1, 파일 열기 실패는 rc 2라, 그 값을
+# 차단으로 쓰면 shim이 게이트 오류를 차단으로 오인해 머신 전역 커밋이 막힌다.
+BLOCK_EXIT = 65
+
+
 def judge(files):
-    """판정(R1): 코드 변경에 테스트 변경이 없으면 차단(exit 2)."""
+    """판정(R1): 코드 변경에 테스트 변경이 없으면 차단(exit 65)."""
     code = [f for f in files
             if os.path.splitext(f)[1].lower() in CODE_EXTS and not is_test_file(f)]
     tests = [f for f in files
@@ -100,7 +114,7 @@ def judge(files):
         "  2) 동작이 변하지 않는 수정(주석·포맷·상수 조정 등)이면, 사용자에게 확인받은 뒤\n"
         "     커밋 메시지에 [no-test] 를 포함해 다시 커밋한다.\n" % shown
     )
-    return 2
+    return BLOCK_EXIT
 
 
 # git이 통합 커밋(merge)·재적용(cherry-pick/revert/rebase) 상태에서 남기는 마커 —

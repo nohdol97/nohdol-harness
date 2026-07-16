@@ -10,13 +10,13 @@ Claude Code / Codex를 **이 디렉토리에서 열고** 프로젝트 작업을 
 nohdol-harness/
 ├── AGENTS.md              # 단일 원본(공용 규칙) — 가드레일·라우팅·진화 트리거·티어 매핑
 ├── REGISTRY.md            # 프로젝트 레지스트리 — 설치처별 데이터 (미추적, harness-install로 생성)
-├── CLAUDE.md              # AGENTS.md 포인터
+├── CLAUDE.md              # `@AGENTS.md` 임포트(단일 원본 항상-온 주입) + Claude 전용 항상-온 앵커 (ADR 021)
 ├── .agents/               # 에이전트·스킬 정의 원본 (공용)
 │   ├── agents/            # 표준 팀원 7종 — explorer·architect·troubleshooter·implementer·infra-specialist·reviewer·integrator
 │   ├── skills/
 │   │   ├── orchestrate/     # 작업 규모 판정 게이트 + 에이전트 팀·병렬·크로스 프로젝트 오케스트레이션
 │   │   ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
-│   │   ├── harness-review/  # 주간 하네스 운영 점검 (진화 트리거·무결성)
+│   │   ├── harness-review/  # 일일 경량·주간 전체 하네스 운영 점검 (진화 트리거·무결성)
 │   │   ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
 │   │   ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
 │   │   ├── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)

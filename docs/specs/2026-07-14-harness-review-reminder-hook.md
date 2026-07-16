@@ -16,13 +16,13 @@
 ## 비목표
 
 - 무인(헤드리스) 자동 실행 — 제안 승인에 사람이 필요하다. 훅은 트리거만 하고 실행은 세션의 모델이 한다.
-- Codex 세션 트리거(훅은 Claude Code 계층 — tdd-gate·agentsview-daemon과 동일 제약).
+- ~~Codex 세션 트리거(훅은 Claude Code 계층)~~ — **2026-07-16 목표로 승격(ADR 019)**: Codex v0.114+ SessionStart 훅으로 `.codex/hooks.json`에 병행 등록됨(미해결 질문 참조). tdd-gate도 git 계층 단일화(ADR 015)로 이미 도구 무관이라 "동일 제약" 전제 자체가 소멸.
 - 점검 자체의 수행(harness-review 스킬의 몫).
 
 ## 요구사항
 
 - R1: 마커 2개 — 전체 `_workspace/.harness-review-last`, 일일 `_workspace/.harness-review-daily-last`(내용: `YYYY-MM-DD` 한 줄) — 로 각각 경과일을 계산한다. 기준 디렉토리는 `CLAUDE_PROJECT_DIR`(부재 시 cwd).
-- R2: 마커가 없거나 내용이 파싱 불가하면 해당 주기의 "기록 없음"(경과)으로 간주한다(첫 설치·유실 시 즉시 점검 유도).
+- R2: 마커가 없거나, 내용이 파싱 불가하거나, **존재하되 읽기 실패(권한·I/O)**하면 해당 주기의 "기록 없음"(경과)으로 간주한다(첫 설치·유실 시 즉시 점검 유도). 실패 방향은 침묵이 아니라 점검 유도다 — 읽기 예외가 main까지 새면 fail-open이 삼켜 리마인더가 영구 침묵한다(2026-07-16 감사 HOOK-F6).
 - R3: 모드 판정 — 전체 마커 7일 이상(또는 기록 없음)이면 **full**, 아니고 일일 마커 1일 이상(또는 기록 없음)이면 **daily**, 둘 다 아니면 **무출력(침묵)** — 점검할 게 없으면 채팅에 남기지 않는다(2026-07-16 재개정: "이미 했다" 상태 줄은 매 세션 노이즈. 가시성은 full·daily에서만, 설치 검증은 harness-install). full·daily 지시에는 **첫 응답에서 점검 서브에이전트를 백그라운드로 즉시 발행**(harness-review 스킬 '실행 방식' 절 — 메인 루프 직접 수행 금지, 사용자 요청 병행 처리)과 완료 시 결과의 채팅 보고, 마커·운영 로그 갱신 주체(서브에이전트)와 확인 안내를 포함한다 — 훅은 모델을 깨우지 못하므로 지시는 첫 사용자 턴에서 소비되는데, 메인 루프 직접 수행은 첫 응답을 점검이 점유해 사용자 요청과 경합한다(2026-07-14 사용자 확정: 서브에이전트 위임).
 - R4: fail-open — 예외 발생 시 무출력 exit 0. 어떤 경우에도 exit 0(세션 시작을 막지 않는다). 시작 시 stdout을 **UTF-8(errors=replace)로 재구성**한다 — 한글 Windows 콘솔(cp949)은 메시지의 em dash를 인코딩하지 못해 print가 예외를 던지고, fail-open이 그것을 삼켜 리마인더가 **무출력으로 조용히 죽는다**(2026-07-14 장애 — exit 0이라 발견도 안 됨).
 - R5: 마커 갱신은 harness-review 스킬이 점검 완료 시 수행한다(전체 → 두 마커, 일일 → 일일 마커. 이 훅은 읽기 전용). 마커에 쓰는 오늘 날짜도 **KST 기준**이다(R7과 일치 — 읽기·쓰기 타임존이 어긋나면 하루 오차).
@@ -31,7 +31,7 @@
 
 ## 인터페이스 / 설계 개요
 
-- 등록: 루트 `.claude/settings.json` → SessionStart, command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py"; done; exit 0` (agentsview-daemon과 병렬 등록) — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 인터프리터 부재 시 exit 0(fail-open).
+- 등록: 루트 `.claude/settings.json` → SessionStart(**matcher `startup|resume|clear`** — compact에는 재실행하지 않는다. `.codex/hooks.json`의 matcher와 정렬, 2026-07-16), command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py"; done; exit 0` (agentsview-daemon과 병렬 등록) — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 인터프리터 부재 시 exit 0(fail-open).
 - 입력: 없음(stdin 무시). 출력: 경과 시 stdout 한 줄(세션 컨텍스트로 주입됨), 아니면 무출력. 항상 exit 0.
 - 부수 효과 없음 — 파일 읽기뿐(R5: 쓰기는 스킬이 담당).
 
@@ -45,7 +45,8 @@
 - [x] C6 (R4): 기준 디렉토리 접근 예외 → 무출력, exit 0.
 - [x] C7 (R6): `python3 .agents/hooks/harness-review-reminder_test.py` 전 케이스 통과.
 - [x] C8 (R4): cp949 stdout(한글 Windows 콘솔) → 메시지가 UTF-8로 실제 출력됨(무출력 아님), exit 0.
-- [x] C9 (R7): 경과 판정이 KST(UTC+9) 기준 — `KST.utcoffset`이 9시간, `today_kst()`가 KST 날짜.
+- [x] C9 (R7): 경과 판정이 KST(UTC+9) 기준 — `KST.utcoffset`이 9시간, `today_kst()`가 KST 날짜. **결정성**: UTC 날짜와 KST 날짜가 갈리는 고정 시각(UTC 15:00~23:59 구간)으로 검증한다 — now(KST) 상호 비교만으로는 UTC 00~15시에 `date.today()` 회귀를 못 잡는다(2026-07-16 감사 HOOK-F3).
+- [x] C10 (R2): 마커가 존재하나 읽기 실패(PermissionError) → "기록 없음"으로 전체 모드 유도(침묵 아님), exit 0.
 
 ## 미해결 질문
 
@@ -67,3 +68,4 @@
 | 2026-07-15 | utf8_stdio를 `_common.py` import로 전환(유실 시 no-op 폴백) + Codex 훅 계층 대기 관찰 항목 기록 | 훅 구현, 미해결 질문 | 일일 점검 신호 ②(공통 로직 복제로 fix 3연쇄) — 스펙 2026-07-15-hooks-common-bootstrap. Codex v0.114+ 훅 도입으로 비목표 전제 변동(실험·Windows 미지원이라 보류) |
 | 2026-07-16 | Codex 훅 계층 리마인더 부분 채택 — 이 리마인더를 `.codex/hooks.json`에 등록(스크립트 무변경), 미해결 질문을 채택 상태로 갱신(agentsview-daemon·macOS 실측은 잔여) | 미해결 질문 | 사용자 요청(맥북 Codex 병행) — Codex SessionStart 포맷·stdout 주입 확인. docs/adr/019 |
 | 2026-07-16 | 기한 전 상태 한 줄을 무출력(침묵)으로 재개정(C4 2026-07-14 결정 되돌림) + 경과 판정 KST(UTC+9) 기준 신설(R7·C9) | 목표, R3·R5·R7, C4·C9, 훅·테스트 | 사용자 요청 — "이미 했다" 채팅이 세션마다 노이즈, 날짜 기준이 KST가 아님(컨테이너 UTC). 가시성 가치 < 매 세션 노이즈 비용 |
+| 2026-07-16 | 감사 반영 — R2에 읽기 실패=기록 없음(실패 방향 고정, C10 신설), C9에 UTC/KST 경계 결정성 테스트 요건, 비목표의 Codex 트리거 항목을 승격 취소선으로 정정(ADR 019 모순 해소), Claude 등록에 matcher(startup·resume·clear) 추가로 compact 재실행 억제(.claude/settings.json — Codex 등록과 정렬) | 비목표, R2, C9·C10, .claude/settings.json, 훅·테스트 | 하네스 전체 감사(2026-07-16) HOOK-F3(회귀 창)·F6(영구 침묵)·F8(matcher 비대칭)·DOC-03(비목표 모순). 사용자 승인 |

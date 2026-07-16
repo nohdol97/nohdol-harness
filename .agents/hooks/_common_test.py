@@ -43,6 +43,7 @@ HOOK_FILES = [
     ("tdd_gate_hook", os.path.join(os.pardir, "githooks", "tdd-gate.py")),
     ("agentsview_daemon_hook", "agentsview-daemon.py"),
     ("harness_review_reminder_hook", "harness-review-reminder.py"),
+    ("worklog_reminder_hook", "worklog-reminder.py"),
 ]
 
 

@@ -38,6 +38,17 @@ class DaysSince(unittest.TestCase):
         self.assertEqual(hook.KST.utcoffset(None), datetime.timedelta(hours=9))
         self.assertEqual(hook.today_kst(), datetime.datetime.now(hook.KST).date())
 
+    def test_kst_deterministic_across_date_boundary(self):
+        # C9 보강 — UTC 날짜와 KST 날짜가 갈리는 고정 시각으로 검증한다.
+        # now(KST) 비교만으로는 UTC 00~15시에 date.today() 회귀를 못 잡는다(감사 HOOK-F3).
+        utc = datetime.timezone.utc
+        self.assertEqual(
+            hook.today_kst(datetime.datetime(2026, 7, 15, 16, 0, tzinfo=utc)),
+            datetime.date(2026, 7, 16))  # UTC 15일 16시 = KST 16일 01시
+        self.assertEqual(
+            hook.today_kst(datetime.datetime(2026, 7, 15, 14, 59, tzinfo=utc)),
+            datetime.date(2026, 7, 15))  # UTC 15일 14:59 = KST 15일 23:59
+
 
 class DecideMode(unittest.TestCase):
     def test_weekly_overdue_wins(self):  # C1 — 전체가 일일보다 우선
@@ -140,6 +151,19 @@ class MainFlow(unittest.TestCase):
             rc, out = run_main_in(d)
             self.assertEqual(rc, 0)
             self.assertIn("전체", out)
+
+    def test_c10_unreadable_marker_treated_as_no_record(self):
+        # C10 — 마커가 존재하나 읽기 실패(권한 등)면 "기록 없음"으로 취급해
+        # 점검을 유도해야 한다(R2 실패 방향). 예외가 main까지 새면 리마인더가
+        # 영구 침묵한다(감사 HOOK-F6 — exit 0이라 발견도 안 되는 침묵 사망).
+        with tempfile.TemporaryDirectory() as d:
+            self._write(d, hook.WEEKLY_MARKER, "2026-07-01")
+            self._write(d, hook.DAILY_MARKER, "2026-07-01")
+            with mock.patch("builtins.open", side_effect=PermissionError):
+                self.assertIsNone(hook.read_marker(d, hook.WEEKLY_MARKER))
+                rc, out = run_main_in(d)
+            self.assertEqual(rc, 0)
+            self.assertIn("기록이 없습니다", out)  # 침묵이 아니라 전체 모드 유도
 
     def test_c8_cp949_stdout_still_outputs(self):  # C8 — 한글 Windows 콘솔(cp949)에서 em dash
         with tempfile.TemporaryDirectory() as d:
