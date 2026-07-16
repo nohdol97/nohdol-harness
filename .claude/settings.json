@@ -10,6 +10,10 @@
           {
             "type": "command",
             "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py\"; done; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/worklog-reminder.py\"; done; exit 0"
           }
         ]
       }

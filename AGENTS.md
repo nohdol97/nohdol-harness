@@ -29,12 +29,14 @@
 
 - **파괴적 작업은 반드시 실행 전 사용자 확인**: 리소스 삭제, 프로덕션 배포·롤백, DB 마이그레이션 실행, `git push --force`, IAM/권한 변경 등. **예외 없음** (dev 환경 포함 전부 확인 — 2026-07-12 사용자 확정).
 - **시크릿·자격증명은 하네스 파일과 `_workspace/`에 절대 기록하지 않는다.**
+- **`<private>…</private>`로 표시된 내용은 외부 발행물로 옮기지 않는다**(이슈·PR·코멘트·커밋 메시지 등 저장소 밖에 남는 것 전부). `_workspace/` 산출물이나 대화 내용을 work-tracker 이슈·PR로 요약해 옮길 때 이 태그로 감싼 부분(민감 경로·내부 URL·개인 정보 등)은 제외한다 — 시크릿 금지의 연장선이며, claude-mem의 `<private>` 착안을 이식했다(ADR 018). 태그 자체는 하네스 파일에 남겨도 되지만 그 안의 시크릿은 위 규칙이 우선한다(애초에 기록 금지).
 
 ## 4. `_workspace/` 규약
 
 - 위치는 **루트에 단일**로 둔다. 이유: 크로스 프로젝트 작업의 산출물을 한 곳에서 조율하기 위해서다.
 - 구조: `_workspace/<작업명>/`
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
+- **리포트 구조 — 점진적 공개(2단)**: 발견이 많은 `_workspace/` 리포트는 ① **요약 인덱스**(발견 ID·severity·한 줄 요지)를 맨 위에 두고, ② 각 발견의 **상세·근거**(`파일:줄`/명령 출력)는 ID로 참조되는 하위 섹션에 둔다. 이유: 리포트는 쓰기 1회·읽기 N회(integrator·메인 루프 재독)라, 소비자가 인덱스로 필터한 뒤 필요한 ID의 상세만 읽으면 재독 토큰이 곱으로 준다(15절 ④ 수축·효율과 같은 목적 — claude-mem의 점진적 공개 이식, ADR 018). 단, **발견이 소수인 짧은 리포트는 인덱스를 생략**한다 — 규율이 노이즈가 되면 오히려 우회된다(16절 최소주의와 같은 결).
 - 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
 - `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필), `_workspace/harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
 
@@ -209,3 +211,4 @@
 | 2026-07-15 | 훅 공통 부트스트랩 `_common.py` 신설 — stdio UTF-8 재구성 단일 원본화, 세션 훅 2종은 동일 디렉토리 import·githooks/tdd-gate는 교차 디렉토리 import 전환(유실 시 no-op 폴백), 스펙 템플릿에 훅 크로스 플랫폼 체크리스트 추가 | .agents/hooks/(+_common_test.py), .agents/githooks/tdd-gate.py, docs/specs/, doc-writer references/templates.md | 일일 점검 신호 ②(cp949 수정이 훅 3종 반복 적용된 fix 3연쇄) 사용자 승인. 복제된 공통 로직은 결함 수정 비용을 N배로 증폭 |
 | 2026-07-15 | 15절 내부 통신 언어 신설 — 모델만 읽는 산출물(발행 프롬프트·팀 중간 리포트·P2P 본문)은 영어, 사용자가 읽는 것(채팅·PR·하네스 문서·판정 문서·제안서·운영 로그·트리거 키워드)은 한국어, 언어 섞임 방지 가드 3항 | 15절, 에이전트 정의 7종, orchestrate, team-review, doc-writer(+templates), harness-review | 사용자 승인(토큰 절약 질문 → 부작용 없는 적용 요청) — 한국어는 같은 내용에 ~1.5-2배 토큰, 중간 리포트는 쓰기 1회+읽기 N회. docs/adr/016 |
 | 2026-07-16 | 16절 코드 최소주의(제품 코드) 신설 — ponytail 결정 사다리 7단계·예외 영역 이식, team-review에 "단순성/과설계" 관점 축 추가. 원칙+리뷰 관점만 이식(플러그인·Node 훅·6스킬은 비목표) | 16절, team-review, docs/proposals/2026-07-15-ponytail-adoption.md | 사용자 승인(ponytail 분석·설계 → 최소 채택 요청) — 제품 코드 분량 규율 공백을 채우되 규칙 운반체는 문서(11·12절)라 배송 기계는 복제하지 않음. docs/adr/017 |
+| 2026-07-16 | claude-mem 최소 채택 — 3절에 `<private>` 외부 발행 제외 마커, 4절에 점진적 공개(2단) 리포트 규약 신설. worklog-reminder SessionStart 훅(+테스트·스펙)·explorer 출력·work-tracker 흐름 2에 반영 | 3·4절, .agents/hooks/worklog-reminder.py, .claude/settings.json, explorer.md, work-tracker, docs/specs/·proposals/ | 사용자 요청(claude-mem 분석 → 적용 검토·적용) — 세션 경계 진행-기록 유실·리포트 재독 토큰 공백을 무의존 착안 이식으로. 워커·벡터 DB·전수 캡처는 이식성(ADR 005)·최소주의(ADR 017)와 충돌해 기각. docs/adr/018 |
