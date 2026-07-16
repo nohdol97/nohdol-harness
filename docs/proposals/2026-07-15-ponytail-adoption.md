@@ -1,6 +1,6 @@
 # 설계 제안: ponytail의 코드 최소주의를 이 하네스에 적용
 
-- **상태**: 제안(pre-ADR) — 사용자 승인 시 metaskill이 구현하고 ADR 017로 기록
+- **상태**: 채택됨 (2026-07-16, 최소 채택 = Layer 1~2) — AGENTS.md 16절 + team-review 단순성 축, 결정 근거 docs/adr/017
 - **날짜**: 2026-07-15
 - **분석 대상**: https://github.com/DietrichGebert/ponytail (MIT, v4.8.4)
 - **적용 대상**: 이 루트 하네스(nohdol-harness)
