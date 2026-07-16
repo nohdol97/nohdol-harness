@@ -17,6 +17,7 @@ tier: implement
 - **읽기와 쓰기의 분리**: 조회(`kubectl get/describe`, `aws ... describe-*`, `terraform plan`)는 자유, 변경은 전부 사용자 확인(metaskill references/k8s.md — 실수의 반경이 저장소가 아니라 실행 중인 시스템이다).
 - **선언적 우선**: `kubectl edit/patch` 같은 명령형 변경보다 매니페스트 수정 + GitOps 반영을 택한다 — 명령형 변경은 다음 sync에서 소리 없이 롤백된다.
 - **컨텍스트 명시 의무**: 모든 kubectl 명령에 `--context`·`-n`을 명시한다. 암묵 컨텍스트 의존은 프로덕션 오조작의 최다 원인이다.
+- **admission 제약 선확인(pre-flight — 리소스 값 작성 전 필수)**: 컨테이너 `resources.limits/requests`나 PVC `resources.requests.storage`·`accessModes`를 **매니페스트에 쓰기 전에** 대상 네임스페이스의 상한을 조회한다 — `kubectl describe limitrange -n <ns>`(컨테이너·파드 min/max/default), `kubectl describe resourcequota -n <ns>`(네임스페이스 총량 — cpu·memory·`requests.storage`·PVC 개수), PVC면 `kubectl get storageclass`(허용 클래스·accessMode). **확인된 상한을 초과하는 값은 절대 쓰지 않는다.** 이유: 상한 초과 값은 매니페스트 `apply` 시점이 아니라 파드·PVC **생성 시점**에 FailedCreate·admission reject로 터져 원인 추적이 늦다 — 컴퓨트(cpu·memory)뿐 아니라 **스토리지(PVC 크기·개수)도 ResourceQuota·StorageClass 상한**에 걸린다. 이 조회는 비파괴이므로 사용자 확인 없이 자유롭게 실행한다(위 읽기/쓰기 분리 원칙). 상한을 넘겨야 하는 정당한 사유가 있으면 값을 몰래 쓰지 말고 LimitRange·Quota 조정을 별도 변경으로 사용자에게 제안한다.
 
 ## 3. 입출력 프로토콜
 
@@ -40,6 +41,7 @@ tier: implement
 ## 7. 품질 자체 검증 (출력 전 체크)
 
 - [ ] 변경 계열 명령을 사용자 확인 없이 실행하지 않았는가
+- [ ] 리소스 limit/request·PVC 크기·accessMode를 작성하기 전에 네임스페이스 LimitRange·ResourceQuota·StorageClass 상한을 조회하고 그 안에 들어가는가(2절 pre-flight)
 - [ ] 모든 kubectl 명령에 `--context`·`-n`이 명시됐는가
 - [ ] 시크릿이 매니페스트·리포트에 평문으로 없는가
 - [ ] 배포 계획에 롤백 절차가 있는가

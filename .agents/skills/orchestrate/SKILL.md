@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: "Gate and orchestrate agent work. Phase 0 judges whether a request needs direct handling, one subagent, a generate-verify pair, or a team - then runs session teams with a shared task queue (depends_on), P2P messaging, hybrid phases, and severity-gated integration. Use for ANY implementation or multi-step task (구현해줘, 만들어줘, 수정해줘, implement, build, fix this) and for 팀 구성, 병렬 작업, cross-project work. Re-run keywords - orchestrate, team, parallel, implement, 오케스트레이션, 구현, 작업, 병렬."
+description: "Gate and orchestrate agent work. Phase 0 judges whether a request needs direct handling, one subagent, a generate-verify pair, or a team - then runs session teams with a shared task queue (depends_on), P2P messaging, hybrid phases, and severity-gated integration. Use for ANY implementation or multi-step task (구현해줘, 만들어줘, 수정해줘, implement, build, fix this) and for 팀 구성, 병렬 작업, cross-project work. Do NOT use for review/audit (→ team-review), doc/spec writing (→ doc-writer), or harness creation/improvement (→ metaskill) - these specialized routes take priority over the gate. Re-run keywords - orchestrate, team, parallel, implement, 오케스트레이션, 구현, 작업, 병렬."
 ---
 
 # orchestrate — 에이전트 팀 오케스트레이션
@@ -43,6 +43,7 @@ description: "Gate and orchestrate agent work. Phase 0 judges whether a request 
 - **애매하면 가벼운 쪽에서 시작**하고, patterns.md의 전환 신호 표가 가리킬 때 승격한다(team-review Phase 0과 같은 철학 — 경계 애매 시 단독 시작, 범위 초과 보고 시 승격). 이유: 과판정은 모든 작업을 느리게 만들어 관문 자체를 우회하게 만든다.
 - **규모 임계(변경 파일 6+)의 단일 원본은 이 표다** — team-review 등 다른 스킬의 팀 승격 임계는 이 값을 참조한다(어긋나면 같은 작업이 스킬에 따라 다른 규모 판정을 받는다).
 - **판정 결과와 근거를 한 줄로 사용자에게 보고**하고 진행한다. 무언의 판정은 하네스 우회와 구분되지 않는다.
+- **continuation도 게이트를 다시 밟는다**: "진행해줘"·"계속" 같은 이어가기 요청(진행 중 구현·인프라 단계의 이어가기 — 등록된 세션 넘김 작업의 재개 "이어서"는 work-tracker 소관)이라도 대상 작업이 새 구현·동작 변경·인프라 매니페스트 변경이면 0-1 판정을 생략하지 않는다 — 이전에 판정이 있었다는 이유로 continuation을 직행 처리하면 게이트가 무력화된다. 특히 k8s·인프라 매니페스트 변경은 continuation이라도 infra-specialist 배치로 판정한다(인프라 변경 continuation이 판정을 건너뛰어 admission 제약 미확인 실패를 낸 실사례, 루트 AGENTS.md 7절 3·5항).
 
 ### 0-2. 사전 조건
 

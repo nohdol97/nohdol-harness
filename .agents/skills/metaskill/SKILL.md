@@ -1,6 +1,6 @@
 ---
 name: metaskill
-description: Create, scaffold, audit, improve, and evolve project harnesses (AGENTS.md, CLAUDE.md pointer, agents, skills, ADRs). Use when the user says 하네스 만들어줘, 프로젝트 새로 만들어줘 (scaffold project WITH its harness), 하네스 개선, 하네스 점검, or when evolution triggers fire (3+ repeated requests, 2+ repeated failures, harness bypass observed). Handles both new-harness creation and existing-harness improvement. Re-run keywords - metaskill, harness, scaffold, audit, evolve, 하네스.
+description: Create, scaffold, audit, improve, and evolve project harnesses (AGENTS.md, CLAUDE.md pointer, agents, skills, ADRs). Use when the user says 하네스 만들어줘, 프로젝트 새로 만들어줘 (scaffold project WITH its harness), 하네스 개선, 하네스 구조 점검·개선, or when evolution triggers fire (3+ repeated requests, 2+ repeated failures, harness bypass observed). Handles both new-harness creation and existing-harness improvement. Do NOT use for the routine daily/weekly evolution-signal scan or proposal-only review (→ harness-review) - metaskill APPLIES changes (create/improve/retire) while harness-review OBSERVES signals and proposes. Re-run keywords - metaskill, harness, scaffold, audit, evolve, 하네스, 하네스 개선.
 ---
 
 # metaskill — 하네스를 만드는 스킬
@@ -76,7 +76,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 ## 스킬 공통 규칙 (이 워크스페이스의 모든 스킬에 적용)
 
 1. **frontmatter 필수 (규격 위반 시 스킬이 무설명으로 뜬다)**: SKILL.md는 **첫 줄부터** `---`로 시작하는 YAML frontmatter에 `name`(디렉토리명과 일치)과 `description`을 담아야 한다. CLI는 **frontmatter의 description만** 읽어 목록 표시와 자동 트리거 매칭에 쓴다 — 본문에만 설명을 쓰면 이름만 뜨고 사용자 입력을 포착하지 못한다. description은 한 줄로 쓰고, 값에 콜론(`: `)·따옴표 등 YAML 특수문자가 들어가면 **전체를 큰따옴표로 감싼다**(안 감싸면 frontmatter 전체가 파싱 실패한다). **생성 직후 검증**: `head -6`으로 첫 줄 `---`·닫는 `---`·description 존재를 확인한다.
-2. **description(영문 기술, 500자 이내, Pushy 공식 — 3요소 + 부정 트리거)**: ① 동사 나열("PDF 관련 작업" ✗ → "pdf 읽기, 추출, 병합, OCR 처리" ✓) ② 트리거 상황 명시("사용자가 ~을 언급하면 이 스킬을 사용할 것") ③ **재실행 키워드 포함** — 새 세션에서도 자동으로 다시 호출되게 한다. 재실행 키워드에는 **한국어 트리거 병기를 권장**한다(사용자 요청 문구와 매칭되어야 하므로). ④ **부정 트리거(인접 스킬·도구와 경계가 겹치면 권장)**: 헷갈리기 쉬운 인접 상황을 `Do NOT use for …`로 명시해 오라우팅을 능동 차단한다 — 예: defuddle의 `Do NOT use for URLs ending in .md (→ WebFetch)`. 이유: 긍정 트리거만 있으면 경계가 겹치는 요청이 두 스킬 모두에 매칭돼 라우팅이 흔들린다 — 부정 경계가 있으면 매칭이 한쪽으로 확정된다(반복 관찰된 오라우팅 실패에 대한 저비용 처방, kepano/obsidian-skills 관례 이식 2026-07-16).
+2. **description(영문 기술, 800자 이내 권장 — CLI 하드캡 ~1024자 안에 반드시, Pushy 공식 — 3요소 + 부정 트리거)**: ① 동사 나열("PDF 관련 작업" ✗ → "pdf 읽기, 추출, 병합, OCR 처리" ✓) ② 트리거 상황 명시("사용자가 ~을 언급하면 이 스킬을 사용할 것") ③ **재실행 키워드 포함** — 새 세션에서도 자동으로 다시 호출되게 한다. 재실행 키워드에는 **한국어 트리거 병기를 권장**한다(사용자 요청 문구와 매칭되어야 하므로). ④ **부정 트리거(인접 스킬·도구와 경계가 겹치면 권장)**: 헷갈리기 쉬운 인접 상황을 `Do NOT use for …`로 명시해 오라우팅을 능동 차단한다 — 예: defuddle의 `Do NOT use for URLs ending in .md (→ WebFetch)`. 이유: 긍정 트리거만 있으면 경계가 겹치는 요청이 두 스킬 모두에 매칭돼 라우팅이 흔들린다 — 부정 경계가 있으면 매칭이 한쪽으로 확정된다(반복 관찰된 오라우팅 실패에 대한 저비용 처방, kepano/obsidian-skills 관례 이식 2026-07-16). **길이 목표보다 부정 트리거가 우선**: 경계가 겹치는 스킬은 부정 트리거를 넣느라 길어져도 800자 안에서 유지하고, 정 넘치면 긍정 트리거의 동사 나열을 줄여 확보하되 부정 경계는 지우지 않는다 — 오라우팅 차단이 몇 토큰보다 값지다(500자 고정이 부정 트리거 규약과 충돌해 다수 스킬이 초과하던 실측을 반영해 상향, 2026-07-16 자산 검토).
 3. **Progressive Disclosure**: SKILL.md 본문 500줄 이내. metadata → 본문 → `references/` 세 층으로 나누고, 조건부 상세는 `references/`로 분리한다. 이유: 항상 읽히는 본문이 길수록 매 호출의 비용이 늘고 핵심 규칙이 묻힌다.
 4. **Why-First**: 규칙만 나열하지 말고 이유를 함께 싣는다. 규칙에 이유를 붙이는 것이 규칙의 적용 범위를 넓힌다 — LLM이 엣지 케이스에서도 판단을 이어갈 수 있다.
 5. **with/without**: 이 스킬을 뒀을 때/안 뒀을 때의 차이(지표 평가)를 스킬 하단에 명시한다.
@@ -111,4 +111,4 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 | 구조 일관성 | 프로젝트마다 다른 하네스 구조, 라우팅 깨짐 | 모든 프로젝트가 같은 골격 |
 | 레지스트리 | 프로젝트 생성 후 등록 누락 → 라우팅 불가 | 생성 절차에 레지스트리 갱신 내장 |
 | 진화 | 반복 실패를 매번 수동 대응 | 4신호 감지 → 제안 → 승인 → 생성·폐기 |
-| 검증 | 만들고 끝 | 13항목 체크리스트로 완료 판정 |
+| 검증 | 만들고 끝 | 15항목 체크리스트로 완료 판정 |

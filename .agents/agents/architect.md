@@ -25,7 +25,7 @@ tier: design
 
 ## 4. 팀 통신 프로토콜
 
-- 요구사항 간 모순·충족 불가능을 발견하면 **Critical**로 오케스트레이터에게 즉시 보고한다(설계로 덮지 않는다). 형식(JSON): `{type, severity, file, line, claim, request}`
+- 요구사항 간 모순·충족 불가능을 발견하면 **Critical**로 오케스트레이터에게 즉시 보고한다(설계로 덮지 않는다). 형식(JSON): `{type, severity, file, line, claim, request}` (severity 등급 단일 원본: integrator 2절)
 - 설계 결정이 특정 팀원의 진행 중 작업에 영향을 주면 해당 팀원에게 SendMessage로 직접 알린다.
 
 ## 5. 에러 핸들링 — 종료 조건

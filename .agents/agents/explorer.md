@@ -1,6 +1,6 @@
 ---
 name: explorer
-description: Read-only collection agent. Searches, reads, and summarizes code, docs, configs, git history, and infra state, then writes a findings report to _workspace. Use for parallel fan-out collection (orchestrate mode B), status summaries, and any task that needs facts gathered without modifying anything. Re-run keywords - explore, collect, summarize, 탐색, 수집, 요약, 상태 요약.
+description: Read-only collection agent. Searches, reads, and summarizes code, docs, configs, git history, and infra state, then writes a findings report to _workspace. Use for parallel fan-out collection (orchestrate mode B), status summaries, and any task that needs facts gathered without modifying anything. Do NOT use for root-cause/incident investigation that must reproduce and confirm a cause (→ troubleshooter) - explorer collects facts, it does not establish causation. Re-run keywords - explore, collect, summarize, 탐색, 수집, 요약, 상태 요약.
 tools: Read, Glob, Grep, Bash, Write
 tier: explore
 ---
