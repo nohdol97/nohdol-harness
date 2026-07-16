@@ -56,13 +56,13 @@ def start_daemon(binary):
 
 
 def main():
-    # 정상 경로는 상태 한 줄을 남긴다(훅 동작 가시화 — 2026-07-14 사용자 요청).
-    # 예외 경로만 무출력 fail-open(R4) — print 포함 전 구간이 try 안에 있어야 한다.
+    # nominal(미설치·이미 실행 중)은 침묵한다 — 매 세션 상태 줄은 노이즈다(2026-07-16
+    # 사용자 결정, 2026-07-14 가시화 결정을 재개정 — 리마인더 훅과 같은 원칙).
+    # 출력은 상태 전이(재기동) 한 줄뿐. 예외 경로는 무출력 fail-open(R4).
     try:
         utf8_stdio()
         binary = shutil.which("agentsview")
         if not binary:
-            print("[세션 훅 상태] agentsview 데몬: 미설치 — 건너뜀(설치는 harness-install 3단계)")
             return 0  # 미설치 — no-op (R1)
         st = subprocess.run(
             # encoding 명시 — 로케일 기본 인코딩(cp949 등) 의존 디코딩 제거(tdd-gate
@@ -71,7 +71,6 @@ def main():
             encoding="utf-8", errors="replace",
         )
         if daemon_running(st.returncode, (st.stdout or "") + (st.stderr or "")):
-            print("[세션 훅 상태] agentsview 데몬: 실행 중")
             return 0
         start_daemon(binary)
         print("[세션 훅 상태] agentsview 데몬: 미실행 상태여서 새로 기동함")

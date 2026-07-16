@@ -10,10 +10,10 @@
 
 | ADR | 날짜 | 상태 | 제목 |
 |---|---|---|---|
-| [001](adr/001-initial-harness.md) | 2026-07-12 | 활성 | 루트 하네스 초기 구성 |
+| [001](adr/001-initial-harness.md) | 2026-07-12 | 부분 대체(→005·021) | 루트 하네스 초기 구성 |
 | [002](adr/002-project-dir-separation.md) | 2026-07-12 | 활성 | 하위 프로젝트 저장소 분리 (`project/`·`dev/` 미추적) |
 | [003](adr/003-perfectionism-clause-removal.md) | 2026-07-12 | 활성 | "완벽주의 금지" 절 삭제 및 1차 독립 검증 반영 |
-| [004](adr/004-registry-separation-standard-roster.md) | 2026-07-12 | 활성 | 레지스트리 분리(REGISTRY.md)와 표준 팀원 로스터 완성 |
+| [004](adr/004-registry-separation-standard-roster.md) | 2026-07-12 | 부분 대체(→005) | 레지스트리 분리(REGISTRY.md)와 표준 팀원 로스터 완성 |
 | [005](adr/005-registry-untracked-portable-harness.md) | 2026-07-12 | 활성 | 하네스 이식성: REGISTRY.md 미추적, 경로 규약 이관, 티어 탈모델명 |
 | [006](adr/006-subproject-harness-central-management.md) | 2026-07-13 | 활성 | 하위 프로젝트 하네스 중앙 관리 (원본 루트 일원화·미추적) |
 | [007](adr/007-lazy-project-skills.md) | 2026-07-13 | 활성 | 하위 스킬·에이전트 지연 생성 + 프로젝트 로컬 배치 |
@@ -32,7 +32,7 @@
 | [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
 | [021](adr/021-claude-md-agents-import.md) | 2026-07-16 | 활성 | CLAUDE.md `@AGENTS.md` 임포트 (단일 원본 항상-온) + 변경 이력 분리 |
 
-**대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했다. 008·014의 나머지 결정(차단 지점·fail-open·예외·commit-msg 선택·전역 hooksPath 등)은 유효하다.
+**대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했다. 008·014의 나머지 결정(차단 지점·fail-open·예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리).
 
 ## 스펙 (SDD — 루트 자체 코드) — `docs/specs/`
 
