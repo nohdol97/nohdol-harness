@@ -29,20 +29,22 @@
 
 - **파괴적 작업은 반드시 실행 전 사용자 확인**: 리소스 삭제, 프로덕션 배포·롤백, DB 마이그레이션 실행, `git push --force`, IAM/권한 변경 등. **예외 없음** (dev 환경 포함 전부 확인 — 2026-07-12 사용자 확정).
 - **시크릿·자격증명은 하네스 파일과 `_workspace/`에 절대 기록하지 않는다.**
+- **`<private>…</private>`로 표시된 내용은 외부 발행물로 옮기지 않는다**(이슈·PR·코멘트·커밋 메시지 등 저장소 밖에 남는 것 전부). `_workspace/` 산출물이나 대화 내용을 work-tracker 이슈·PR로 요약해 옮길 때 이 태그로 감싼 부분(민감 경로·내부 URL·개인 정보 등)은 제외한다 — 시크릿 금지의 연장선이며, claude-mem의 `<private>` 착안을 이식했다(ADR 018). 태그 자체는 하네스 파일에 남겨도 되지만 그 안의 시크릿은 위 규칙이 우선한다(애초에 기록 금지).
 
 ## 4. `_workspace/` 규약
 
 - 위치는 **루트에 단일**로 둔다. 이유: 크로스 프로젝트 작업의 산출물을 한 곳에서 조율하기 위해서다.
 - 구조: `_workspace/<작업명>/`
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
+- **리포트 구조 — 점진적 공개(2단)**: 발견이 많은 `_workspace/` 리포트는 ① **요약 인덱스**(발견 ID·severity·한 줄 요지)를 맨 위에 두고, ② 각 발견의 **상세·근거**(`파일:줄`/명령 출력)는 ID로 참조되는 하위 섹션에 둔다. 이유: 리포트는 쓰기 1회·읽기 N회(integrator·메인 루프 재독)라, 소비자가 인덱스로 필터한 뒤 필요한 ID의 상세만 읽으면 재독 토큰이 곱으로 준다(15절 ④ 수축·효율과 같은 목적 — claude-mem의 점진적 공개 이식, ADR 018). 단, **발견이 소수인 짧은 리포트는 인덱스를 생략**한다 — 규율이 노이즈가 되면 오히려 우회된다(16절 최소주의와 같은 결).
 - 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
 - `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필), `_workspace/harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙)만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`(Codex 훅 등록·활성화 — ADR 019), `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙)만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(및 OS 파일) — 뿐이다(ADR 002·005·006).
+- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(및 OS 파일) — 뿐이다(ADR 002·005·006).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하고, **사내 프로필 설치처에서는 이 기본이 적용되지 않는다**(아래 설치처 프로필 규칙).
 - **설치처 프로필 (개인/사내)**: 이 저장소는 개인 계정 소유이므로, 설치처가 어디냐에 따라 푸시 가능 여부가 갈린다. 프로필은 REGISTRY.md 상단에 기록한다(harness-install 인터뷰) — `개인`(하네스 수정·커밋·푸시 가능) / `사내`(**추적 하네스 파일 수정·커밋·푸시 전면 금지** — 사내 머신에서 개인 원격으로의 푸시는 보안 정책 위반이고, 커밋만 쌓아도 결국 푸시가 필요해 발산한다). **사내에서 하네스 개선이 필요하면 저장소를 고치는 대신 `_workspace/harness-updates.md`(미추적) 대기 큐에 기록한다.** 항목 형식: `## YYYY-MM-DD 제목` 아래 상태(대기/적용됨) / 대상 파일 / 변경 내용 / 사유·근거(신호) — 변경 내용은 **그 세션의 맥락 없이도 개인 머신에서 그대로 적용할 수 있는 수준**으로 구체적으로 쓴다(대상 절·문구·추가 위치까지). 이 파일은 미추적이라 git으로 전달되지 않는다 — 사용자가 내용을 개인 머신으로 직접 옮기고(파일 복사·붙여넣기), 개인 설치처에서 "하네스 업데이트 적용"을 요청하면 metaskill이 항목을 적용하고 상태를 `적용됨`으로 갱신한다. **프로필 미기록 상태에서 하네스 파일을 수정하게 되면 먼저 사용자에게 프로필을 확인해 REGISTRY.md에 기록한다**(단, 이 저장소를 직접 클론해 PR로 작업하는 원격 세션은 개인 프로필로 간주). 이유: 수정 자체를 개인 설치처로 이월해야 사내 정책과 하네스 진화가 양립한다.
@@ -101,6 +103,7 @@
 - **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견은 하네스 우회 신호로 취급한다(8절).
 - 심링크가 불가한 환경이면 sync 스크립트로 대체하고 그 사실을 ADR에 기록한다.
 - **외부 도구가 스킬을 설치할 때는 전역 경로(홈 디렉토리)로** 설치한다 — 예: `agentsview skills install` → `~/.claude/skills/`·`~/.agents/skills/`. 이 워크스페이스에 프로젝트 모드(`--project` 등)로 설치하지 않는다. 이유: 워크스페이스의 `.claude/`는 심링크라 설치물이 공용 `.agents/skills/`에 떨어져 **설치처별 도구 산출물이 공용 저장소의 커밋 대상**이 된다.
+- **SessionStart 세션 훅의 Codex 병행 (ADR 019)**: 세션 훅은 원래 `.claude/settings.json`(Claude Code 전용)에만 등록됐으나, Codex CLI v0.114+가 같은 구조(`hooks.EventName[].hooks[].command`)의 라이프사이클 훅과 **SessionStart stdout → developer context 주입**을 지원한다(포맷 동일). 그래서 리마인더 훅 2종(`harness-review-reminder`·`worklog-reminder`)을 **`.codex/hooks.json`**(추적 — `.claude/settings.json`과 대칭)에도 등록해 두 CLI에서 같은 리마인더가 뜬다. 훅 스크립트는 이미 도구 무관이다(fail-open·stdout 출력·`CLAUDE_PROJECT_DIR` 부재 시 `os.getcwd()` 폴백) — 그래서 스크립트 수정 없이 config만 추가한다. Codex 명령은 `$CLAUDE_PROJECT_DIR`가 없으므로 `$PWD` 기준 경로를 쓴다. **활성화는 저장소에 커밋**한다(`.codex/config.toml`의 `[features] codex_hooks = true`) — 클론하면 즉시 켜져 머신마다 켜는 단계가 필요 없다(항상 활성, 2026-07-16 사용자 지시). 단, **repo-local config.toml 활성화가 인터랙티브 세션에서 안 뜨는 알려진 이슈(openai/codex #17532)** 가능성이 있어, 새 Codex 세션에서 리마인더가 안 뜨면 `~/.codex/config.toml`(전역)에 같은 플래그를 넣는 폴백을 쓴다(harness-install에 안내). **실험 기능·Windows 미지원**이므로 macOS·Linux 설치처에만 적용한다. `agentsview-daemon`은 Codex 병행에서 제외한다(agentsview가 Codex 세션을 관측하는지 미확인 — 확인 시 편입).
 
 ## 12. 하위 프로젝트 하네스 중앙 관리 (ADR 006)
 
@@ -152,6 +155,26 @@
 2. 코드·명령·로그·에러 메시지 **원문 인용은 원어 그대로** 둔다(번역하면 검색·재현이 깨진다).
 3. 판단이 애매한 산출물(사용자가 읽을 수도 있는 것)은 한국어로 쓴다 — 절감보다 소통 실패 비용이 크다.
 
+## 16. 코드 최소주의 — 제품 코드 (ponytail 이식, ADR 017)
+
+하위 프로젝트에 **제품 코드**를 쓰는 모든 작업(implementer 에이전트 포함)은 코드를 쓰기 전에 아래 **결정 사다리**를 순서대로 밟는다. 원칙: **"가장 좋은 코드는 애초에 쓰지 않은 코드"** — 여기서 게으름은 부주의가 아니라 전략적 효율이다.
+
+1. **필요성(YAGNI)**: 이 코드가 정말 필요한가.
+2. **기존 코드 재사용**: 코드베이스에 이미 헬퍼·유틸·패턴이 있는가.
+3. **표준 라이브러리**: 언어 내장 기능으로 되는가.
+4. **네이티브 플랫폼 기능**: OS·프레임워크 기능으로 되는가.
+5. **이미 설치된 의존성**: 새 의존성을 추가하지 말고 있는 것으로.
+6. **한 줄로**: 한 줄로 표현 가능한가.
+7. **그제서야 최소 구현**: 동작하는 최소한만 쓴다.
+
+- **문제를 이해한 뒤에 사다리를 오른다 — 이해 대신이 아니라.** 전체를 읽고 흐름을 추적한 뒤에 최소화한다. **동작하는 가장 짧은 diff가 이긴다, 단 문제를 이해한 뒤에.** 요청 없는 추상화·불필요한 보일러플레이트·장황한 해법은 금지한다.
+- **최소주의가 적용되지 않는 영역 (전면 엄밀성 유지)**: 문제 이해, 신뢰 경계의 입력 검증, 데이터 손실을 막는 에러 처리, 보안·접근성, **명시적으로 요청된 기능**. 특히 **3절 안전 가드레일과 13절 완료 기준은 최소주의로 완화 불가** — "짧은 코드"가 "빠뜨린 코드"의 알리바이가 되면 안 된다. 검증·테스트·에러 처리를 지우는 것은 shrink가 아니라 결함이다.
+- **하네스 자산 지연 생성(ADR 007)과는 별개 축이다**: 그쪽은 스킬·에이전트 등 **하네스 비대**를 막고, 이 절은 에이전트가 쓰는 **제품 코드 분량**을 규율한다. 둘을 섞지 않는다.
+- **리뷰 연결**: 이 규율의 판정은 `team-review`의 "단순성/과설계" 관점 축이 담당한다(제품 코드 shrink). 하네스 자산 shrink는 `harness-review` 신호 ④가 담당한다 — 두 축을 섞지 않는다.
+- **왜 문서로만 이식하나**: 규칙의 유일한 운반체는 문서다(12절). ponytail은 이 원칙을 Node.js 훅·플러그인·6스킬로 배송하지만, 훅·플러그인은 cwd 로드 편의 장치라 Codex가 읽지 못하고 규칙 원본이 될 수 없다(11절). 그래서 배송 기계 전체를 복제하지 않고 **원칙(이 절) + 리뷰 관점 1개(team-review)**만 이식한다 — 이 채택 자체가 사다리 2번(재사용)·5번(기존 의존성)의 실천이다.
+
+> 출처: 결정 사다리와 예외 영역은 ponytail(github.com/DietrichGebert/ponytail, MIT)에서 이식했다. 채택 설계·비목표는 `docs/proposals/2026-07-15-ponytail-adoption.md`, 결정 근거는 `docs/adr/017`.
+
 ## 변경 이력
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
@@ -188,3 +211,8 @@
 | 2026-07-15 | 5절에 루트 원격 세션 PR 사이클 절차화 — 머지 확인 후에만 브랜치 재정렬, fast-forward 푸시, 머지 전 스택 시 PR 본문 갱신 | 5절 | 일일 점검 신호 ①(같은 요청 반복 — 하네스 개선 PR 하루 6건) 사용자 승인. 절차 부재로 매 세션 재유도, 머지 미확인 재정렬로 커밋 유실 실발생(2026-07-14) |
 | 2026-07-15 | 훅 공통 부트스트랩 `_common.py` 신설 — stdio UTF-8 재구성 단일 원본화, 세션 훅 2종은 동일 디렉토리 import·githooks/tdd-gate는 교차 디렉토리 import 전환(유실 시 no-op 폴백), 스펙 템플릿에 훅 크로스 플랫폼 체크리스트 추가 | .agents/hooks/(+_common_test.py), .agents/githooks/tdd-gate.py, docs/specs/, doc-writer references/templates.md | 일일 점검 신호 ②(cp949 수정이 훅 3종 반복 적용된 fix 3연쇄) 사용자 승인. 복제된 공통 로직은 결함 수정 비용을 N배로 증폭 |
 | 2026-07-15 | 15절 내부 통신 언어 신설 — 모델만 읽는 산출물(발행 프롬프트·팀 중간 리포트·P2P 본문)은 영어, 사용자가 읽는 것(채팅·PR·하네스 문서·판정 문서·제안서·운영 로그·트리거 키워드)은 한국어, 언어 섞임 방지 가드 3항 | 15절, 에이전트 정의 7종, orchestrate, team-review, doc-writer(+templates), harness-review | 사용자 승인(토큰 절약 질문 → 부작용 없는 적용 요청) — 한국어는 같은 내용에 ~1.5-2배 토큰, 중간 리포트는 쓰기 1회+읽기 N회. docs/adr/016 |
+| 2026-07-16 | 16절 코드 최소주의(제품 코드) 신설 — ponytail 결정 사다리 7단계·예외 영역 이식, team-review에 "단순성/과설계" 관점 축 추가. 원칙+리뷰 관점만 이식(플러그인·Node 훅·6스킬은 비목표) | 16절, team-review, docs/proposals/2026-07-15-ponytail-adoption.md | 사용자 승인(ponytail 분석·설계 → 최소 채택 요청) — 제품 코드 분량 규율 공백을 채우되 규칙 운반체는 문서(11·12절)라 배송 기계는 복제하지 않음. docs/adr/017 |
+| 2026-07-16 | claude-mem 최소 채택 — 3절에 `<private>` 외부 발행 제외 마커, 4절에 점진적 공개(2단) 리포트 규약 신설. worklog-reminder SessionStart 훅(+테스트·스펙)·explorer 출력·work-tracker 흐름 2에 반영 | 3·4절, .agents/hooks/worklog-reminder.py, .claude/settings.json, explorer.md, work-tracker, docs/specs/·proposals/ | 사용자 요청(claude-mem 분석 → 적용 검토·적용) — 세션 경계 진행-기록 유실·리포트 재독 토큰 공백을 무의존 착안 이식으로. 워커·벡터 DB·전수 캡처는 이식성(ADR 005)·최소주의(ADR 017)와 충돌해 기각. docs/adr/018 |
+| 2026-07-16 | Codex SessionStart 훅 병행 — 리마인더 2종을 `.codex/hooks.json`(추적)에도 등록, 11절 병행 규칙·5절 추적 목록·harness-install 활성화 단계(`[features] codex_hooks`)·훅 스펙 2종 Codex 노트 갱신. 스크립트 무변경(도구 무관) | 5·11절, .codex/hooks.json, .gitignore, harness-install, docs/specs/(hook 2종), docs/adr/019 | 사용자 요청(맥북 Codex에서도 동작) — Codex v0.114+가 동일 포맷 SessionStart 훅 지원. agentsview-daemon은 Codex 관측 미확인으로 제외, 활성화는 머신 로컬(tdd-gate 선례). docs/adr/019 |
+| 2026-07-16 | Codex 훅 활성화를 저장소 커밋으로 전환(항상 켜짐) — `.codex/config.toml`(추적) 신설·5·11절·harness-install·스펙 갱신, 머신 로컬 등록 단계 제거. #17532 리스크는 전역 config 폴백으로 수용 | 5·11절, .codex/config.toml, .gitignore, harness-install, docs/specs/(hook 2종), docs/adr/019 | 사용자 지시("Codex hook 항상 활성") — 머신마다 켜는 단계 없이 클론 즉시 동작. docs/adr/019 |
+| 2026-07-16 | kepano/obsidian-skills 관례 최소 이식 — defuddle 스킬 신설(웹 본문 추출, 실패 시 WebFetch 폴백), description 저작 공식에 ④ 부정 트리거(`Do NOT use for …`) 추가, harness-install 3절에 defuddle 선택 설치(3b) 추가. 도메인 스킬 4종(obsidian-markdown·bases·json-canvas·cli)은 비목표(이 워크스페이스에 Obsidian 미사용) | .agents/skills/defuddle/, metaskill(스킬 공통 규칙 #2·agent-rules.md), harness-install(3·7절) | 사용자 검토·승인(obsidian-skills 적용성 검토) — defuddle은 도메인 독립 토큰 절감, 부정 트리거는 CLAUDE.md 변경 이력에 반복 관찰된 오라우팅 실패에 대한 저비용 처방. 얇은 래퍼·문서 운반 원칙 유지(플러그인 마켓플레이스 패키징은 사설 모노 워크스페이스라 비목표) |

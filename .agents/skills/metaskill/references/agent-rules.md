@@ -7,7 +7,7 @@
 ```yaml
 ---
 name: <이름>
-description: <Pushy 공식 — 동사 나열 + 트리거 상황 + 재실행 키워드. 영문 기술 + 한국어 재실행 키워드 병기 권장>
+description: <Pushy 공식 — 동사 나열 + 트리거 상황 + 재실행 키워드 (+ 인접 역할과 경계가 겹치면 "Do NOT …"/"~는 제외" 부정 트리거 권장 — 오라우팅 능동 차단). 영문 기술 + 한국어 재실행 키워드 병기 권장>
 tools: <허용 도구 화이트리스트 — 최소 권한>
 tier: design | implement | explore   # 모델 매핑은 루트 AGENTS.md 9절 표가 유일 원본
 ---

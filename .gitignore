@@ -17,6 +17,11 @@ REGISTRY.md
 # 개인·설치처별 Claude Code 설정 — 공용 훅 설정(settings.json)은 추적, 개인 오버라이드는 미추적 (ADR 008)
 .claude/settings.local.json
 
+# Codex 훅 설정 — 공용 훅 등록(hooks.json)·활성화(config.toml)는 추적(항상 켜짐), 그 외는 미추적 (ADR 019)
+.codex/*
+!.codex/hooks.json
+!.codex/config.toml
+
 # OS
 .DS_Store
 

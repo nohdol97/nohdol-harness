@@ -1,0 +1,5 @@
+# Codex 훅 활성화 — 이 저장소를 클론하면 즉시 켜진다(항상 활성, ADR 019).
+# 세션 훅 등록은 .codex/hooks.json 참조. 개인 Codex 설정은 ~/.codex/config.toml(전역)에 둔다
+# (이 프로젝트 config는 하네스가 소유하는 공용 파일이라 개인 값은 넣지 않는다).
+[features]
+codex_hooks = true
