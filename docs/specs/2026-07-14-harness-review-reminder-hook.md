@@ -46,7 +46,7 @@
 
 ## 미해결 질문
 
-- **대기 관찰 — Codex 훅 계층 (2026-07-15 기록, 세션 훅 2종 공통)**: 비목표의 "Codex 세션 트리거 불가(훅은 Claude Code 계층)" 전제가 바뀌고 있다 — Codex CLI v0.114+(2026-03)에 라이프사이클 훅 시스템이 도입됐고 UserPromptSubmit(v0.116)·SessionStart 등 10개 이벤트, exit 2 차단, systemMessage, transcript_path를 지원한다. 다만 현재 **실험 기능(기본 비활성, hooks.json)·Windows 미지원**이라 채택 보류. tdd-gate는 git commit-msg 계층 단일화(ADR 014·015)로 이미 도구 무관이 되어 대상에서 제외 — 남은 공백은 **SessionStart 세션 훅 2종(이 리마인더·agentsview-daemon)이 Codex 세션에서 안 도는 것**이다. Codex 훅 안정화 + Windows 지원이 확인되면 이 2종의 Codex SessionStart 등록을 재검토한다.
+- **Codex 훅 계층 — 리마인더 부분 채택됨(2026-07-16, ADR 019)**: Codex CLI v0.114+가 동일 포맷(`hooks.EventName[].hooks[].command`)의 SessionStart 훅과 **stdout → developer context 주입**을 지원함을 확인해, 이 리마인더와 `worklog-reminder`를 `.codex/hooks.json`(추적)에 등록했다. 훅 스크립트는 이미 도구 무관(fail-open·stdout·`os.getcwd()` 폴백)이라 무변경. 활성화는 **저장소 커밋(`.codex/config.toml`의 `[features] codex_hooks = true`)으로 항상 켜짐**(2026-07-16 사용자 지시)이고 **실험 기능·Windows 미지원**이라 macOS·Linux 한정이다(안 뜨면 `~/.codex/config.toml` 전역 폴백 — #17532). **남은 대기 관찰**: ① macOS Codex 세션에서 실제 주입되는지 실측 검증(원격 컨테이너엔 Codex 미설치 — harness-updates.md 대기 항목). ② `agentsview-daemon`은 agentsview가 Codex 세션을 관측하는지 미확인이라 Codex 병행에서 제외 — 확인 시 편입. tdd-gate는 git commit-msg 계층 단일화(ADR 014·015)로 이미 도구 무관.
 
 ## 변경 이력
 
@@ -62,3 +62,4 @@
 | 2026-07-14 | 지시문을 서브에이전트 발행 방식으로 개정 — 백그라운드 점검 + 사용자 요청 병행, 마커·로그 갱신 주체는 서브에이전트 | R3, C1·C2 | 사용자 확정 — 메인 루프 직접 수행은 첫 응답을 점검이 점유. 실행 절차 단일 원본은 harness-review 스킬 '실행 방식' 절 |
 | 2026-07-14 | 신호 체계 4신호 확장 반영 — 일일은 확장 ①~③, 수축·효율 ④는 주간 한정으로 문구 갱신 | 목표, daily 지시문 | 8절 개정(ADR 013) — 일일 비용을 늘리지 않으면서 신호 범위만 정확히 표기 |
 | 2026-07-15 | utf8_stdio를 `_common.py` import로 전환(유실 시 no-op 폴백) + Codex 훅 계층 대기 관찰 항목 기록 | 훅 구현, 미해결 질문 | 일일 점검 신호 ②(공통 로직 복제로 fix 3연쇄) — 스펙 2026-07-15-hooks-common-bootstrap. Codex v0.114+ 훅 도입으로 비목표 전제 변동(실험·Windows 미지원이라 보류) |
+| 2026-07-16 | Codex 훅 계층 리마인더 부분 채택 — 이 리마인더를 `.codex/hooks.json`에 등록(스크립트 무변경), 미해결 질문을 채택 상태로 갱신(agentsview-daemon·macOS 실측은 잔여) | 미해결 질문 | 사용자 요청(맥북 Codex 병행) — Codex SessionStart 포맷·stdout 주입 확인. docs/adr/019 |
