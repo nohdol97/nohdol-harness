@@ -31,6 +31,7 @@
 | [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 활성 | Codex SessionStart 훅 병행 (리마인더 2종) |
 | [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
 | [021](adr/021-claude-md-agents-import.md) | 2026-07-16 | 활성 | CLAUDE.md `@AGENTS.md` 임포트 (단일 원본 항상-온) + 변경 이력 분리 |
+| [022](adr/022-superpowers-adoption.md) | 2026-07-17 | 활성 | superpowers 규율 착안 3건 이식 (압박 테스트·신선한 증거·리뷰 수신 규율) |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했다. 008·014의 나머지 결정(차단 지점·fail-open·예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리).
 
@@ -54,3 +55,4 @@
 |---|---|---|
 | [2026-07-15-ponytail-adoption](proposals/2026-07-15-ponytail-adoption.md) | → ADR 017 | ponytail 코드 최소주의 결정 사다리 이식(원칙+리뷰 관점만, 배송 기계 기각) |
 | [2026-07-16-claude-mem-adoption](proposals/2026-07-16-claude-mem-adoption.md) | → ADR 018 | claude-mem 착안 3개 무의존 이식(워커·벡터 DB·전수 캡처 기각) |
+| [2026-07-17-superpowers-adoption](proposals/2026-07-17-superpowers-adoption.md) | → ADR 022 | superpowers 규율 착안 3개 문서 이식(플러그인 통설치·나머지 11스킬 기각) |
