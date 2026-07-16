@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: "Gate and orchestrate agent work. Phase 0 judges whether a request needs direct handling, one subagent, a generate-verify pair, or a team - then runs session teams with a shared task queue (depends_on), P2P messaging, hybrid phases, and severity-gated integration. Use for ANY implementation or multi-step task (구현해줘, 만들어줘, 수정해줘, implement, build, fix this) and for 팀 구성, 병렬 작업, cross-project work. Re-run keywords - orchestrate, team, parallel, implement, 오케스트레이션, 구현, 작업, 병렬."
+description: "Gate and orchestrate agent work. Phase 0 judges whether a request needs direct handling, one subagent, a generate-verify pair, or a team - then runs session teams with a shared task queue (depends_on), P2P messaging, hybrid phases, and severity-gated integration. Use for ANY implementation or multi-step task (구현해줘, 만들어줘, 수정해줘, implement, build, fix this) and for 팀 구성, 병렬 작업, cross-project work. Do NOT use for review/audit (→ team-review), doc/spec writing (→ doc-writer), or harness creation/improvement (→ metaskill) - these specialized routes take priority over the gate. Re-run keywords - orchestrate, team, parallel, implement, 오케스트레이션, 구현, 작업, 병렬."
 ---
 
 # orchestrate — 에이전트 팀 오케스트레이션
