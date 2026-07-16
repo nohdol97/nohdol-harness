@@ -39,6 +39,7 @@ description: Review code diffs, PRs, specs, or harness changes with a size-scale
 | 보안 | 시크릿 평문, 입력 검증, 권한 — 가드레일 3절 위반 |
 | 규약 | 하네스 규칙·커밋 컨벤션·문서 형식(doc-writer 템플릿) 준수 |
 | 성능 | 명백한 비효율(N+1, 불필요 반복) — 추측성 최적화 제안 금지 |
+| 단순성/과설계 | **비자명 로직 diff에만 선발** — 무엇을 지울 수 있나만 본다(정확성·보안·성능과 분리). 태그 5종: `stdlib`(표준 라이브러리 재구현), `native`(플랫폼·의존성 중복), `yagni`(단일 구현 추상화·미사용 설정), `delete`(죽은 코드·투기적 기능), `shrink`(더 짧게). 발견은 `L<line>: <tag> <what>. <replacement>.` 형식, 리포트 끝에 `net: -<N> lines possible`(없으면 `Lean already`). 판정 기준은 루트 AGENTS.md 16절 코드 최소주의 — 단, 16절 예외 영역(검증·에러 처리·보안·명시 요청 기능)은 삭제 대상이 아니다 |
 | UX·접근성 | UI 변경 diff에만 선발 — 접근성(WCAG 대비, 터치 타깃 크기, 키보드 내비게이션, ARIA), 사용자 안전 장치(자동저장·실행취소·에러 복구 UX). 기준은 대상 프로젝트 하네스·사용자 전역 정책의 접근성 요구 |
 
 각 리뷰어 프롬프트에 필수 포함: 대상 프로젝트 하네스(`.agents/projects/<이름>/AGENTS.md`) 읽기 지시, 스펙 경로, 출력 경로 `_workspace/<작업명>/phase1_reviewer-<관점>_report.md`(doc-writer 작업 리포트 템플릿 — **영어**, 루트 15절. integrator 최종 verdict와 사용자 보고는 한국어). 리뷰어·integrator는 **design 티어**이므로 Agent 호출 시 `model`을 9절 표에 따라 최고 성능 모델로 지정한다(orchestrate 티어 적용 규칙 — 미지정 시 세션 모델 상속으로 티어 정책이 무시된다).
