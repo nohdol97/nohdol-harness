@@ -42,7 +42,7 @@
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`(Codex 훅 등록·활성화 — ADR 019), `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙)만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`(Codex 훅 등록·활성화 — ADR 019), `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙, proposals/는 외부 도구 분석·채택 설계, README.md는 이 셋의 탐색 인덱스(MOC))만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
 - 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(및 OS 파일) — 뿐이다(ADR 002·005·006).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
@@ -55,7 +55,9 @@
 ## 6. 문서 규칙
 
 - **변경 이력 테이블**(경량 로그): 각 AGENTS.md 하단 필수. 컬럼: 날짜 / 변경 내용 / 대상 / 사유.
-- **ADR**(구조적 결정 기록): `docs/adr/NNN-제목.md`. 형식: 날짜, 변경 내용, 대상, 사유.
+- **ADR**(구조적 결정 기록): `docs/adr/NNN-제목.md`. 형식: 날짜, 변경 내용, 대상, 사유. 결정이 후속 ADR로 대체되면 삭제하지 말고 상단에 대체 배너(어느 부분이 어느 ADR로 대체됐는지)를 단다 — ADR은 결정의 역사다.
+- **제안**(외부 도구·패턴 분석과 채택 설계): `docs/proposals/YYYY-MM-DD-제목.md`. 무엇을 이식하고 무엇을 기각할지 근거와 함께 적는다. 채택되면 결과는 ADR로 확정한다(제안=과정, ADR=결정).
+- **문서 지도(MOC)**: `docs/README.md`가 ADR·스펙·제안의 탐색 인덱스다(상태·대체 관계·대상 코드). **ADR·스펙·제안을 새로 만들거나 상태가 바뀌면(대체·구현·기각) 같은 커밋에서 이 인덱스를 갱신한다** — 인덱스가 현실과 어긋나면 REGISTRY.md와 같은 이유로 신뢰를 잃는다.
 - **ADR 작성 트리거**: ① 에이전트가 8개 이상이 될 때 ② 현재 구조에 대한 질문이 반복될 때 ③ 패턴 전환(예: 파이프라인→팬아웃)이 일어날 때 ④ 저장소·디렉토리 구조 등 구조적 결정이 일어날 때.
 
 ## 7. 라우팅 규칙
@@ -216,3 +218,4 @@
 | 2026-07-16 | Codex SessionStart 훅 병행 — 리마인더 2종을 `.codex/hooks.json`(추적)에도 등록, 11절 병행 규칙·5절 추적 목록·harness-install 활성화 단계(`[features] codex_hooks`)·훅 스펙 2종 Codex 노트 갱신. 스크립트 무변경(도구 무관) | 5·11절, .codex/hooks.json, .gitignore, harness-install, docs/specs/(hook 2종), docs/adr/019 | 사용자 요청(맥북 Codex에서도 동작) — Codex v0.114+가 동일 포맷 SessionStart 훅 지원. agentsview-daemon은 Codex 관측 미확인으로 제외, 활성화는 머신 로컬(tdd-gate 선례). docs/adr/019 |
 | 2026-07-16 | Codex 훅 활성화를 저장소 커밋으로 전환(항상 켜짐) — `.codex/config.toml`(추적) 신설·5·11절·harness-install·스펙 갱신, 머신 로컬 등록 단계 제거. #17532 리스크는 전역 config 폴백으로 수용 | 5·11절, .codex/config.toml, .gitignore, harness-install, docs/specs/(hook 2종), docs/adr/019 | 사용자 지시("Codex hook 항상 활성") — 머신마다 켜는 단계 없이 클론 즉시 동작. docs/adr/019 |
 | 2026-07-16 | kepano/obsidian-skills 관례 최소 이식 — defuddle 스킬 신설(웹 본문 추출, 실패 시 WebFetch 폴백), description 저작 공식에 ④ 부정 트리거(`Do NOT use for …`) 추가, harness-install 3절에 defuddle 선택 설치(3b) 추가. 도메인 스킬 4종(obsidian-markdown·bases·json-canvas·cli)은 비목표(이 워크스페이스에 Obsidian 미사용) | .agents/skills/defuddle/, metaskill(스킬 공통 규칙 #2·agent-rules.md), harness-install(3·7절) | 사용자 검토·승인(obsidian-skills 적용성 검토) — defuddle은 도메인 독립 토큰 절감, 부정 트리거는 CLAUDE.md 변경 이력에 반복 관찰된 오라우팅 실패에 대한 저비용 처방. 얇은 래퍼·문서 운반 원칙 유지(플러그인 마켓플레이스 패키징은 사설 모노 워크스페이스라 비목표) |
+| 2026-07-16 | claude-mem·obsidian·ponytail·Codex 라운드 정합 보완 — 6절에 제안(proposals) 문서 타입·문서 지도(MOC `docs/README.md`)·인덱스 동기화 의무 신설, 5절 추적 문서 열거에 proposals·README 추가, `docs/README.md` MOC 신설(ADR 19·스펙 5·제안 2, 대체 체인·상태), 점진적 공개를 reviewer·integrator·troubleshooter 출력에 반영, harness-review 무결성에 Codex 훅 등록 일관성·MOC 최신성 점검 추가, README 낡음 정리(worklog·defuddle·.codex·proposals·16절) | 5·6절, docs/README.md, reviewer·integrator·troubleshooter, harness-review, metaskill, README | 사용자 요청(추가 기법 전체 재검토·보완) — 빠른 다PR 확장으로 생긴 정합 공백: 19 ADR 무인덱스(obsidian 탐색성), proposals 미문서화, 점진적 공개 발견-다수 에이전트 미참조(선언-미구현 위험) |

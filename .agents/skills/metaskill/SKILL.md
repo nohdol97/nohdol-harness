@@ -61,6 +61,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
 - orchestrate 연동: 구현·다단계 작업은 루트 orchestrate의 팀 필요성 판정(Phase 0-1)을 거치고, 다중 프로젝트·팀 작업은 orchestrate로 팀을 구성함을 명시(ADR 010).
 - ADR 디렉토리 (구조적 결정 시 NNN-제목.md): 루트 하네스는 `docs/adr/`, 하위 프로젝트는 `.agents/projects/<이름>/adr/`.
+- **문서 지도(MOC) 동기화 (루트 하네스 한정)**: 루트에서 ADR·스펙(`docs/specs/`)·제안(`docs/proposals/`)을 새로 만들거나 상태를 바꾸면(대체·구현·기각) **같은 커밋에서 `docs/README.md` 인덱스의 해당 행을 갱신**한다(루트 AGENTS.md 6절). REGISTRY.md 갱신 의무와 같은 이유 — 인덱스가 현실과 어긋나면 탐색 근거로서 신뢰를 잃는다.
 - 에이전트를 만들 때는 **`references/agent-rules.md`의 10섹션 템플릿**을 따른다.
 - 스킬을 만들 때는 아래 "스킬 공통 규칙"을 따른다.
 - 패턴 선택이 필요하면 **`references/patterns.md`의 플로우차트** 참조.
