@@ -48,6 +48,7 @@ description: Harness operations review in two modes - daily lite (scan the three
 - 문서 지도(MOC) 최신성: `docs/README.md`의 ADR·스펙·제안 행이 `docs/adr/`·`docs/specs/`·`docs/proposals/`의 실제 파일과 일치하는지 — 인덱스에 없는 파일이나 파일 없는 인덱스 행, 대체됐는데 "활성"인 상태가 있으면 보고(루트 AGENTS.md 6절 동기화 의무 위반 = 선언-미구현의 문서판).
 - 하위 하네스: `.agents/projects/` 하위 디렉토리 목록과 REGISTRY.md 레지스트리 행("하네스 유무" ✓)이 일치하는지. `project/<이름>/` 안에 하네스 파일(AGENTS.md·CLAUDE.md·`.claude/`·`.agents/`)이 생겼는지 (생겼다면 우회 신호 — 원본은 루트 `.agents/projects/`에만 있어야 한다. 루트 AGENTS.md 12절, ADR 006·007). 하위에 CLAUDE.md가 있으면 구 규격 잔재 — 삭제 제안. 지연 생성된 `skills/`·`agents/`가 있는데 하위 AGENTS.md에 목록·경로 명시가 없으면 로드 불능 상태 — 보고.
 - 스킬 로드 가능성: 각 SKILL.md의 frontmatter가 첫 줄 `---` + `description` 보유인지(무설명 스킬은 자동 트리거 불능 — 2026-07-13 장애), 개행이 LF인지(`file` 명령에 CRLF 표기 없어야 함).
+- **AGENTS.md 로딩 크기 예산**: `wc -c AGENTS.md`가 **40,000 bytes를 초과하면 다이어트를 제안**한다 — 이 파일은 `@AGENTS.md`로 매 세션 항상-온이라 성장이 곧 고정 토큰 비용이고, 길어질수록 규칙이 본문에 매몰된다. 다이어트 수법: 규칙+이유는 남기고 사례·실측 서술을 changelog/ADR 포인터로 이관(ADR 021 변경 이력 분리와 같은 수법).
 - 레지스트리: REGISTRY.md가 존재하는지(없으면 설치 미완료 — harness-install 안내), 존재하면 `project/` 하위 실제 디렉토리 목록과 표가 일치하는지.
 - 잔여물: `_workspace/`에서 team-log.jsonl이 **있는데** `team_delete` 이벤트가 없는 작업 디렉토리는 비정상 종료 신호. team-log 자체가 없는 팀 작업 디렉토리는 이벤트 계약 우회 신호(정보성).
 - 대기 큐: `_workspace/harness-updates.md`에 상태 `대기` 항목이 있는지(루트 AGENTS.md 5절 설치처 프로필). **개인 설치처**면 이월된 개선이 잠자고 있는 것 — metaskill 적용을 제안한다. **사내 설치처**면 정상(개인 머신 이월 대기 중) — 항목 수만 보고한다.
