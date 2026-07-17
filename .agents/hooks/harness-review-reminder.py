@@ -65,8 +65,9 @@ def build_message(mode, weekly_days, daily_days):
         since = "기록이 없습니다" if weekly_days is None else f"{weekly_days}일이 지났습니다"
         return (
             f"[harness-review 리마인더] 주간 전체 점검 — 마지막 전체 점검 {since}. "
-            "이 세션의 첫 응답에서 harness-review 점검 서브에이전트를 백그라운드로 "
-            "즉시 발행하세요(스킬 '실행 방식' 절 — 메인 루프가 직접 점검하지 않는다). "
+            "이 세션의 첫 응답에서 harness-review 점검 서브에이전트를 explorer "
+            "타입으로(general-purpose 아님) 백그라운드 즉시 발행하세요"
+            "(스킬 '실행 방식' 절 — 메인 루프가 직접 점검하지 않는다). "
             "점검이 도는 동안 사용자 요청을 병행 처리하고, 완료되면 결과(신호·무결성·"
             "제안)를 채팅으로 보고하세요. 마커(_workspace/.harness-review-last·"
             ".harness-review-daily-last, 오늘 날짜 YYYY-MM-DD)와 운영 로그"
@@ -77,7 +78,8 @@ def build_message(mode, weekly_days, daily_days):
         return (
             "[harness-review 리마인더] 일일 경량 점검 — 이 세션의 첫 응답에서 "
             "harness-review 일일 모드(마지막 점검 이후 확장 신호 ①~③ 스캔만) "
-            "서브에이전트를 백그라운드로 즉시 발행하세요(스킬 '실행 방식' 절, "
+            "서브에이전트를 explorer 타입으로(general-purpose 아님) 백그라운드 "
+            "즉시 발행하세요(스킬 '실행 방식' 절, "
             "수축·효율 신호와 무결성 점검은 주간의 몫). "
             "사용자 요청은 병행 처리하고, 완료되면 결과를 채팅으로 보고하세요. "
             "일일 마커(_workspace/.harness-review-daily-last)와 운영 로그"
