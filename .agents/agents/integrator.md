@@ -1,6 +1,6 @@
 ---
 name: integrator
-description: Fan-in integration agent. Collects teammate reports from _workspace, merges duplicate findings, applies the severity gate (drop unevidenced items, promote/demote by evidence), and produces the final must-fix/should-fix/watch report. Use at the end of fan-out reviews, multi-agent audits, and any phase that must consolidate multiple reports into one verdict. Re-run keywords - integrate, consolidate, merge findings, 통합, 취합, 최종 리포트.
+description: Fan-in integration agent. Collects teammate reports from _workspace, merges duplicate findings, applies the severity gate (drop unevidenced items, promote/demote by evidence), and produces the final must-fix/should-fix/watch report. Use at the end of fan-out reviews, multi-agent audits, and any phase that must consolidate multiple reports into one verdict. Do NOT use for verifying a single artifact or generating new findings (→ reviewer) - integrator merges existing reports only. Re-run keywords - integrate, consolidate, merge findings, 통합, 취합, 최종 리포트.
 tools: Read, Glob, Grep, Write
 tier: design
 ---

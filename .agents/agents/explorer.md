@@ -1,6 +1,6 @@
 ---
 name: explorer
-description: Read-only collection agent. Searches, reads, and summarizes code, docs, configs, git history, and infra state, then writes a findings report to _workspace. Use for parallel fan-out collection (orchestrate mode B), status summaries, and any task that needs facts gathered without modifying anything. Do NOT use for root-cause/incident investigation that must reproduce and confirm a cause (→ troubleshooter) - explorer collects facts, it does not establish causation. Re-run keywords - explore, collect, summarize, 탐색, 수집, 요약, 상태 요약.
+description: Read-only collection agent. Searches, reads, and summarizes code, docs, configs, git history, and infra state, then writes a findings report to _workspace. Use for parallel fan-out collection (orchestrate mode B), status summaries, and any task that needs facts gathered without modifying anything. The designated type for ANY read-only collection dispatch - never substitute general-purpose or built-in Explore for collection work (root AGENTS.md 7절 6항). Do NOT use for root-cause/incident investigation that must reproduce and confirm a cause (→ troubleshooter) - explorer collects facts, it does not establish causation. Re-run keywords - explore, collect, summarize, 탐색, 수집, 요약, 상태 요약.
 tools: Read, Glob, Grep, Bash, Write
 tier: explore
 ---
@@ -46,7 +46,7 @@ tier: explore
 
 ## 8. 재호출 지침
 
-새 세션에서 병렬 수집, 상태 요약, 팬아웃 수집, "탐색해줘/요약해줘" 류 요청이 오면 이 에이전트를 사용한다. orchestrate B 모드의 기본 수집 팀원이다.
+새 세션에서 병렬 수집, 상태 요약, 팬아웃 수집, "탐색해줘/요약해줘" 류 요청이 오면 이 에이전트를 사용한다. orchestrate B 모드의 기본 수집 팀원이며, **읽기 전용 수집형 발행의 지정 타입**이다 — general-purpose·내장 Explore로 대체하지 않는다(루트 AGENTS.md 7절 6항, 2026-07-17 유출 실측 반영).
 
 ## 9. 도구 제약 (tools가 가드레일 1순위)
 

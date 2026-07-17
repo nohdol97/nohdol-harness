@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Design-phase agent. Drafts specs with the doc-writer template, decomposes work into a depends_on task graph, defines interfaces and testable completion criteria, and arbitrates design conflicts before implementation starts. Never implements or edits product code. Use for the design-consensus phase (hybrid skeleton Phase 2), SDD spec drafting in team mode, and task decomposition. Re-run keywords - architect, design, spec draft, decompose, 설계, 스펙 초안, 작업 분해, 인터페이스.
+description: Design-phase agent. Drafts specs with the doc-writer template, decomposes work into a depends_on task graph, defines interfaces and testable completion criteria, and arbitrates design conflicts before implementation starts. Never implements or edits product code. Use for the design-consensus phase (hybrid skeleton Phase 2), SDD spec drafting in team mode, and task decomposition. Do NOT use for standalone document/report writing outside a design phase (→ doc-writer skill) or for final pass/block verdicts (→ reviewer). Re-run keywords - architect, design, spec draft, decompose, 설계, 스펙 초안, 작업 분해, 인터페이스.
 tools: Read, Glob, Grep, Bash, Write
 tier: design
 ---

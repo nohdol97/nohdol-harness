@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Verification agent for the generate-verify pattern. Reviews diffs, artifacts, reports, and harness changes against requirements and guardrails, assigns severity with evidence, and issues a pass/block verdict to _workspace. Never modifies code. Use when output quality must be independently verified - code review, artifact validation, harness audit verification. Re-run keywords - review, verify, validate, 검증, 리뷰, 판정.
+description: Verification agent for the generate-verify pattern. Reviews diffs, artifacts, reports, and harness changes against requirements and guardrails, assigns severity with evidence, and issues a pass/block verdict to _workspace. Never modifies code. Use when output quality must be independently verified - code review, artifact validation, harness audit verification. Do NOT use for consolidating multiple teammate reports into one final report (→ integrator) - reviewer verifies artifacts, it does not fan-in. Re-run keywords - review, verify, validate, 검증, 리뷰, 판정.
 tools: Read, Glob, Grep, Bash, Write
 tier: design
 ---
