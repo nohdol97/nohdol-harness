@@ -1,6 +1,6 @@
 ---
 name: work-tracker
-description: "Persist work state across sessions using GitHub Issues (ccpm pattern) - register multi-session epics with spec-linked task checklists, log progress when pausing, resume from open issues, close via PR Closes #N. Falls back to docs/backlog.md in the project repo when there is no GitHub remote. Use when work will span multiple sessions or PRs, or when the user says 작업 등록, 백로그에 넣어줘, 이어서 하자, 하던 작업 뭐였지, 진행 상황 기록해줘. Do NOT use for continuing an in-progress implementation step in the SAME session (진행해줘/계속 → orchestrate gate re-entry) - this skill resumes REGISTERED cross-session work. Re-run keywords - work-tracker, backlog, issue, epic, resume, 작업 등록, 백로그, 이어서, 재개."
+description: "Persist work state across sessions using GitHub Issues (ccpm pattern) - register multi-session epics with spec-linked task checklists, log progress when pausing, resume from open issues, close via PR Closes #N. Falls back to docs/backlog.md in the project repo when there is no GitHub remote. Use when work will span multiple sessions or PRs, or when the user says 작업 등록, 백로그에 넣어줘, 이어서 하자, 하던 작업 뭐였지, 진행 상황 기록해줘, checkpoint, save progress, where was I (these route here, not to external checkpoint skills). Do NOT use for continuing an in-progress implementation step in the SAME session (진행해줘/계속 → orchestrate gate re-entry) - this skill resumes REGISTERED cross-session work. Re-run keywords - work-tracker, backlog, issue, epic, resume, 작업 등록, 백로그, 이어서, 재개."
 ---
 
 # work-tracker — 세션 영속 작업 추적 (ccpm 패턴)

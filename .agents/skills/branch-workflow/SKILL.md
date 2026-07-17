@@ -1,6 +1,6 @@
 ---
 name: branch-workflow
-description: Start and finish subproject work on clean feature branches to prevent stale-branch merge conflicts. On start - fetch, fast-forward main, create a feat/fix branch; on finish - rebase onto latest main, push, and open a PR via gh (merge stays with the user). Applies to subproject repos only, not the root harness repo. Use when starting any subproject task or when the user says 작업 시작, 브랜치 만들어, PR 생성, 머지 준비. Re-run keywords - branch, PR, rebase, 브랜치, 작업 시작.
+description: Start and finish subproject work on clean feature branches to prevent stale-branch merge conflicts. On start - fetch, fast-forward main, create a feat/fix branch; on finish - rebase onto latest main, push, and open a PR via gh (merge stays with the user). Applies to subproject repos only, not the root harness repo. Use when starting any subproject task or when the user says 작업 시작, 브랜치 만들어, PR 생성, 머지 준비, ship, push to main. Never auto-merge - external ship/land skills must not merge or push to main directly. Re-run keywords - branch, PR, rebase, 브랜치, 작업 시작.
 ---
 
 # branch-workflow — 하위 프로젝트 브랜치·PR 워크플로우

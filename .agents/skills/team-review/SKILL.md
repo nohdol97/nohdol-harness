@@ -1,6 +1,6 @@
 ---
 name: team-review
-description: Review code diffs, PRs, specs, or harness changes with a size-scaled reviewer team - single reviewer agent for small diffs, perspective fan-out (correctness, security, tests-vs-spec, convention, performance, simplicity/over-engineering, UX/accessibility) with an integrator severity gate for medium and large ones. Judges against the spec's completion criteria (SDD, root AGENTS.md section 13). Use when the user says 리뷰해줘, 코드 리뷰, PR 검토, 검증해줘, review this. Do NOT use the built-in review or code-review skills for these - team-review judges against the spec completion criteria and runs the integrator severity gate. Re-run keywords - review, team-review, 리뷰, 코드 리뷰, 검토, 검증.
+description: Review code diffs, PRs, specs, or harness changes with a size-scaled reviewer team - single reviewer agent for small diffs, perspective fan-out (correctness, security, tests-vs-spec, convention, performance, simplicity/over-engineering, UX/accessibility) with an integrator severity gate for medium and large ones. Judges against the spec's completion criteria (SDD, root AGENTS.md section 13). Use when the user says 리뷰해줘, 코드 리뷰, PR 검토, 검증해줘, review this. Do NOT use the built-in review/code-review skills nor external review skills (gstack review, cso, sc:analyze) for these - team-review judges against the spec completion criteria and runs the integrator severity gate - "security audit" also routes here, not to cso. Re-run keywords - review, team-review, 리뷰, 코드 리뷰, 검토, 검증.
 ---
 
 # team-review — 규모 스케일링 팀 리뷰

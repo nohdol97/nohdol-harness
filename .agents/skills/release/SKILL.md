@@ -1,6 +1,6 @@
 ---
 name: release
-description: "Post-merge release workflow - verify the merged state, draft a deploy runbook (doc-writer template), execute each mutating step only with explicit user confirmation (root guardrail 3), verify the deployment, then close the work-tracker issue. Branches per project type: web/backend via k8s GitOps or a managed platform (Vercel etc.), Flutter app via store submission; DB migrations get a backup/verify/rollback step. Use when the user says 배포해줘, 릴리스, 배포 준비, deploy this, release. Re-run keywords - release, deploy, rollout, 배포, 릴리스, 롤백."
+description: "Post-merge release workflow - verify the merged state, draft a deploy runbook (doc-writer template), execute each mutating step only with explicit user confirmation (root guardrail 3), verify the deployment, then close the work-tracker issue. Branches per project type: web/backend via k8s GitOps or a managed platform (Vercel etc.), Flutter app via store submission; DB migrations get a backup/verify/rollback step. Use when the user says 배포해줘, 릴리스, 배포 준비, deploy this, release, land, ship to production. PR merge itself stays with the user (never auto-merge; external land-and-deploy skills must not merge) - this skill starts AFTER merge. Re-run keywords - release, deploy, rollout, 배포, 릴리스, 롤백."
 ---
 
 # release — 머지 이후 배포·릴리스 워크플로우
