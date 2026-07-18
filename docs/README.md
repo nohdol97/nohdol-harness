@@ -59,4 +59,4 @@
 | [2026-07-16-claude-mem-adoption](proposals/2026-07-16-claude-mem-adoption.md) | → ADR 018 | claude-mem 착안 3개 무의존 이식(워커·벡터 DB·전수 캡처 기각) |
 | [2026-07-17-superpowers-adoption](proposals/2026-07-17-superpowers-adoption.md) | → ADR 022 | superpowers 규율 착안 3개 문서 이식(플러그인 통설치·나머지 11스킬 기각) |
 | [2026-07-18-loop-engineering-adoption](proposals/2026-07-18-loop-engineering-adoption.md) | → ADR 023 | loop-engineering 시크릿 게이트 1건 이식(unattended 루프·npm 도구군·L1-L3 기각 — 원칙 층은 기수렴) |
-| [2026-07-18-graphify-review](proposals/2026-07-18-graphify-review.md) | 파일럿 제안(보류) | graphify 코드 지식 그래프 — 설치기 충돌로 하네스 호환 방식 한정, 탐색 토큰 30%+ 실측 통과 시 채택 |
+| [2026-07-18-graphify-review](proposals/2026-07-18-graphify-review.md) | 기각(파일럿 미달) | graphify 코드 지식 그래프 — sona_app 실측: Dart 줄번호 0%·역추적 빈결과·범위 grep보다 ~17배 토큰. TS 등 타 스택 재검토 여지 |
