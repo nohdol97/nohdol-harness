@@ -53,6 +53,7 @@ description: Harness operations review in two modes - daily lite (scan the three
 - **AGENTS.md 로딩 크기 예산**: `wc -c AGENTS.md`가 **40,000 bytes를 초과하면 다이어트를 제안**한다 — 이 파일은 `@AGENTS.md`로 매 세션 항상-온이라 성장이 곧 고정 토큰 비용이고, 길어질수록 규칙이 본문에 매몰된다. 다이어트 수법: 규칙+이유는 남기고 사례·실측 서술을 changelog/ADR 포인터로 이관(ADR 021 변경 이력 분리와 같은 수법).
 - 레지스트리: REGISTRY.md가 존재하는지(없으면 설치 미완료 — harness-install 안내), 존재하면 `project/` 하위 실제 디렉토리 목록과 표가 일치하는지.
 - 잔여물: `_workspace/`에서 team-log.jsonl이 **있는데** `team_delete` 이벤트가 없는 작업 디렉토리는 비정상 종료 신호. team-log 자체가 없는 팀 작업 디렉토리는 이벤트 계약 우회 신호(정보성).
+- **`_workspace/` 하우스키핑**: 최종 수정이 **14일 경과**한 작업 디렉토리를 삭제 후보로 목록화해 제안한다(예: `find _workspace -mindepth 1 -maxdepth 1 -type d -mtime +14` — 디렉토리 mtime은 근사치라 후보는 참고용, 최종 판단은 사용자 확인). 운영 데이터 예외 3종(`harness-updates.md`·`harness-ops-log.md`·`.harness-review-*` 마커 — 루트 AGENTS.md 4절)은 제외하고, **삭제 실행은 3절 파괴적 작업이므로 사용자 확인 후에만** 한다. 이유: 4절 "미보존" 원칙에 집행 장치가 없어 세션 산출물이 무기한 누적되고 있었다(2026-07-18 관찰 — 감사 디렉토리 5+ 잔존).
 - 대기 큐: `_workspace/harness-updates.md`에 상태 `대기` 항목이 있는지(루트 AGENTS.md 5절 설치처 프로필). **개인 설치처**면 이월된 개선이 잠자고 있는 것 — metaskill 적용을 제안한다. **사내 설치처**면 정상(개인 머신 이월 대기 중) — 항목 수만 보고한다.
 - 변경 이력: 최근 하네스 커밋마다 변경 이력 갱신이 동반되었는지 — **루트는 `git log -p -- docs/harness-changelog.md`**(ADR 021로 분리), 하위 프로젝트는 해당 AGENTS.md 하단 테이블. CLAUDE.md 첫 줄 `@AGENTS.md` 임포트 존재도 함께 확인(ADR 021 — 산문 링크로 회귀하면 단일 원본이 항상-온이 아니게 된다).
 - 시크릿 유출(agentsview 설치 시): `agentsview secrets scan`으로 세션 로그에 시크릿이 샜는지 스캔한다 — 3절 가드레일("기록 금지")은 예방 규칙이고 이것이 사후 검증이다. 발견 시 must-fix로 즉시 사용자 보고.
