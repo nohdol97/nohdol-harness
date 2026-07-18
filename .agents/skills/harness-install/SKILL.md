@@ -46,6 +46,17 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 - 설치 여부 확인: `command -v defuddle`. 오프라인·전역 npm 권한 부재·사용자 거부 시 건너뛰고 완료 보고에 남긴다.
 - **전역 설치만** 한다(`npm i -g`) — 이 워크스페이스에 프로젝트-로컬로 두지 않는다(외부 도구는 전역, 루트 AGENTS.md 11절과 정합).
 
+#### 3c. context7 MCP (선택 — 라이브러리 문서 조회)
+
+`context7` 스킬이 쓰는 MCP 서버다. 라이브러리·프레임워크·SDK의 **버전별 최신 문서**를 실시간 조회해, 기억 기반 오답(폐기된 API·바뀐 설정)을 없앤다. **이 설치처에서 서드파티 라이브러리 개발(웹·앱·백엔드)을 하면** 등록한다.
+
+- **필수가 아니다**: 미설치여도 `context7` 스킬이 자동으로 WebFetch/WebSearch로 폴백하므로 건너뛰어도 기능이 죽지 않는다 — 순수 정확도·토큰 최적화용이다(defuddle과 같은 성격).
+- 등록 여부 확인: `claude mcp list`에 `context7`이 있는지 본다. 없으면 **user 스코프(전역)로** 등록: `claude mcp add context7 --scope user -- npx -y @upstash/context7-mcp`. 반영은 **다음 세션부터**다(CLI가 세션 시작 시 MCP를 로드).
+- **user 스코프로만** 등록한다 — 이 워크스페이스에 `.mcp.json`(project 스코프)로 커밋하지 않는다. MCP는 설치처별 요소라 REGISTRY.md·`.agents/projects/`처럼 git에 올리지 않는 것이 ADR 005와 정합이고, 이 하네스는 거의 모든 세션을 루트에서 열기 때문에(12절) 전역 등록이면 어느 프로젝트 작업에서든 뜬다.
+- 오프라인·네트워크 정책·사용자 거부 시 건너뛰고 완료 보고에 남긴다. **무단 등록하지 않는다.**
+
+> **SuperClaude 잔재 MCP 주의**: 과거 SuperClaude가 심어둔 `magic`·`sequential-thinking` MCP가 남아 있으면 이 설치처의 정책상 제거 대상이다(sequential-thinking은 네이티브 사고가 대체, magic은 실사용 미확인 — 2026-07-18 결정). `claude mcp list`에서 발견되면 사용자에게 알리고, 승인 시 `claude mcp remove <이름> --scope user`로 제거한다. `playwright`·`context7`은 유지한다.
+
 ### 4. 기존 프로젝트 스캔
 
 `project/` 하위 디렉토리를 나열하고, 각각에 대해 관찰 가능한 사실(하위 구성, git 저장소 여부, 하네스 유무 — `.agents/projects/<이름>/` 존재 기준(루트 AGENTS.md 12절), 스택 단서)을 수집한다. **역할·목적은 각 프로젝트의 README·문서를 직접 읽어 요약해 채운다** — 문서가 없으면 "미확인". **추측으로 채우지 않는다** — 관찰과 추측이 섞이면 레지스트리 전체를 믿을 수 없게 된다.
@@ -66,6 +77,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 - [ ] SKILL.md 개행이 LF — `/skills` 목록에 각 스킬의 description이 표시됨 (무설명이면 CRLF·frontmatter 문제)
 - [ ] agentsview 설치됨 + 로컬 SQLite DB(`~/.agentsview/` 또는 `AGENTSVIEW_DATA_DIR`) 생성 확인 + 외부 DB 동기화 미설정 + finding-history 스킬 전역 설치됨 (건너뛰었으면 사유가 완료 보고에 있음)
 - [ ] (선택) defuddle 설치됨 또는 건너뜀 사유가 완료 보고에 있음 — 미설치는 무해(`defuddle` 스킬이 WebFetch로 폴백)
+- [ ] (선택) context7 MCP가 `claude mcp list`에 있음(user 스코프) 또는 건너뜀 사유가 완료 보고에 있음 — 미설치는 무해(`context7` 스킬이 WebFetch/WebSearch로 폴백). SuperClaude 잔재 magic·sequential-thinking이 있으면 제거 안내됨
 - [ ] REGISTRY.md 존재 + **설치처 프로필(개인/사내)** + 경로 규약 + 표 + 변경 이력 (사내 프로필이면 수정·푸시 금지 의미가 안내됨)
 - [ ] `git status`에 REGISTRY.md·project/·dev/가 나타나지 않음 (ignore 확인)
 - [ ] 미확인 항목이 "미확인"으로 정직하게 표기됨
