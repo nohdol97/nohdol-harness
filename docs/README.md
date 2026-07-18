@@ -32,6 +32,7 @@
 | [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
 | [021](adr/021-claude-md-agents-import.md) | 2026-07-16 | 활성 | CLAUDE.md `@AGENTS.md` 임포트 (단일 원본 항상-온) + 변경 이력 분리 |
 | [022](adr/022-superpowers-adoption.md) | 2026-07-17 | 활성 | superpowers 규율 착안 3건 이식 (압박 테스트·신선한 증거·리뷰 수신 규율) |
+| [023](adr/023-secret-gate-hook.md) | 2026-07-18 | 활성 | secret-gate 훅 (3절 시크릿 금지의 실행 계층 승격) |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했다. 008·014의 나머지 결정(차단 지점·fail-open·예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리).
 
@@ -46,6 +47,7 @@
 | [2026-07-14-harness-review-reminder-hook](specs/2026-07-14-harness-review-reminder-hook.md) | 구현됨 | `.agents/hooks/harness-review-reminder.py` | 013·019 |
 | [2026-07-15-hooks-common-bootstrap](specs/2026-07-15-hooks-common-bootstrap.md) | 구현됨 | `.agents/hooks/_common.py` | — |
 | [2026-07-16-worklog-reminder-hook](specs/2026-07-16-worklog-reminder-hook.md) | 구현됨 | `.agents/hooks/worklog-reminder.py` | 018·019 |
+| [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 
@@ -56,3 +58,4 @@
 | [2026-07-15-ponytail-adoption](proposals/2026-07-15-ponytail-adoption.md) | → ADR 017 | ponytail 코드 최소주의 결정 사다리 이식(원칙+리뷰 관점만, 배송 기계 기각) |
 | [2026-07-16-claude-mem-adoption](proposals/2026-07-16-claude-mem-adoption.md) | → ADR 018 | claude-mem 착안 3개 무의존 이식(워커·벡터 DB·전수 캡처 기각) |
 | [2026-07-17-superpowers-adoption](proposals/2026-07-17-superpowers-adoption.md) | → ADR 022 | superpowers 규율 착안 3개 문서 이식(플러그인 통설치·나머지 11스킬 기각) |
+| [2026-07-18-loop-engineering-adoption](proposals/2026-07-18-loop-engineering-adoption.md) | → ADR 023 | loop-engineering 시크릿 게이트 1건 이식(unattended 루프·npm 도구군·L1-L3 기각 — 원칙 층은 기수렴) |
