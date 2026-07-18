@@ -24,9 +24,11 @@ nohdol-harness/
 │   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   │   ├── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
 │   │   ├── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)
-│   │   └── defuddle/        # 웹 본문만 추출 (토큰 절감, 실패 시 WebFetch 폴백 — kepano/obsidian-skills 착안)
+│   │   ├── defuddle/        # 웹 본문만 추출 (토큰 절감, 실패 시 WebFetch 폴백 — kepano/obsidian-skills 착안)
+│   │   ├── context7/        # 라이브러리·프레임워크 버전별 최신 문서 조회 (context7 MCP 래퍼, 미설치·실패 시 WebFetch/WebSearch 폴백)
+│   │   └── tool-audit/      # 외부 도구(플러그인·MCP·스킬 팩) 사용 실측 감사 (agentsview로 매칭 집계 → 판정·제안, 실행은 metaskill)
 │   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성, 스펙 2026-07-15)
-│   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
+│   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + secret-gate.py (형식 확정 자격증명 패턴 커밋 차단, 도구 무관 — ADR 023) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # → .agents/ 심링크 + settings.json(세션 훅 등록) (Claude Code + Codex가 같은 파일을 봄)
 ├── .codex/                # Codex 훅 등록(hooks.json)·활성화(config.toml) — 리마인더 2종 병행, 항상 켜짐 (ADR 019). 그 외 미추적
@@ -42,7 +44,7 @@ nohdol-harness/
 
 ## 새 컴퓨터에 설치하기
 
-클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → **git 훅 계층 등록**(`core.hooksPath` → `.agents/githooks`, tdd-gate의 유일한 실행 계층이라 미등록이면 커밋 게이트가 꺼진 상태) → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다. 전역 git 설정은 저장소로 전파되지 않으므로 **머신마다 한 번씩** 필요하다.
+클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → **git 훅 계층 등록**(`core.hooksPath` → `.agents/githooks`, tdd-gate의 유일한 실행 계층이라 미등록이면 커밋 게이트가 꺼진 상태) → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → context7 MCP 등록(라이브러리 문서 조회, user 스코프) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다. 전역 git 설정은 저장소로 전파되지 않으므로 **머신마다 한 번씩** 필요하다.
 
 ## 동작 방식
 
