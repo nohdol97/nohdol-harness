@@ -151,7 +151,11 @@ def build_prompt(anchor, note_text, test_result, feedback):
         "   Keep '한 줄 요약' current. List remaining work as concrete open items.\n"
         "5. End your final reply with EXACTLY one fenced json block:\n"
         "```json\n{\"status\": \"done|continue|blocked\", \"open_items\": <int>, \"note\": \"<one line>\"}\n```\n"
-        "   \"done\" ONLY when every completion criterion is met and open_items is 0."
+        "   \"done\" ONLY when every completion criterion is met and open_items is 0.\n"
+        "6. Do NOT spend turns trying to run tests yourself if the runner is not in your allowed\n"
+        "   tools - the driver runs the test command independently right after this session and\n"
+        "   a done claim is only confirmed against that measured result. If the implementation is\n"
+        "   complete, claim \"done\" now; the driver's test run and a reviewer pass will verify it."
     )
     return "\n".join(parts)
 

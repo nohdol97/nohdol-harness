@@ -29,7 +29,7 @@
 ### 드라이버 (`.agents/skills/autoloop/scripts/driver.py`, Python 3 stdlib only)
 
 - **R1 (루프 골격)**: `driver.py --spec <경로> [--project <디렉토리>] [--test-cmd <명령>] [--max-iterations N=10] [--stall-limit N=3] [--max-cost-usd X] [--work-name <슬러그>] [--allow-extra <패턴>]*`로 기동한다. 매 반복: STOP 체크 → 프롬프트 구성 → `claude -p` 실행 → 상태 파싱 → 독립 검증 → 노트·로그 갱신 → 정지 판정.
-- **R2 (불변 앵커)**: 매 반복 프롬프트는 ① 스펙 경로·목표(불변 — 자동 개선으로 절대 수정 불가) ② 직전 carryover 노트 본문 ③ 직전 반복의 독립 테스트 결과 ④ 고정 지시문(하네스 준수·검증·노트 갱신·상태 블록 출력)으로 구성한다. "프롬프트 개선"은 ②·③의 갱신뿐이다 — 드리프트 방지.
+- **R2 (불변 앵커)**: 매 반복 프롬프트는 ① 스펙 경로·목표(불변 — 자동 개선으로 절대 수정 불가) ② 직전 carryover 노트 본문 ③ 직전 반복의 독립 테스트 결과 ④ 고정 지시문(하네스 준수·검증·노트 갱신·상태 블록 출력·검증 위임 고지 — 러너가 허용 목록에 없으면 자가 실행에 턴을 쓰지 말고 드라이버 실측·검증 반복에 위임하라)으로 구성한다. "프롬프트 개선"은 ②·③의 갱신뿐이다 — 드리프트 방지.
 - **R3 (안전 게이트)**: headless 호출은 `--permission-mode acceptEdits` + `--allowedTools`(읽기·편집·안전 Bash 화이트리스트: 고정 테스트/빌드 러너와 `git add/commit/status/diff/log/branch/checkout -b`) + `--disallowedTools`(파괴 패턴 블랙리스트: `git push --force*`, `git clean*`, `rm -rf*`, `kubectl*`, `terraform*`, `aws*`, `helm*`, `gh*`, DB 클라이언트·migrate 류)로 실행한다. **bare 인터프리터·러너 그랜트(`python3:*`, `python:*`, `npx:*`, `npm run:*`, `pnpm:*`, `git checkout:*`) 금지** — 임의 코드 실행으로 블랙리스트를 감싸 우회하면 게이트가 지시 수준으로 격하된다. 프로젝트별 러너가 더 필요하면 `--allow-extra`(반복 가능)로 **사용자가 명시 그랜트**하며, 검증 세션(readonly)에는 확장 그랜트를 주지 않는다. 세션이 `blocked` 상태를 보고하면 드라이버는 즉시 정지하고 노트에 "사용자 확인 필요" 항목을 남긴다.
 - **R4 (상태 계약)**: 세션은 최종 출력 끝에 ```json 펜스로 `{"status": "done"|"continue"|"blocked", "open_items": <int>, "note": "<한 줄>"}` 블록을 출력하도록 지시받는다. 드라이버는 **마지막** 유효 블록을 채택하고, 파싱 실패 시 `continue`로 간주하되 연속 2회 파싱 실패면 정체로 취급한다.
 - **R5 (독립 검증)**: `--test-cmd`가 주어지면 드라이버가 매 반복 종료 후 대상 디렉토리에서 직접 실행해 exit code·출력 tail을 기록한다. 세션의 "테스트 통과" 주장과 무관하게 이 결과만이 증거다(§13).
