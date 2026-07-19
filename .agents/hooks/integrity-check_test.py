@@ -29,6 +29,16 @@ def write(path, text):
         f.write(text)
 
 
+def write_codex_adapter(root, name="foo", description="A test agent", contract="foo", extra=""):
+    write(os.path.join(root, ".codex/agents/%s.toml" % name),
+          'name = "%s"\n'
+          'description = "%s"\n'
+          'developer_instructions = """\n'
+          'Before handling the task, locate and read .agents/agents/%s.md in full.\n'
+          'If the contract is unavailable, report the missing contract.\n'
+          '"""\n%s' % (name, description, contract, extra))
+
+
 def make_good_fixture(root):
     """규약을 모두 지키는 최소 하네스 구조 + git init(.gitignore 판정용)."""
     # 원본 디렉토리
@@ -36,6 +46,7 @@ def make_good_fixture(root):
           "---\nname: foo\ndescription: A test agent\ntools: Read\ntier: implement\n---\n# foo\n")
     write(os.path.join(root, ".agents/skills/bar/SKILL.md"),
           "---\nname: bar\ndescription: A test skill\n---\n# bar\n")
+    write_codex_adapter(root)
     # .claude 심링크
     claude = os.path.join(root, ".claude")
     os.makedirs(claude, exist_ok=True)
@@ -47,7 +58,8 @@ def make_good_fixture(root):
     write(os.path.join(root, "AGENTS.md"), "# AGENTS.md\n")
     # .gitignore 필수 항목
     write(os.path.join(root, ".gitignore"),
-          "_workspace/\nproject/\nREGISTRY.md\n.agents/projects/*\n!.agents/projects/README.md\n")
+          "_workspace/\nproject/\nREGISTRY.md\n.agents/projects/*\n!.agents/projects/README.md\n"
+          ".codex/*\n!.codex/agents/\n.codex/agents/*\n!.codex/agents/*.toml\n")
     # docs MOC 정합 (파일 ↔ README 링크 양방향 일치)
     write(os.path.join(root, "docs/adr/001-initial.md"), "# ADR 001\n")
     write(os.path.join(root, "docs/specs/2026-07-19-thing.md"), "# spec\n")
@@ -126,6 +138,38 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertIn("foo", out)
         self.assertIn("tier", out.lower())
 
+    # --- R12 Codex custom-agent 어댑터 ---
+    def test_missing_codex_agent_adapter_fails(self):
+        os.remove(os.path.join(self.root, ".codex/agents/foo.toml"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("foo", out)
+        self.assertIn("adapter", out.lower())
+
+    def test_orphan_codex_agent_adapter_fails(self):
+        write_codex_adapter(self.root, name="ghost", description="Ghost", contract="ghost")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("ghost", out)
+
+    def test_codex_agent_adapter_metadata_drift_fails(self):
+        write_codex_adapter(self.root, description="Drifted description")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("description", out.lower())
+
+    def test_codex_agent_adapter_contract_reference_fails(self):
+        write_codex_adapter(self.root, contract="wrong")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("contract", out.lower())
+
+    def test_codex_agent_adapter_fixed_model_fails(self):
+        write_codex_adapter(self.root, extra='model = "fixed-model"\n')
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("model", out.lower())
+
     # --- R5 MOC 정합 (양방향) ---
     def test_moc_orphan_file_fails(self):
         # 파일은 있는데 인덱스에 없음
@@ -156,6 +200,15 @@ class TestIntegrityCheck(unittest.TestCase):
         code, out = run_check(self.root)
         self.assertEqual(code, 1)
         self.assertIn("REGISTRY.md", out)
+
+    def test_gitignore_missing_codex_agent_exception_fails(self):
+        path = os.path.join(self.root, ".gitignore")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace("!.codex/agents/*.toml\n", ""))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("!.codex/agents/*.toml", out)
 
     # --- R11 심링크 불가 설치처 → R1·R2 SKIP ---
     def test_non_symlink_installation_skips_r1_r2(self):

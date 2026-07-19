@@ -1,6 +1,6 @@
 # ADR 001 — 루트 하네스 초기 구성
 
-> ⚠️ 이 중 일부 결정은 후속 ADR로 대체되었다 — ① 티어 표의 구체 모델명(design=Opus 등)은 **ADR 005**(탈모델명)로, ② "CLAUDE.md는 산문 포인터"와 "변경 이력은 AGENTS.md 하단"은 **ADR 021**(`@AGENTS.md` 임포트 + `docs/harness-changelog.md` 분리)로 대체. 나머지 결정(공용 `.agents/`+심링크, `_workspace/` 규약, 오케스트레이션 골격 등)은 유효하다.
+> ⚠️ 이 중 일부 결정은 후속 ADR로 대체·보완되었다 — ① 티어 표의 구체 모델명(design=Opus 등)은 **ADR 005**(탈모델명)로, ② "CLAUDE.md는 산문 포인터"와 "변경 이력은 AGENTS.md 하단"은 **ADR 021**(`@AGENTS.md` 임포트 + `docs/harness-changelog.md` 분리)로 대체, ③ "`.agents/agents/`를 Claude Code와 Codex가 같은 형식으로 직접 본다"는 가정은 **ADR 027**(역할 원본 유지 + Codex TOML 어댑터)로 보완. 나머지 결정(공용 `.agents/` 원본, `_workspace/` 규약, 오케스트레이션 골격 등)은 유효하다.
 
 - **날짜**: 2026-07-12
 - **변경 내용**: 멀티 프로젝트 루트 하네스 초기 구축 (루트 AGENTS.md, CLAUDE.md 포인터, orchestrate 스킬, metaskill 스킬, 공용 `.agents/` 디렉토리 + `.claude/` 심링크, `_workspace/` gitignore)

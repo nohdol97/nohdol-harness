@@ -58,7 +58,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - **루트 하네스 한정**: 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
 - **하위 프로젝트 하네스는 중앙 관리 방식(루트 AGENTS.md 12절, ADR 006·007)**: 원본이자 유일본을 루트 `.agents/projects/<이름>/`에 생성한다 — 구성: `AGENTS.md`(스킬 후보 섹션 포함), `adr/`, 그리고 지연 생성되는 `skills/`·`agents/`. `<이름>`은 REGISTRY.md 행과 일치시킨다. **`project/<이름>/`와 그 git 저장소에는 하네스 파일을 일절 두지 않는다**(심링크·복사본 포함) — 라우팅(REGISTRY.md → 원본 읽기)이 연결하므로 배포 장치가 불필요하다. `.agents/projects/`는 설치처별 데이터라 git 미추적이다.
 - **하위 전용 스킬·에이전트는 지연 생성** — 위 "하위 스킬·에이전트 생성 시나리오"가 유일한 생성 경로다. 초기 생성 금지. 훅이 필요하면 루트 `.claude/settings.json`에 경로 분기형으로만 둔다.
-- **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 심링크가 실파일로 대체되면 Claude와 Codex가 다른 파일을 보게 된다 (루트 AGENTS.md 11절).
+- **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 루트 에이전트를 신설·개명·폐기하면 `.codex/agents/<이름>.toml` 얇은 어댑터도 같은 변경에서 동기화한다(역할 본문은 복제하지 않고 Markdown 전문 선로드만, ADR 027). 심링크가 실파일로 대체되거나 Codex 어댑터가 드리프트하면 두 CLI가 다른 역할을 보게 된다(루트 AGENTS.md 11절).
 - orchestrate 연동: 구현·다단계 작업은 루트 orchestrate의 팀 필요성 판정(Phase 0-1)을 거치고, 다중 프로젝트·팀 작업은 orchestrate로 팀을 구성함을 명시(ADR 010).
 - ADR 디렉토리 (구조적 결정 시 NNN-제목.md): 루트 하네스는 `docs/adr/`, 하위 프로젝트는 `.agents/projects/<이름>/adr/`.
 - **문서 지도(MOC) 동기화 (루트 하네스 한정)**: 루트에서 ADR·스펙(`docs/specs/`)·제안(`docs/proposals/`)을 새로 만들거나 상태를 바꾸면(대체·구현·기각) **같은 커밋에서 `docs/README.md` 인덱스의 해당 행을 갱신**한다(루트 AGENTS.md 6절). REGISTRY.md 갱신 의무와 같은 이유 — 인덱스가 현실과 어긋나면 탐색 근거로서 신뢰를 잃는다.
@@ -95,6 +95,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - [ ] 오케스트레이터 description에 재실행 키워드 포함
 - [ ] 오케스트레이터 초기 Phase에 `_workspace/` 감지 로직 존재
 - [ ] 각 에이전트 정의에 "재호출 지침" 섹션 존재
+- [ ] **루트 에이전트:** `.agents/agents/*.md`와 `.codex/agents/*.toml` stem 집합·`name`·`description`이 1:1로 일치하고, TOML이 대응 Markdown 전문을 선로드하며 모델·sandbox를 고정하지 않음(ADR 027)
 - [ ] 진화 트리거 4신호를 관찰하는 운영 습관 명시(확장 ①~③ 일일, 수축·효율 ④ 주간)
 - [ ] **루트 하네스 한정**: `.claude/agents`, `.claude/skills`가 공용 디렉토리를 바라봄(심링크 검증)
 - [ ] **하위 프로젝트 한정**: 하네스 원본이 루트 `.agents/projects/<이름>/`에 있고, `project/<이름>/`와 그 git 저장소에는 하네스 파일이 없음. REGISTRY.md에 같은 이름의 행 존재

@@ -43,9 +43,9 @@
 
 ## 5. git 규칙
 
-- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`(Codex 훅 등록·활성화 — ADR 019), `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙, proposals/는 외부 도구 분석·채택 설계, README.md는 이 셋의 탐색 인덱스(MOC))만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
+- **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/agents/` custom-agent 어댑터·hooks.json·config.toml(Codex 병행 — ADR 019·027), `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙, proposals/는 외부 도구 분석·채택 설계, README.md는 이 셋의 탐색 인덱스(MOC))만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `REGISTRY.md`, `.agents/projects/`(단, 디렉토리 용도를 설명하는 `.agents/projects/README.md`만 추적 예외 — .gitignore의 `!` 규칙) 및 OS 파일 — 뿐이다(ADR 002·005·006).
+- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/agents/*.toml`·hooks.json·config.toml, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `REGISTRY.md`, `.agents/projects/`(단, 디렉토리 용도를 설명하는 `.agents/projects/README.md`만 추적 예외 — .gitignore의 `!` 규칙) 및 OS 파일 — 뿐이다(ADR 002·005·006·027).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하고, **사내 프로필 설치처에서는 이 기본이 적용되지 않는다**(아래 설치처 프로필 규칙).
 - **설치처 프로필 (개인/사내)**: 이 저장소는 개인 계정 소유이므로, 설치처가 어디냐에 따라 푸시 가능 여부가 갈린다. 프로필은 REGISTRY.md 상단에 기록한다(harness-install 인터뷰) — `개인`(하네스 수정·커밋·푸시 가능) / `사내`(**추적 하네스 파일 수정·커밋·푸시 전면 금지** — 사내 머신에서 개인 원격으로의 푸시는 보안 정책 위반이고, 커밋만 쌓아도 결국 푸시가 필요해 발산한다). **사내에서 하네스 개선이 필요하면 저장소를 고치는 대신 `_workspace/harness-updates.md`(미추적) 대기 큐에 기록한다** — 변경 내용은 그 세션의 맥락 없이도 개인 머신에서 그대로 적용 가능한 수준으로 구체적으로(항목 형식·적용 절차: metaskill 대기 큐 시나리오, ADR 012). 사용자가 내용을 개인 머신으로 직접 옮기면 metaskill이 적용하고 상태를 `적용됨`으로 갱신한다. **프로필 미기록 상태에서 하네스 파일을 수정하게 되면 먼저 사용자에게 프로필을 확인해 REGISTRY.md에 기록한다**(단, 이 저장소를 직접 클론해 PR로 작업하는 원격 세션은 개인 프로필로 간주). 이유: 수정 자체를 개인 설치처로 이월해야 사내 정책과 하네스 진화가 양립한다.
@@ -102,6 +102,8 @@
 
 에이전트 정의 파일은 `.agents/agents/<이름>.md`에 두고(`.claude/agents`는 심링크), frontmatter에 `name` / `description`(Pushy 공식) / `tools`(허용 도구 화이트리스트) / `tier`(design·implement·explore)를 명시한다. 상세 템플릿: `.agents/skills/metaskill/references/agent-rules.md`
 
+Codex 네이티브 custom agent로도 노출하려면 같은 이름의 **얇은 로더 어댑터** `.codex/agents/<이름>.toml`을 함께 둔다(ADR 027). TOML은 Codex 필수 메타데이터와 대응 Markdown 전문을 선로드하는 지시만 가지며, 역할 본문·구체 모델명·sandbox 설정을 복제하지 않는다. `.agents/agents/*.md`가 계속 역할 계약의 단일 원본이고, 무결성 점검이 Markdown↔TOML 1:1·메타데이터 정합을 검사한다.
+
 필수 섹션 10가지: ① 핵심 역할(하지 않는 일 포함) ② 작업 원칙(충돌 시 판단 기준) ③ 입출력 프로토콜(`_workspace/` 경로) ④ 팀 통신 프로토콜(JSON 메시지 형식) ⑤ 에러 핸들링(재시도 1회, 2회 실패 시 누락 명시) ⑥ 협업 위치 ⑦ 품질 자체 검증 체크리스트 ⑧ 재호출 지침 ⑨ tools 최소 권한 ⑩ 역할 티어.
 
 - **제약은 긍정형을 우선한다**(발행 프롬프트·에이전트 정의 공통 — oh-my-openagent 이식, 제안: 2026-07-19): "~하지 마라"는 광범위 부정형보다 **허용 영역을 지목**하는 표현을 쓴다 — 예: "루트를 건드리지 마라"(✗) → "작업 파일은 `_workspace/<작업명>/` 아래에 둬라"(✓). 이유: 광범위 부정형은 모델이 경계를 넓게 해석해 정작 해야 할 일까지 위축시키고, 허용 영역 지목은 경계가 분명해 산출 품질·재작업률이 개선된다. 안전 가드레일(3절)의 금지는 이와 별개로 부정형 그대로 강제한다 — 이 규칙은 작업 지시의 표현 품질에 대한 것이지 가드레일 완화가 아니다.
@@ -109,9 +111,10 @@
 ## 11. 멀티 CLI 호환 (Claude Code + Codex 병행)
 
 - 에이전트·스킬 정의 원본: `.agents/agents/`, `.agents/skills/` (공용 디렉토리)
-- `.claude/agents`, `.claude/skills`는 위 공용 디렉토리로의 **심볼릭 링크** — Claude와 Codex가 같은 파일을 본다.
+- `.claude/agents`, `.claude/skills`는 위 공용 디렉토리로의 **심볼릭 링크** — Claude Code는 공용 원본을 직접 본다.
+- Codex는 `.agents/skills/`를 네이티브로 읽고, custom agent는 형식 차이 때문에 `.codex/agents/*.toml` 어댑터를 통해 대응 `.agents/agents/*.md` 전문을 선로드한다(ADR 027). 어댑터의 `name`·`description`은 원본과 일치시키고, `model`·`model_reasoning_effort`·`sandbox_mode`는 넣지 않는다 — 모델은 9절 티어, 권한은 부모 세션·3절 가드레일이 결정한다.
 - **CLAUDE.md 로딩 역할 (재비대 방지 규율, ADR 021)**: CLAUDE.md 첫 줄 **`@AGENTS.md`** 임포트가 단일 원본을 항상-온으로 주입한다(산문 링크로는 주입 안 됨). CLAUDE.md 본문에는 전문 규칙을 복사하지 않고 **Claude 전용 항상-온 앵커(출력 언어·라우팅 요약)만** 둔다 — 정보가 쌓이면 단일 원본이 둘로 갈라지고, 전문이 이미 항상-온이라 복사는 순수 중복이다. 변경 이력은 `docs/harness-changelog.md`. Codex는 AGENTS.md를 네이티브 로드하므로 패리티는 저절로 유지된다(상세: ADR 021).
-- **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견은 하네스 우회 신호로 취급한다(8절).
+- **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 새 루트 에이전트는 원본과 함께 `.codex/agents/` 얇은 어댑터도 생성한다. 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견과 Markdown↔TOML 어댑터 드리프트는 하네스 우회 신호로 취급한다(8절).
 - 심링크가 불가한 환경이면 sync 스크립트로 대체하고 그 사실을 ADR에 기록한다.
 - **외부 도구가 스킬을 설치할 때는 전역 경로(홈 디렉토리)로** 설치한다 — 예: `agentsview skills install` → `~/.claude/skills/`·`~/.agents/skills/`. 이 워크스페이스에 프로젝트 모드(`--project` 등)로 설치하지 않는다. 이유: 워크스페이스의 `.claude/`는 심링크라 설치물이 공용 `.agents/skills/`에 떨어져 **설치처별 도구 산출물이 공용 저장소의 커밋 대상**이 된다.
 - **SessionStart 세션 훅의 Codex 병행 (ADR 019)**: 리마인더 훅 2종(`harness-review-reminder`·`worklog-reminder`)은 `.claude/settings.json`과 **`.codex/hooks.json`**(추적, 대칭 등록)에 함께 둔다 — Codex CLI v0.114+가 같은 구조의 SessionStart stdout 주입을 지원하고, 훅 스크립트는 도구 무관(fail-open·`CLAUDE_PROJECT_DIR` 부재 시 cwd 폴백)이라 config만 추가한다(Codex 쪽 명령은 `$PWD` 기준). **활성화(`.codex/config.toml`의 `[features] codex_hooks = true`)는 저장소에 커밋**되어 클론 즉시 켜진다(항상 활성). repo-local 활성화가 안 먹는 알려진 이슈(openai/codex #17532)의 폴백은 `~/.codex/config.toml` 전역 플래그(harness-install 안내). 실험 기능·Windows 미지원 — macOS·Linux 설치처만. `agentsview-daemon`은 제외(Codex 관측 미확인). 상세·이유: ADR 019.

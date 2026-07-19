@@ -33,8 +33,8 @@ nohdol-harness/
 │   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), integrity-check.py (구조 무결성 결정론 점검 — harness-review 주간용, ADR 026), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성, 스펙 2026-07-15)
 │   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + secret-gate.py (형식 확정 자격증명 패턴 커밋 차단, 도구 무관 — ADR 023) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
-├── .claude/               # → .agents/ 심링크 + settings.json(세션 훅 등록) (Claude Code + Codex가 같은 파일을 봄)
-├── .codex/                # Codex 훅 등록(hooks.json)·활성화(config.toml) — 리마인더 2종 병행, 항상 켜짐 (ADR 019). 그 외 미추적
+├── .claude/               # Claude Code 호환 계층 — .agents/ 에이전트·스킬 심링크 + settings.json 세션 훅 등록
+├── .codex/                # Codex 병행 계층 — agents/*.toml은 .agents/agents/*.md를 선로드하는 custom-agent 어댑터(ADR 027), hooks.json·config.toml은 세션 훅 등록·활성화(ADR 019)
 ├── docs/
 │   ├── README.md          # 문서 지도(MOC) — ADR·스펙·제안 탐색 인덱스 (상태·대체 관계·대상 코드)
 │   ├── adr/               # 구조적 결정 기록 (ADR)

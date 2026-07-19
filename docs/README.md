@@ -10,7 +10,7 @@
 
 | ADR | 날짜 | 상태 | 제목 |
 |---|---|---|---|
-| [001](adr/001-initial-harness.md) | 2026-07-12 | 부분 대체(→005·021) | 루트 하네스 초기 구성 |
+| [001](adr/001-initial-harness.md) | 2026-07-12 | 부분 대체(→005·021·027) | 루트 하네스 초기 구성 |
 | [002](adr/002-project-dir-separation.md) | 2026-07-12 | 부분 대체(→024) | 하위 프로젝트 저장소 분리 (`project/` 미추적, `dev/`는 024로 제거) |
 | [003](adr/003-perfectionism-clause-removal.md) | 2026-07-12 | 활성 | "완벽주의 금지" 절 삭제 및 1차 독립 검증 반영 |
 | [004](adr/004-registry-separation-standard-roster.md) | 2026-07-12 | 부분 대체(→005) | 레지스트리 분리(REGISTRY.md)와 표준 팀원 로스터 완성 |
@@ -36,8 +36,9 @@
 | [024](adr/024-remove-dev-dir.md) | 2026-07-19 | 활성 | `dev/` 실험 공간 디렉토리 제거 (실작업은 전부 `project/`, tdd-gate `dev/` 예외 삭제) |
 | [025](adr/025-autoloop-driver.md) | 2026-07-19 | 활성 | autoloop — 세션 외부 드라이버 기반 자율 멀티세션 루프 (게이트 3종·불변 앵커) |
 | [026](adr/026-oh-my-openagent-adoption.md) | 2026-07-19 | 활성 | oh-my-openagent 검증·운영 착안 5건 이식 + integrity-check 무결성 점검 훅 |
+| [027](adr/027-codex-agent-adapters.md) | 2026-07-19 | 활성 | Codex custom-agent 얇은 어댑터 (`.agents/agents` 원본 → `.codex/agents` 로더 계층) |
 
-**대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
+**대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
 ## 스펙 (SDD — 루트 자체 코드) — `docs/specs/`
 
@@ -53,6 +54,7 @@
 | [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
 | [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 구현됨 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 | [2026-07-19-integrity-check-script](specs/2026-07-19-integrity-check-script.md) | 구현됨 | `.agents/hooks/integrity-check.py` | — (제안: 2026-07-19-oh-my-openagent-adoption) |
+| [2026-07-19-codex-agent-adapters](specs/2026-07-19-codex-agent-adapters.md) | 구현됨 (인증 후 C5 실발행 확인 대기) | `.codex/agents/*.toml` | 027 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

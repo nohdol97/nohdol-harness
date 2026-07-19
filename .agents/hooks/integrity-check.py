@@ -4,7 +4,8 @@
 harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립트 1개로 결정론화한다
 (루트 AGENTS.md 8절 승격 원칙 — tdd-gate·secret-gate 계보). 검사: 심링크(R1)·
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
-첫 줄(R6)·gitignore 필수 항목(R7). 심링크 불가 설치처는 R1·R2를 SKIP한다(R11).
+첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12). 심링크 불가 설치처는
+R1·R2를 SKIP한다(R11).
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
       (미지정 시 CLAUDE_PROJECT_DIR → 스크립트 위치 기준 루트 순으로 해석)
@@ -14,10 +15,16 @@ harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립�
 회귀 테스트: .agents/hooks/integrity-check_test.py (수정 시 반드시 통과)
 """
 import argparse
+import ast
 import os
 import re
 import subprocess
 import sys
+
+try:
+    import tomllib
+except ImportError:  # Python < 3.11: 집합·참조 검사는 유지하고 TOML 구문 검사는 SKIP
+    tomllib = None
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 
@@ -30,10 +37,11 @@ except Exception:
 
 CLAUDE_ALLOWLIST = {"settings.json", "settings.local.json", "agents", "skills"}
 GITIGNORE_REQUIRED = ["_workspace/", "project/", "REGISTRY.md",
-                      ".agents/projects/*", "!.agents/projects/README.md"]
+                      ".agents/projects/*", "!.agents/projects/README.md",
+                      ".codex/*", "!.codex/agents/", ".codex/agents/*",
+                      "!.codex/agents/*.toml"]
 EXPECTED_LINKS = {".claude/agents": "../.agents/agents",
                   ".claude/skills": "../.agents/skills"}
-
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 
 
@@ -121,6 +129,29 @@ def _frontmatter_keys(path):
     return keys, has_crlf
 
 
+def _frontmatter_values(path):
+    """단순 단일행 YAML frontmatter 값을 반환한다(에이전트 메타데이터 대조용)."""
+    with open(path, encoding="utf-8", errors="replace") as f:
+        lines = f.read().splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    values = {}
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return values
+        m = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
+        if not m:
+            continue
+        value = m.group(2).strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            try:
+                value = ast.literal_eval(value)
+            except (SyntaxError, ValueError):
+                pass
+        values[m.group(1)] = value
+    return None
+
+
 def check_skill_frontmatter(root):
     base = os.path.join(root, ".agents", "skills")
     if not os.path.isdir(base):
@@ -162,6 +193,70 @@ def check_agent_frontmatter(root):
         else:
             out.append(("R4 agent %s" % fn, PASS, ""))
     return out or [("R4 agents", SKIP, "no agent .md found")]
+
+
+def check_codex_agent_adapters(root):
+    """공용 Markdown 역할 계약과 Codex TOML 어댑터의 1:1·메타데이터 정합을 검사한다."""
+    contract_dir = os.path.join(root, ".agents", "agents")
+    adapter_dir = os.path.join(root, ".codex", "agents")
+    if not os.path.isdir(contract_dir):
+        return [("R12 Codex agent adapters", FAIL, ".agents/agents directory missing")]
+    if not os.path.isdir(adapter_dir):
+        return [("R12 Codex agent adapters", FAIL, ".codex/agents directory missing")]
+
+    contracts = {os.path.splitext(fn)[0]: os.path.join(contract_dir, fn)
+                 for fn in os.listdir(contract_dir)
+                 if fn.endswith(".md") and fn != "README.md"}
+    adapters = {os.path.splitext(fn)[0]: os.path.join(adapter_dir, fn)
+                for fn in os.listdir(adapter_dir) if fn.endswith(".toml")}
+    out = []
+    for name in sorted(set(contracts) - set(adapters)):
+        out.append(("R12 Codex agent adapter", FAIL, "missing adapter for contract: %s" % name))
+    for name in sorted(set(adapters) - set(contracts)):
+        out.append(("R12 Codex agent adapter", FAIL, "orphan adapter without contract: %s" % name))
+
+    for name in sorted(set(contracts) & set(adapters)):
+        if tomllib is None:
+            out.append(("R12 Codex agent %s" % name, SKIP,
+                        "Python < 3.11 — TOML parse unavailable; set/contract checks only"))
+            continue
+        try:
+            with open(adapters[name], "rb") as f:
+                adapter = tomllib.load(f)
+        except Exception as e:
+            out.append(("R12 Codex agent %s" % name, FAIL, "invalid TOML: %s" % e))
+            continue
+
+        metadata = _frontmatter_values(contracts[name]) or {}
+        required = {"name", "description", "developer_instructions"}
+        missing = required - set(adapter)
+        if missing:
+            out.append(("R12 Codex agent %s" % name, FAIL,
+                        "missing required keys: %s" % ", ".join(sorted(missing))))
+            continue
+        unexpected = set(adapter) - required
+        if unexpected:
+            out.append(("R12 Codex agent %s" % name, FAIL,
+                        "unexpected/fixed settings forbidden: %s" % ", ".join(sorted(unexpected))))
+            continue
+        if adapter["name"] != name or adapter["name"] != metadata.get("name"):
+            out.append(("R12 Codex agent %s" % name, FAIL, "name differs from contract/filename"))
+            continue
+        if adapter["description"] != metadata.get("description"):
+            out.append(("R12 Codex agent %s" % name, FAIL, "description differs from contract"))
+            continue
+        instructions = adapter["developer_instructions"]
+        contract_ref = ".agents/agents/%s.md" % name
+        if not isinstance(instructions, str) or contract_ref not in instructions or "in full" not in instructions:
+            out.append(("R12 Codex agent %s" % name, FAIL,
+                        "developer_instructions must preload contract in full: %s" % contract_ref))
+            continue
+        if "unavailable" not in instructions:
+            out.append(("R12 Codex agent %s" % name, FAIL,
+                        "developer_instructions must report an unavailable contract"))
+            continue
+        out.append(("R12 Codex agent %s" % name, PASS, ""))
+    return out or [("R12 Codex agent adapters", SKIP, "no contracts or adapters found")]
 
 
 def check_moc(root):
@@ -213,7 +308,8 @@ def check_gitignore(root):
 
 
 CHECKS = [check_symlinks, check_claude_intrusion, check_skill_frontmatter,
-          check_agent_frontmatter, check_moc, check_claude_md, check_gitignore]
+          check_agent_frontmatter, check_codex_agent_adapters, check_moc,
+          check_claude_md, check_gitignore]
 
 
 def run(root):
