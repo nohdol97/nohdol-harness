@@ -205,6 +205,29 @@ class TestC5SafetyArgs(DriverTestBase):
             self.assertNotIn(pat, driver.SAFE_ALLOW)
             self.assertNotIn(pat, driver.READONLY_ALLOW)
 
+    def test_role_tier_model_routing(self):
+        # 기능별 티어(§9): 검증(readonly)=design 티어 모델, 구현=implement 티어 모델.
+        # 드라이버 코드엔 모델명이 없다 — 값은 기동 세션이 라인업에서 골라 넘긴다.
+        cfg = self.make_config(implement_model="impl-tier-model", verify_model="design-tier-model")
+        work = driver.build_claude_args(cfg, "p")
+        verify = driver.build_claude_args(cfg, "p", readonly=True)
+        self.assertEqual(work[work.index("--model") + 1], "impl-tier-model")
+        self.assertEqual(verify[verify.index("--model") + 1], "design-tier-model")
+
+    def test_role_model_falls_back_to_uniform_then_inherit(self):
+        # 역할별 미지정 → 균일 --model, 그것도 없으면 --model 아예 미출력(세션 기본 상속)
+        cfg = self.make_config(model="uniform-model")
+        self.assertEqual(driver.resolve_model(cfg), "uniform-model")
+        self.assertEqual(driver.resolve_model(cfg, readonly=True), "uniform-model")
+        bare = self.make_config()
+        self.assertEqual(driver.resolve_model(bare), "")
+        self.assertNotIn("--model", driver.build_claude_args(bare, "p"))
+        # 하드코딩된 모델명이 소스에 없다(§9 탈모델명)
+        import inspect
+        src = inspect.getsource(driver.build_claude_args) + inspect.getsource(driver.resolve_model)
+        for name in ["opus", "sonnet", "haiku", "claude-"]:
+            self.assertNotIn(name, src.lower())
+
     def test_allow_extra_is_explicit_and_not_readonly(self):
         # 사용자 명시 확장은 작업 세션에만 실리고, 검증 세션(readonly)에는 안 실린다
         cfg = self.make_config(allow_extra=["Bash(make test:*)"])

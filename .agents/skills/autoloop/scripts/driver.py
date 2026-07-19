@@ -70,7 +70,9 @@ class Config:
     workspace: str = ""          # 산출 디렉토리(기본: <cwd>/_workspace/autoloop/<work_name>)
     claude_cmd: list = dataclasses.field(default_factory=lambda: ["claude"])
     cwd: str = "."               # claude 실행 cwd — 하네스 루트여야 항상-온 로드(§12)
-    model: str = ""
+    model: str = ""              # 균일 오버라이드(역할별 미지정 시 폴백)
+    implement_model: str = ""    # 구현 반복 = implement 티어(§9). 기동 세션이 라인업에서 해석해 전달
+    verify_model: str = ""       # 검증 세션 = design 티어(§9, reviewer 역할)
     claude_timeout: int = 3600   # 반복 1회 상한(초)
     allow_extra: list = dataclasses.field(default_factory=list)  # 사용자 명시 확장 그랜트(R3)
 
@@ -181,11 +183,19 @@ def build_verify_prompt(cfg):
     )
 
 
+def resolve_model(cfg, readonly=False):
+    """역할→티어→모델 해석(§9). 검증(readonly)=design 티어, 구현=implement 티어.
+    드라이버는 모델명을 박지 않는다 — 기동 세션이 현재 CLI 라인업에서 골라 넘긴 값을 쓴다.
+    역할별 미지정 시 균일 --model, 그것도 없으면 미지정(세션 기본 상속)."""
+    return (cfg.verify_model if readonly else cfg.implement_model) or cfg.model
+
+
 def build_claude_args(cfg, prompt, readonly=False):
     """headless 인자 조립(R3). bypassPermissions·--dangerously-skip-permissions 금지(§3)."""
     args = ["-p", prompt, "--output-format", "json", "--permission-mode", "acceptEdits"]
-    if cfg.model:
-        args += ["--model", cfg.model]
+    model = resolve_model(cfg, readonly=readonly)
+    if model:
+        args += ["--model", model]
     # 검증 세션(readonly)에는 사용자 확장 그랜트도 주지 않는다 — 판정자는 최소 권한.
     args += ["--allowedTools"] + (READONLY_ALLOW if readonly else SAFE_ALLOW + list(cfg.allow_extra))
     args += ["--disallowedTools"] + DESTRUCTIVE_DISALLOW
@@ -412,7 +422,11 @@ def main(argv=None):
     parser.add_argument("--stall-limit", type=int, default=3)
     parser.add_argument("--max-cost-usd", type=float, default=0.0)
     parser.add_argument("--work-name", default="")
-    parser.add_argument("--model", default="")
+    parser.add_argument("--model", default="", help="균일 모델 오버라이드(역할별 미지정 시 폴백)")
+    parser.add_argument("--implement-model", default="",
+                        help="구현 반복 모델 = implement 티어(§9). 기동 세션이 라인업에서 해석해 전달")
+    parser.add_argument("--verify-model", default="",
+                        help="검증 세션 모델 = design 티어(§9, reviewer). 경량 모델 금지")
     parser.add_argument("--allow-extra", action="append", default=[],
                         help="추가 허용 도구 패턴(반복 가능) — 사용자 명시 그랜트(R3)")
     args = parser.parse_args(argv)
@@ -421,6 +435,7 @@ def main(argv=None):
                  test_cmd=args.test_cmd, max_iterations=args.max_iterations,
                  stall_limit=args.stall_limit, max_cost_usd=args.max_cost_usd,
                  work_name=args.work_name, cwd=os.getcwd(), model=args.model,
+                 implement_model=args.implement_model, verify_model=args.verify_model,
                  allow_extra=args.allow_extra)
     ok, reason = startup_guard(cfg)
     if not ok:

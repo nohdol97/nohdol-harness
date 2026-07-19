@@ -27,15 +27,17 @@ description: "Launch, monitor, and stop an unattended multi-session loop that re
    - 파괴적 작업이 예상되는 스펙(배포·인프라 변경 포함)이면 **기동을 권하지 않는다** — 그 지점에서 루프가 blocked로 멈춰 무인의 의미가 없고, 안전 게이트의 한계(위) 때문에 애초에 이 도구의 대상이 아니다. 사용자가 그래도 원하면 blocked 이월 동작을 설명하고 진행한다.
    - `_workspace/autoloop/<슬러그>/STOP`이 남아 있으면 드라이버가 기동을 거부한다(R10) — 사용자에게 STOP 삭제 여부를 확인한 뒤 진행한다.
    - 표준 러너(pytest·npm test·go/cargo test) 밖의 테스트 명령이 필요하면 `--allow-extra 'Bash(<러너>:*)'`를 사용자 확인 후 붙인다(명시 그랜트 — 임의로 넓히지 않는다).
+   - **기능별 모델 티어 해석(§9)**: autoloop은 두 역할에 서로 다른 티어를 쓴다 — **구현 반복 = implement 티어**(표준 모델), **검증 세션 = design 티어**(최고 성능 — reviewer 역할). 드라이버 코드엔 모델명이 없으므로(§9 탈모델명), **이 세션이 현재 CLI 라인업에서 각 티어 모델을 골라** `--implement-model`·`--verify-model`로 넘긴다. **경량(최저가) 모델 금지**(§9·사용자 전역 정책 — 검증에 경량은 오탐 위험). 라인업 판단이 안 서면 두 플래그를 생략해 균일(`--model` 또는 세션 기본)로 두되, 그 사실을 사용자에게 알린다.
 2. **기동** (하네스 루트에서 — headless 세션이 하네스를 항상-온 로드해야 하므로 §12):
    ```bash
    mkdir -p _workspace/autoloop/<슬러그>
    nohup python3 .agents/skills/autoloop/scripts/driver.py \
      --spec <스펙 경로> --project <대상 디렉토리> \
      --test-cmd '<테스트 명령>' --max-iterations 10 --stall-limit 3 \
+     --implement-model <implement 티어 모델> --verify-model <design 티어 모델> \
      --work-name <슬러그> > _workspace/autoloop/<슬러그>/launch.log 2>&1 &
    ```
-   기본값: max-iterations 10, stall-limit 3. 밤새 돌리는 큰 작업이면 max-iterations를 올리되 반드시 유한하게.
+   기본값: max-iterations 10, stall-limit 3. 티어 모델은 §9 매핑을 이 세션이 라인업에서 해석해 채운다(위). 밤새 돌리는 큰 작업이면 max-iterations를 올리되 반드시 유한하게.
 3. **기동 확인 후 보고**: 2~3초 뒤 `launch.log`를 읽는다 — "기동 거부"가 있으면 그 이유를 사용자에게 전하고 종료한다(조용한 no-op 금지). 정상이면 산출 경로(`_workspace/autoloop/<슬러그>/`)와 "다른 세션에서 `/autoloop status`로 확인, `/autoloop stop`으로 정지"를 안내한다.
 
 ## status — 조회
