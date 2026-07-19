@@ -1,6 +1,6 @@
 ---
 name: carryover
-description: "Save selected work from the current session to a local _workspace carryover note (Markdown) so a later same-machine session can resume it, and load an existing note to continue. Slash-invoked only (/carryover) — the user manually triggers save or resume; this skill is intentionally NOT part of harness auto-routing. Save mode: enumerate this session's work (changed files, decisions, done/open items, blockers), let the user pick which to keep, write a resume-ready template to _workspace/carryover/YYYY-MM-DD-<topic>.md. Resume mode: scan _workspace/carryover/, list notes, load the chosen one and continue. Do NOT use for cross-session/cross-machine epics or multi-PR work tracked in git (→ work-tracker: GitHub Issues/backlog.md) — carryover is local, gitignored, lightweight, same-machine only. Re-run keywords - carryover, 이월 노트, 세션 이월, 카리오버, 이어받기."
+description: "Save selected work from the current session to a local _workspace carryover note (Markdown) so a later same-machine session can resume it, and load an existing note to continue. Slash-invoked only (/carryover) — the user manually triggers save or resume; this skill is intentionally NOT part of harness auto-routing. Save mode: enumerate this session's work (changed files, decisions, done/open items, blockers), let the user pick which to keep, write a resume-ready template to _workspace/carryover/backlog/YYYY-MM-DD-<topic>.md. Resume mode: scan backlog/ (queued) + progress/ (in-flight), list notes, load the chosen one (moving it backlog→progress) and continue, deleting it on completion. Do NOT use for cross-session/cross-machine epics or multi-PR work tracked in git (→ work-tracker: GitHub Issues/backlog.md) — carryover is local, gitignored, lightweight, same-machine only. Re-run keywords - carryover, 이월 노트, 세션 이월, 카리오버, 이어받기."
 ---
 
 # carryover — 세션 이월 노트
@@ -13,7 +13,7 @@ description: "Save selected work from the current session to a local _workspace 
 
 | | work-tracker | **carryover (이 스킬)** |
 |---|---|---|
-| 저장처 | GitHub Issues / `docs/backlog.md` (git 추적, 크로스 머신) | `_workspace/carryover/*.md` (gitignore, **같은 머신 로컬**) |
+| 저장처 | GitHub Issues / `docs/backlog.md` (git 추적, 크로스 머신) | `_workspace/carryover/{backlog,progress}/*.md` (gitignore, **같은 머신 로컬**) |
 | 대상 | 여러 PR·며칠 규모 에픽, 정형 | 이번 세션→다음 세션 **가벼운 핸드오프 메모** |
 | 호출 | 자동 라우팅 + 슬래시 | **슬래시 전용**, 자동 라우팅 없음 |
 
@@ -26,7 +26,12 @@ description: "Save selected work from the current session to a local _workspace 
 호출 인자로 모드를 정한다.
 
 - 인자에 **재개 신호**(`재개`·`resume`·`이어서`·`이어받`·`불러와`·`load`)가 있으면 → **재개 모드**.
-- 그 외(인자 없음 포함) → **저장 모드**. 단, 저장 모드 진입 시 `_workspace/carryover/`에 기존 노트가 있으면 "기존 이월 노트 N개가 있습니다(재개하려면 `/carryover 재개`)"를 한 줄로 알린다.
+- 그 외(인자 없음 포함) → **저장 모드**. 단, 저장 모드 진입 시 `backlog/`·`progress/`(및 최상위 미마이그레이션 평면 노트)에 기존 노트가 있으면 "기존 이월 노트 N개가 있습니다(재개하려면 `/carryover 재개`)"를 한 줄로 알린다.
+
+**디렉토리 구조** (2분할 — 재개 목록이 완료·진행 노트로 흐려지지 않게):
+- `_workspace/carryover/backlog/` — 대기(저장 모드가 여기에 쓴다)
+- `_workspace/carryover/progress/` — 이어가는 중(재개 시 backlog에서 이동)
+- 완료 노트는 **삭제**한다(done/ 아카이브를 두지 않는다 — gitignore 스크래치라 쌓이면 cruft, 영속 기록은 work-tracker의 몫).
 
 ## 저장 모드
 
@@ -45,7 +50,7 @@ description: "Save selected work from the current session to a local _workspace 
 
 3. **주제 확정**: 선택된 항목들의 공통 주제로 짧은 슬러그를 만든다(사용자에게 한 번 확인하거나 자명하면 그대로). 여러 무관한 주제가 섞였으면 주제별로 파일을 나눌지 사용자에게 묻는다.
 
-4. **파일 작성**: `_workspace/carryover/YYYY-MM-DD-<주제슬러그>.md`에 아래 템플릿으로 쓴다. 날짜는 `date +%F`로 얻는다(추정 금지). `_workspace/carryover/`가 없으면 만든다.
+4. **파일 작성**: `_workspace/carryover/backlog/YYYY-MM-DD-<주제슬러그>.md`에 아래 템플릿으로 쓴다. 날짜는 `date +%F`로 얻는다(추정 금지). `backlog/`가 없으면 만든다.
    - 같은 날 같은 주제 파일이 이미 있으면 덮어쓰지 말고 세션 구분 섹션을 append하거나 슬러그에 `-2`를 붙인다(기존 이월 내용 유실 방지).
 
 5. **보고**: 작성한 파일 경로를 사용자에게 알리고, "다음 세션에서 `/carryover 재개`로 이어받을 수 있다"를 한 줄 덧붙인다.
@@ -83,25 +88,26 @@ description: "Save selected work from the current session to a local _workspace 
 
 기존 이월 노트를 골라 이어받는다.
 
-1. **스캔**: `_workspace/carryover/*.md`를 나열한다. 각 노트의 파일명·날짜와 프론트 부분의 "한 줄 요약"을 함께 뽑아 목록으로 만든다. 노트가 없으면 "이월 노트가 없습니다"를 알리고 종료한다.
+1. **스캔**: `backlog/`와 `progress/`의 `*.md`를 나열한다. 각 노트의 파일명·날짜·"한 줄 요약"에 **상태(대기/이어가는 중)**를 붙여 목록으로 만든다(이어가는 중=progress를 위에). 노트가 없으면 "이월 노트가 없습니다"를 알리고 종료한다.
+   - **구버전 마이그레이션(1회)**: `_workspace/carryover/` 바로 아래에 평면 노트(`*.md`)가 남아 있으면(2분할 이전 저장분) `backlog/`로 옮긴 뒤 함께 나열한다.
 
 2. **선택**: 노트가 4개 이하면 `AskUserQuestion`으로, 초과면 번호 목록으로 사용자가 하나(또는 여럿)를 고르게 한다.
 
-3. **로드·소화**: 선택한 노트를 읽고 **한국어로 소화해** 현황(한 일/다음 할 일/막힌 점/참조)을 사용자에게 요약 보고한다. 원문 붙여넣기가 아니라 지금 이어가기 좋게 정리한다.
+3. **로드·소화 + 이동**: 선택한 노트를 읽고 **한국어로 소화해** 현황(한 일/다음 할 일/막힌 점/참조)을 요약 보고한다(원문 붙여넣기가 아니라 지금 이어가기 좋게). 선택한 노트가 `backlog/`에 있으면 **`progress/`로 옮긴다** — 이번 세션에 집었으니 다음 스캔의 "대기" 목록을 흐리지 않게. 이미 `progress/`면 그대로 둔다.
 
 4. **재진입**: 노트의 "재개 방법"이 가리키는 경로로 이어간다 — 새 구현·동작 변경이면 **orchestrate 게이트를 다시 밟는다**(§7 3항, continuation도 게이트 재진입). 리뷰면 team-review, 문서면 doc-writer. carryover 자체는 작업을 수행하지 않고 재진입 지점만 넘긴다.
 
-5. **정리(선택)**: 작업을 마쳐 노트가 더 필요 없으면 사용자에게 확인 후 해당 노트를 지운다 — 다 쓴 이월 노트가 쌓이면 다음 재개의 목록이 흐려진다.
+5. **정리(선택)**: 작업을 마쳐 노트가 더 필요 없으면 사용자에게 확인 후 해당 노트(`progress/`)를 **지운다** — 완료는 삭제이지 done/ 이동이 아니다(위 구조). 미완이면 `progress/`에 남겨 다음 세션이 이어받는다.
 
 ## 보존 규약 (`_workspace/`인데 왜 안 지워지나)
 
-`_workspace/`는 세션 산출물이라 원칙적으로 정리 대상이지만(루트 AGENTS.md §4), `_workspace/carryover/`는 **정리 제외 목록에 포함**된다(harness-updates.md·harness-ops-log.md·점검 마커와 같은 취급) — 세션을 넘겨 이어받는 것이 존재 이유이기 때문이다. gitignore 대상인 것은 그대로라 **같은 머신에서만** 이어받을 수 있다. 크로스 머신 이월이 필요하면 이건 잘못된 도구다 → work-tracker(git 추적)로 보낸다.
+`_workspace/`는 세션 산출물이라 원칙적으로 정리 대상이지만(루트 AGENTS.md §4), `_workspace/carryover/`는(하위 `backlog/`·`progress/` 포함) **정리 제외 목록에 포함**된다(harness-updates.md·harness-ops-log.md·점검 마커와 같은 취급) — 세션을 넘겨 이어받는 것이 존재 이유이기 때문이다. gitignore 대상인 것은 그대로라 **같은 머신에서만** 이어받을 수 있다. 크로스 머신 이월이 필요하면 이건 잘못된 도구다 → work-tracker(git 추적)로 보낸다.
 
 ## 주의
 
 - **시크릿·`<private>` 금지의 연장**: 노트에 자격증명을 적지 않는다(§3). 민감 경로·내부 URL 등 `<private>`로 감쌀 내용은 노트에서 제외하거나 태그로 감싼다 — 다만 `_workspace/`는 발행물이 아니라 로컬 스크래치이므로, 외부로 옮길 때(work-tracker 승격 등)의 필터가 핵심이다.
 - **완료·통과 주장 금지**: 노트는 "무엇을 했다"의 기록일 뿐, 완료 판정은 §13 신선한 증거(테스트 출력)로만 한다. "다음 할 일"에 검증 미완이면 그 사실을 적는다.
-- **파괴적 작업 없음**: 이 스킬은 노트 파일 쓰기·읽기·(확인 후)삭제만 한다. 코드·인프라를 건드리지 않는다.
+- **파괴적 작업 없음**: 이 스킬은 노트 파일 쓰기·읽기·이동(backlog→progress)·(확인 후)삭제만 한다. 코드·인프라를 건드리지 않는다.
 
 ## with / without
 
