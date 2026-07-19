@@ -81,13 +81,11 @@ def is_test_file(path):
 
 
 def exempt_repo(repo_dir):
-    """13절 적용 제외 저장소(R2) — 루트 하네스 자신과 dev/ 실험 공간."""
+    """13절 적용 제외 저장소(R2) — 루트 하네스 자신(문서 중심)."""
     harness_root = os.path.dirname(
         os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     )
-    if repo_dir == harness_root:
-        return True
-    return repo_dir.startswith(os.path.join(harness_root, "dev") + os.sep)
+    return repo_dir == harness_root
 
 
 # 의도적 차단 전용 exit 코드(R4). 인터프리터가 자체 실패에 쓰는 코드와 겹치면

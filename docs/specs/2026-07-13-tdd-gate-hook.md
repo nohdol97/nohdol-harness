@@ -11,7 +11,7 @@
 
 - 하위 프로젝트 저장소에서 코드 파일이 테스트 변경 없이 커밋되는 것을 커밋 시점에 차단한다.
 - **도구 무관 강제**: Claude Code·Codex CLI·수동 커밋 등 커밋 주체와 무관하게 같은 게이트가 걸린다(git commit-msg 계층).
-- 정상 커밋과 13절 적용 제외 대상(문서, 루트 하네스 저장소, `dev/`)은 간섭 없이 통과한다.
+- 정상 커밋과 13절 적용 제외 대상(문서, 루트 하네스 저장소)은 간섭 없이 통과한다.
 - 훅 자체의 오류가 커밋을 막지 않는다(fail-open).
 
 ## 비목표
@@ -23,7 +23,7 @@
 ## 요구사항
 
 - R1: **git commit-msg 훅** — `tdd-gate.py --commit-msg <메시지 파일>`로 진입한다. cwd(git이 워크트리 루트로 보장)에서 저장소를 판정하고, 커밋 대상은 `diff --cached --name-only --diff-filter=ACMR`만 본다(`git commit -a`도 훅 시점에는 GIT_INDEX_FILE 상속으로 반영됨 — 명령 파싱 불필요). 커밋 대상에 코드 파일(CODE_EXTS)이 있는데 테스트 파일 변경이 없으면 **의도적 차단 전용 코드 exit 65**로 차단하고 13절 조치를 stderr로 안내한다. 차단 코드가 65인 이유: 인터프리터 자체 실패 코드(SyntaxError rc 1, 파일 열기 실패 rc 2)와 겹치면 shim이 게이트 손상을 차단으로 오인해 머신 전역 커밋이 막힌다(R4 위반 — 2026-07-16 감사 재현).
-- R2: 예외(통과) — ① 루트 하네스 저장소 자신 ② `dev/` 아래 저장소 ③ 최초 커밋(HEAD 없음) ④ 메시지 파일에 `[no-test]` 포함(동작 불변 수정, **사용자 확인 전제** — 커밋 메시지에 흔적이 남는 유일한 승인 우회 경로) ⑤ merge/cherry-pick/revert/rebase 진행 상태(git-dir의 MERGE_HEAD·CHERRY_PICK_HEAD·REVERT_HEAD·rebase-merge·rebase-apply — 이미 게이트를 지난 커밋의 재조합이며, 특히 `git pull` 머지 커밋의 거짓 차단을 막는다).
+- R2: 예외(통과) — ① 루트 하네스 저장소 자신 ② 최초 커밋(HEAD 없음) ③ 메시지 파일에 `[no-test]` 포함(동작 불변 수정, **사용자 확인 전제** — 커밋 메시지에 흔적이 남는 유일한 승인 우회 경로) ④ merge/cherry-pick/revert/rebase 진행 상태(git-dir의 MERGE_HEAD·CHERRY_PICK_HEAD·REVERT_HEAD·rebase-merge·rebase-apply — 이미 게이트를 지난 커밋의 재조합이며, 특히 `git pull` 머지 커밋의 거짓 차단을 막는다). (`dev/` 예외는 ADR 024로 제거 — 2026-07-19)
 - R3: 테스트 파일 판정 — 테스트 디렉토리 세그먼트(test/tests/__tests__/spec/specs/e2e/testing/integration_test/androidTest/unitTest), 파일명 규약(`test_*`/`spec_*` 접두, `*_test`/`*_tests`/`*_spec` 접미, `*.test.*`/`*.spec.*`), 또는 **정확 파일명 allowlist**(`tests.py` — Django 앱 기본, `conftest.py` — pytest 픽스처). allowlist는 정확 일치만이다(`contest.py`는 코드) — `latest`·`backtest` 등 구분자 없는 포함 문자열은 여전히 테스트로 취급하지 않는다. 이유: 주류 관행의 false block은 `[no-test]`·`--no-verify` 남용을 학습시켜 게이트 자체를 죽인다(2026-07-16 감사 — models.py+tests.py 차단 재현).
 - R4: fail-open — 메시지 파일 없음, git 실패, 저장소 아님, 예외 발생, 알 수 없는 인자 진입 시 전부 exit 0. 시작 시 stdio를 **UTF-8(errors=replace)로 재구성**한다 — 한글 Windows 콘솔(cp949)은 차단 안내의 em dash를 인코딩하지 못해 write가 예외를 던지고, fail-open이 그것을 삼켜 **차단해야 할 커밋이 통과**한다(2026-07-14 장애 — 게이트 무력화).
 - R5: CODE_EXTS는 앱 코드 확장자 중심으로 한다. `.sh`/`.sql`/`.tf` 등 스크립트·마이그레이션·IaC는 제외한다(테스트 관행이 낮아 게이트 마찰 > 가치 — 범위 결정은 ADR 008에 기록).
@@ -45,7 +45,7 @@
 - [x] C3 (R1): 문서만 스테이징 → exit 0.
 - [x] C4 (R2): 메시지 파일에 `[no-test]` → exit 0.
 - [x] C5 (R2): MERGE_HEAD(머지)·CHERRY_PICK_HEAD(체리픽) 진행 상태 → exit 0.
-- [x] C6 (R2): 루트 하네스 저장소 / `dev/` 저장소 → exit 0.
+- [x] C6a (R2): 루트 하네스 저장소 → exit 0. (`dev/` 예외는 ADR 024로 제거 — 2026-07-19)
 - [x] C7 (R2): 최초 커밋(HEAD 없음) → exit 0.
 - [x] C8 (R4): 메시지 파일 없음 → fail-open exit 0.
 - [x] C9 (R3): `tests/` 하위 파일은 테스트로 인정(exit 0), `latest.py` 단독 커밋은 코드로 판정(exit 65). **allowlist**: `app/tests.py`·`conftest.py`는 코드와 동시 커밋 시 테스트로 인정(exit 0), `contest.py` 단독은 차단(exit 65 — 정확 일치만).

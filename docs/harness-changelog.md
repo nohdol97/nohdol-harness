@@ -81,3 +81,4 @@
 | 2026-07-18 | 라우팅 맵에 tool-audit 추가(주기 점검→harness-review, 제거 실행→metaskill 경계 병기) | CLAUDE.md | tool-audit 스킬 신설(신호 ①) — 항상-온 맵 밖 스킬은 우선순위 보호를 못 받음(ASSET-F02 동일 근거) |
 | 2026-07-18 | 라우팅 맵에 context7 추가(라이브러리·프레임워크·SDK 사용법·문서 조회; Anthropic/Claude API→claude-api(내장), 미설치·특정 URL→WebFetch/defuddle 경계 병기) | CLAUDE.md | context7 활용 스킬 신설 — 항상-온 맵 밖 스킬은 우선순위 보호를 못 받음(ASSET-F02 동일 근거) |
 | 2026-07-19 | §4 정리 제외 목록에 `_workspace/carryover/` 추가 | 4절 | `carryover` 스킬 신설 — 세션 이월 노트가 정리로 지워지지 않게 예외 등록(harness-updates.md 등과 동일 취급) |
+| 2026-07-19 | `dev/` 실험 공간 디렉토리 제거 — 실작업은 전부 `project/`. tdd-gate `dev/` 예외 분기·회귀 테스트(C6b)·스펙 R2에서 삭제, .gitignore·README·harness-install·REGISTRY·secret-gate 주석 정정, ADR 024 신설 + 002·008 부분 개정 배너 | 1·3·5·13절, .gitignore, README, tdd-gate.py·_test.py·secret-gate.py, docs/specs 2건, docs/adr 002·008·024, docs/README(MOC) | 사용자 확정(2026-07-19) — `dev/` 미사용(빈 디렉토리), 두 미추적 최상위 공간이 경로 규약·훅 예외 유지 비용만 발생. ADR 024 |

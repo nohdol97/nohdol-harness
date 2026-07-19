@@ -2,7 +2,7 @@
 """tdd-gate 회귀 테스트 — 스펙 docs/specs/2026-07-13-tdd-gate-hook.md 완료 기준(C1~C15).
 
 실행: python3 .agents/githooks/tdd-gate_test.py   (훅 수정 시 반드시 통과 — R7)
-부수 효과: 임시 디렉토리와 dev/_tddgate_selftest/(예외 경로 검증용)만 사용하며 전부 정리한다.
+부수 효과: 임시 디렉토리만 사용하며 전부 정리한다.
 """
 import os
 import shutil
@@ -91,7 +91,6 @@ def check(cid, desc, got, want):
 def main():
     utf8_stdio()
     tmp = tempfile.mkdtemp(prefix="tdd-gate-test-")
-    dev_probe = os.path.join(HARNESS_ROOT, "dev", "_tddgate_selftest")
     try:
         # C1: 코드만 스테이징 → 차단(전용 코드 65 — 인터프리터 rc 1/2와 구분, R4)
         g1 = make_repo(os.path.join(tmp, "g1"))
@@ -124,12 +123,9 @@ def main():
         put(g3, "note.md", "hi\n"); sh(g3, "add", "note.md")
         check("C3", "문서만 스테이징 → 통과", run_git_hook(g3, "docs: note")[0], 0)
 
-        # C6: 루트 하네스 저장소 / dev/ 저장소 → 통과
+        # C6: 루트 하네스 저장소 → 통과 (dev/ 예외는 2026-07-19 제거 — ADR 024)
         check("C6a", "루트 하네스 저장소 → 통과",
               run_git_hook(HARNESS_ROOT, "chore(harness): x")[0], 0)
-        rd = make_repo(dev_probe)
-        put(rd, "z.py"); sh(rd, "add", "z.py")
-        check("C6b", "dev/ 저장소 → 통과", run_git_hook(rd, "feat: z")[0], 0)
 
         # C7: 최초 커밋(HEAD 없음) → 통과
         g7 = make_repo(os.path.join(tmp, "g7"), initial_commit=False)
@@ -263,7 +259,6 @@ def main():
             check("C15", "비UTF-8 로케일 + 한글 파일명 → 차단 유지", code15, 65)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-        shutil.rmtree(dev_probe, ignore_errors=True)
 
     total, passed = len(results), sum(results)
     print("\n%d/%d passed" % (passed, total))

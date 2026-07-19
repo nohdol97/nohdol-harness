@@ -1,5 +1,7 @@
 # ADR 002 — 하위 프로젝트 저장소 분리 (`project/`, `dev/` 미추적)
 
+> ⚠️ 이 중 **`dev/`(실험 공간) 부분은 ADR 024로 대체**되었다(2026-07-19 — `dev/` 디렉토리 제거, 실작업은 전부 `project/`). `project/` 분리 결정은 유효하다.
+
 - **날짜**: 2026-07-12
 - **변경 내용**: 하위 프로젝트를 `project/<이름>/`에 두되 루트 저장소에서 gitignore 처리. 실험·임시 개발 공간 `dev/`도 미추적. README.md 신설, AGENTS.md 1절(경로 규약)·5절(저장소 분리) 갱신, scaffold.md 절차 수정.
 - **대상**: .gitignore, AGENTS.md, README.md, metaskill/references/scaffold.md

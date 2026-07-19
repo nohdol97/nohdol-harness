@@ -1,13 +1,13 @@
 ---
 name: harness-install
-description: Bootstrap this harness on a new machine after cloning. Verifies .claude symlinks, creates untracked workspace directories (project/, dev/, _workspace/), scans existing projects, interviews the user, and generates the installation-specific REGISTRY.md with path conventions. Use when the user says 하네스 설치, 초기 설정, 새 컴퓨터 세팅, REGISTRY.md 만들어줘, or when REGISTRY.md is missing at session start. Re-run keywords - install, bootstrap, setup, 설치, 초기화.
+description: Bootstrap this harness on a new machine after cloning. Verifies .claude symlinks, creates untracked workspace directories (project/, _workspace/), scans existing projects, interviews the user, and generates the installation-specific REGISTRY.md with path conventions. Use when the user says 하네스 설치, 초기 설정, 새 컴퓨터 세팅, REGISTRY.md 만들어줘, or when REGISTRY.md is missing at session start. Re-run keywords - install, bootstrap, setup, 설치, 초기화.
 ---
 
 # harness-install — 새 설치처 부트스트랩
 
 ## 왜 이 스킬인가
 
-이 하네스는 클론만으로는 완성되지 않는다. **설치 환경별 요소(REGISTRY.md, `.agents/projects/`, `project/`, `dev/`, `_workspace/`)는 의도적으로 git에 없기 때문이다**(ADR 002·005·006). 이 절차 없이 작업을 시작하면 라우팅 근거(REGISTRY.md)가 없어 크로스 프로젝트 판단이 불가능하고, 심링크가 깨진 채 `.claude/`에 실파일이 생기는 우회가 발생한다.
+이 하네스는 클론만으로는 완성되지 않는다. **설치 환경별 요소(REGISTRY.md, `.agents/projects/`, `project/`, `_workspace/`)는 의도적으로 git에 없기 때문이다**(ADR 002·005·006). 이 절차 없이 작업을 시작하면 라우팅 근거(REGISTRY.md)가 없어 크로스 프로젝트 판단이 불가능하고, 심링크가 깨진 채 `.claude/`에 실파일이 생기는 우회가 발생한다.
 
 **REGISTRY.md가 없는 세션은 설치 미완료 상태다** — 다른 작업 요청이 와도 이 스킬을 먼저 안내한다.
 
@@ -22,7 +22,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 ### 2. 미추적 디렉토리 생성
 
-`_workspace/`를 생성하고, 프로젝트·실험 공간은 **기본 규약(`project/`, `dev/`)을 제안값**으로 생성한다(이미 있으면 유지). 5단계 인터뷰에서 다른 경로 규약을 택하면 그에 맞게 조정하고 `.gitignore`도 함께 갱신한다 — 공용 `.gitignore`의 `project/`·`dev/` 항목은 기본 규약 기준이다. `.gitignore`가 미추적 요소 + `REGISTRY.md` + `.agents/projects/`를 포함하는지 확인한다.
+`_workspace/`를 생성하고, 프로젝트 공간은 **기본 규약(`project/`)을 제안값**으로 생성한다(이미 있으면 유지). 5단계 인터뷰에서 다른 경로 규약을 택하면 그에 맞게 조정하고 `.gitignore`도 함께 갱신한다 — 공용 `.gitignore`의 `project/` 항목은 기본 규약 기준이다. `.gitignore`가 미추적 요소 + `REGISTRY.md` + `.agents/projects/`를 포함하는지 확인한다.
 
 ### 3. 보조 도구 설치 (전부 선택 — 실패해도 설치 절차는 계속)
 
@@ -79,7 +79,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 - [ ] (선택) defuddle 설치됨 또는 건너뜀 사유가 완료 보고에 있음 — 미설치는 무해(`defuddle` 스킬이 WebFetch로 폴백)
 - [ ] (선택) context7 MCP가 `claude mcp list`에 있음(user 스코프) 또는 건너뜀 사유가 완료 보고에 있음 — 미설치는 무해(`context7` 스킬이 WebFetch/WebSearch로 폴백). SuperClaude 잔재 magic·sequential-thinking이 있으면 제거 안내됨
 - [ ] REGISTRY.md 존재 + **설치처 프로필(개인/사내)** + 경로 규약 + 표 + 변경 이력 (사내 프로필이면 수정·푸시 금지 의미가 안내됨)
-- [ ] `git status`에 REGISTRY.md·project/·dev/가 나타나지 않음 (ignore 확인)
+- [ ] `git status`에 REGISTRY.md·project/가 나타나지 않음 (ignore 확인)
 - [ ] 미확인 항목이 "미확인"으로 정직하게 표기됨
 
 ## with / without

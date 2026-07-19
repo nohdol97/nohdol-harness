@@ -39,13 +39,12 @@ nohdol-harness/
 │   ├── specs/             # 루트 자체 코드(훅 등)의 스펙 (SDD, AGENTS.md 13절)
 │   └── proposals/         # 외부 도구 분석·채택 설계 (ponytail·claude-mem 등 → ADR로 확정)
 ├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적, 하네스 파일 없음)
-├── dev/                   # 실험·임시 개발 공간 (미추적)
 └── _workspace/            # 세션 산출물 — 팀 작업 중간 결과물 (미추적)
 ```
 
 ## 새 컴퓨터에 설치하기
 
-클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`, `dev/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → **git 훅 계층 등록**(`core.hooksPath` → `.agents/githooks`, tdd-gate의 유일한 실행 계층이라 미등록이면 커밋 게이트가 꺼진 상태) → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → context7 MCP 등록(라이브러리 문서 조회, user 스코프) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다. 전역 git 설정은 저장소로 전파되지 않으므로 **머신마다 한 번씩** 필요하다.
+클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → **git 훅 계층 등록**(`core.hooksPath` → `.agents/githooks`, tdd-gate의 유일한 실행 계층이라 미등록이면 커밋 게이트가 꺼진 상태) → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → context7 MCP 등록(라이브러리 문서 조회, user 스코프) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다. 전역 git 설정은 저장소로 전파되지 않으므로 **머신마다 한 번씩** 필요하다.
 
 ## 동작 방식
 

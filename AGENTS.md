@@ -6,7 +6,7 @@
 
 ## 1. 프로젝트 레지스트리 → REGISTRY.md (미추적 — 설치처에서 생성)
 
-라우팅 판단의 유일한 근거는 루트의 **REGISTRY.md**다. 어떤 프로젝트를 어디에 두는지는 이 하네스를 설치한 컴퓨터마다 다르므로, REGISTRY.md는 **git에 올리지 않는다**(gitignore, ADR 005). 경로 규약(프로젝트 배치 위치, 실험 공간 등)도 설치처별 사항이므로 REGISTRY.md에 기재한다.
+라우팅 판단의 유일한 근거는 루트의 **REGISTRY.md**다. 어떤 프로젝트를 어디에 두는지는 이 하네스를 설치한 컴퓨터마다 다르므로, REGISTRY.md는 **git에 올리지 않는다**(gitignore, ADR 005). 경로 규약(프로젝트 배치 위치 등)도 설치처별 사항이므로 REGISTRY.md에 기재한다.
 
 **이 하네스를 새 컴퓨터에 설치(클론)하면 가장 먼저 REGISTRY.md를 생성해야 한다** — Claude Code / Codex에 "REGISTRY.md 만들어줘" 또는 "하네스 설치"라고 요청하면 `harness-install` 스킬이 프로젝트 스캔과 인터뷰로 생성한다. REGISTRY.md가 없는 세션은 설치 미완료 상태로 간주하고 harness-install을 먼저 안내한다.
 
@@ -28,7 +28,7 @@
 이 하네스는 인프라(k8s, AWS)까지 다루므로 실수의 반경이 코드베이스를 넘어선다.
 
 - **파괴적 작업은 반드시 실행 전 사용자 확인**: 리소스 삭제, 프로덕션 배포·롤백, DB 마이그레이션 실행, `git push --force`, IAM/권한 변경 등. **예외 없음** (dev 환경 포함 전부 확인 — 2026-07-12 사용자 확정).
-- **시크릿·자격증명은 하네스 파일과 `_workspace/`에 절대 기록하지 않는다.** 실행 계층 게이트: `.agents/githooks/secret-gate.py`(git commit-msg 훅, tdd-gate와 같은 shim 체인)가 형식 확정 자격증명 패턴의 커밋을 **모든 저장소에서**(루트·`dev/` 예외 없음) 차단한다. 오탐(문서 예시·테스트 픽스처)은 **사용자 확인 후** 커밋 메시지 `[secret-ok]`로만 통과시킨다. 스펙: docs/specs/2026-07-18-secret-gate-hook.md, ADR 023.
+- **시크릿·자격증명은 하네스 파일과 `_workspace/`에 절대 기록하지 않는다.** 실행 계층 게이트: `.agents/githooks/secret-gate.py`(git commit-msg 훅, tdd-gate와 같은 shim 체인)가 형식 확정 자격증명 패턴의 커밋을 **모든 저장소에서**(tdd-gate와 달리 루트 하네스도 예외 없음) 차단한다. 오탐(문서 예시·테스트 픽스처)은 **사용자 확인 후** 커밋 메시지 `[secret-ok]`로만 통과시킨다. 스펙: docs/specs/2026-07-18-secret-gate-hook.md, ADR 023.
 - **`<private>…</private>`로 표시된 내용은 외부 발행물로 옮기지 않는다**(이슈·PR·코멘트·커밋 메시지 등 저장소 밖에 남는 것 전부). `_workspace/` 산출물이나 대화 내용을 work-tracker 이슈·PR로 요약해 옮길 때 이 태그로 감싼 부분(민감 경로·내부 URL·개인 정보 등)은 제외한다 — 시크릿 금지의 연장선이며, claude-mem의 `<private>` 착안을 이식했다(ADR 018). 태그 자체는 하네스 파일에 남겨도 되지만 그 안의 시크릿은 위 규칙이 우선한다(애초에 기록 금지).
 
 ## 4. `_workspace/` 규약
@@ -44,7 +44,7 @@
 
 - **저장소 분리**: 루트 저장소는 하네스(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`(Codex 훅 등록·활성화 — ADR 019), `.gitignore`, `.gitattributes`, `docs/` — adr/은 구조 결정, specs/는 루트 자체 코드(훅 등)의 스펙, proposals/는 외부 도구 분석·채택 설계, README.md는 이 셋의 탐색 인덱스(MOC))만 추적한다. 하위 프로젝트는 각자 **독립 git 저장소**에서 커밋·푸시한다(ADR 002, 배치 위치는 REGISTRY.md 경로 규약). 이유: 프로젝트마다 배포·CI 주기가 다르며, 하네스 이력이 프로젝트 커밋에 묻히면 안 된다.
 - **커밋 컨벤션**: Conventional Commits. 스코프에 프로젝트명을 포함한다. 예: `feat(web): ...`, `fix(k8s): ...`, `chore(harness): ...` (하위 프로젝트 저장소에서도 동일 컨벤션 적용)
-- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `dev/`, `REGISTRY.md`, `.agents/projects/`(단, 디렉토리 용도를 설명하는 `.agents/projects/README.md`만 추적 예외 — .gitignore의 `!` 규칙) 및 OS 파일 — 뿐이다(ADR 002·005·006).
+- 하네스 파일(AGENTS.md, CLAUDE.md, README.md, `.agents/`, `.claude/` 심링크와 settings.json, `.codex/hooks.json`·`.codex/config.toml`, `.gitignore`, `.gitattributes`, `docs/`)은 **절대 gitignore에 넣지 않는다.** gitignore 대상은 설치 환경별 요소 — `_workspace/`, `project/`, `REGISTRY.md`, `.agents/projects/`(단, 디렉토리 용도를 설명하는 `.agents/projects/README.md`만 추적 예외 — .gitignore의 `!` 규칙) 및 OS 파일 — 뿐이다(ADR 002·005·006).
 - 하네스 변경 커밋에는 해당 파일의 **변경 이력 테이블 갱신을 같은 커밋에 포함**한다. 이유: 이력과 코드가 어긋나면 이력을 아무도 믿지 않게 된다.
 - **작업 완료 시 커밋·푸시를 기본으로 진행한다** (사용자 상시 승인, 2026-07-12). 단, `git push --force` 등 파괴적 git 작업은 3절 가드레일에 따라 여전히 개별 확인이 필요하고, **사내 프로필 설치처에서는 이 기본이 적용되지 않는다**(아래 설치처 프로필 규칙).
 - **설치처 프로필 (개인/사내)**: 이 저장소는 개인 계정 소유이므로, 설치처가 어디냐에 따라 푸시 가능 여부가 갈린다. 프로필은 REGISTRY.md 상단에 기록한다(harness-install 인터뷰) — `개인`(하네스 수정·커밋·푸시 가능) / `사내`(**추적 하네스 파일 수정·커밋·푸시 전면 금지** — 사내 머신에서 개인 원격으로의 푸시는 보안 정책 위반이고, 커밋만 쌓아도 결국 푸시가 필요해 발산한다). **사내에서 하네스 개선이 필요하면 저장소를 고치는 대신 `_workspace/harness-updates.md`(미추적) 대기 큐에 기록한다** — 변경 내용은 그 세션의 맥락 없이도 개인 머신에서 그대로 적용 가능한 수준으로 구체적으로(항목 형식·적용 절차: metaskill 대기 큐 시나리오, ADR 012). 사용자가 내용을 개인 머신으로 직접 옮기면 metaskill이 적용하고 상태를 `적용됨`으로 갱신한다. **프로필 미기록 상태에서 하네스 파일을 수정하게 되면 먼저 사용자에게 프로필을 확인해 REGISTRY.md에 기록한다**(단, 이 저장소를 직접 클론해 PR로 작업하는 원격 세션은 개인 프로필로 간주). 이유: 수정 자체를 개인 설치처로 이월해야 사내 정책과 하네스 진화가 양립한다.
@@ -134,7 +134,7 @@
 1. **스펙 먼저**: 구현 전에 스펙 문서를 확정한다 — `doc-writer` 스킬의 스펙 템플릿(배경·목표·비목표·요구사항·완료 기준) 사용. 위치는 **해당 프로젝트 저장소의 `docs/specs/`** — 스펙은 하네스가 아니라 프로젝트 산출물이므로 코드와 함께 커밋된다. 이유: 스펙 없는 구현은 완료 판정 기준이 없어 리뷰가 취향 싸움이 된다.
 2. **테스트 먼저**: 스펙의 완료 기준을 **실패하는 테스트**로 옮긴 뒤 구현한다. 순서: 실패 테스트 → 최소 구현 → 통과 → 리팩토링. 버그 수정은 재현 테스트부터. **테스트 없이 "구현 완료"를 선언하지 않는다.** 완료·통과 주장에는 **신선한 증거**를 첨부한다 — 그 주장을 증명하는 검증 명령을 보고 직전에 실행한 출력만 증거이고, 이전 실행 결과·"통과할 것" 류 추정·부분 확인은 증거가 아니다. 서브에이전트의 success 보고도 diff·테스트 출력으로 독립 확인한 뒤에만 완료로 취급한다(superpowers 이식, ADR 022).
 3. **리뷰는 스펙 대비로**: 리뷰(`team-review` 스킬, reviewer 에이전트)는 스펙의 완료 기준을 판정 기준으로 삼는다 — 기준이 문서에 있으니 판정이 재현 가능해진다.
-4. **실행 계층 게이트(훅)**: 전역 `core.hooksPath` → `.agents/githooks/`의 git commit-msg 훅(`.agents/githooks/tdd-gate.py`)이 `git commit` 시점에 코드 파일이 테스트 변경 없이 커밋되는 것을 차단한다 — **Claude Code·Codex CLI·수동 커밋 포함 도구 무관**. 등록은 머신별 설정이라 harness-install 1단계가 수행하고, 미등록 머신은 harness-review 주간 무결성 점검이 잡는다(등록 전까지 게이트 공백 — ADR 015). 동작 불변 수정은 **사용자 확인 후** 커밋 메시지에 `[no-test]`를 표기해 통과시킨다. 예외 경로: 루트 하네스 저장소(문서 중심), `dev/`(실험 공간), 최초 커밋, merge 등 재조합 커밋. 규칙의 원본은 이 문서다 — 판단 불가 상황은 통과(fail-open)하고, `--no-verify` 우회는 리뷰와 이 문서가 맡는다. 훅 수정 시 회귀 테스트(`.agents/githooks/tdd-gate_test.py`)를 통과해야 한다. 상세: docs/adr/008·014·015, 스펙: docs/specs/2026-07-13-tdd-gate-hook.md.
+4. **실행 계층 게이트(훅)**: 전역 `core.hooksPath` → `.agents/githooks/`의 git commit-msg 훅(`.agents/githooks/tdd-gate.py`)이 `git commit` 시점에 코드 파일이 테스트 변경 없이 커밋되는 것을 차단한다 — **Claude Code·Codex CLI·수동 커밋 포함 도구 무관**. 등록은 머신별 설정이라 harness-install 1단계가 수행하고, 미등록 머신은 harness-review 주간 무결성 점검이 잡는다(등록 전까지 게이트 공백 — ADR 015). 동작 불변 수정은 **사용자 확인 후** 커밋 메시지에 `[no-test]`를 표기해 통과시킨다. 예외 경로: 루트 하네스 저장소(문서 중심), 최초 커밋, merge 등 재조합 커밋. 규칙의 원본은 이 문서다 — 판단 불가 상황은 통과(fail-open)하고, `--no-verify` 우회는 리뷰와 이 문서가 맡는다. 훅 수정 시 회귀 테스트(`.agents/githooks/tdd-gate_test.py`)를 통과해야 한다. 상세: docs/adr/008·014·015, 스펙: docs/specs/2026-07-13-tdd-gate-hook.md.
 
 ## 14. 작업 추적 — 세션 영속 (ccpm 패턴)
 
