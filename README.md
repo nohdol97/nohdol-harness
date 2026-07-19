@@ -27,7 +27,8 @@ nohdol-harness/
 │   │   ├── defuddle/        # 웹 본문만 추출 (토큰 절감, 실패 시 WebFetch 폴백 — kepano/obsidian-skills 착안)
 │   │   ├── context7/        # 라이브러리·프레임워크 버전별 최신 문서 조회 (context7 MCP 래퍼, 미설치·실패 시 WebFetch/WebSearch 폴백)
 │   │   ├── tool-audit/      # 외부 도구(플러그인·MCP·스킬 팩) 사용 실측 감사 (agentsview로 매칭 집계 → 판정·제안, 실행은 metaskill)
-│   │   └── carryover/       # 세션 이월 노트 (슬래시 전용) — 남길 작업 선택 → _workspace 로컬 md, 다음 세션 재개 (work-tracker와 공존)
+│   │   ├── carryover/       # 세션 이월 노트 (슬래시 전용) — 남길 작업 선택 → _workspace 로컬 md, 다음 세션 재개 (work-tracker와 공존)
+│   │   └── wrapup/          # clear 전 마무리 관문 (슬래시 전용) — 세션 작업 훑기 → work-tracker/carryover 갈래질 위임 → /clear 안내 (얇은 오케스트레이터)
 │   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성, 스펙 2026-07-15)
 │   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + secret-gate.py (형식 확정 자격증명 패턴 커밋 차단, 도구 무관 — ADR 023) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
