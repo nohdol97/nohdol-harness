@@ -1,6 +1,6 @@
 ---
 name: wrapup
-description: "Wrap up a session before clearing context - enumerate this session's work and ask whether to persist it via work-tracker (cross-session epics) or carryover (local handoff note); and ONLY when signals exist, capture harness/project improvement signals (repeated requests/failures, harness bypass, reusable lessons, subproject skill/agent candidates), log lessons to auto-memory, and PROPOSE metaskill follow-up. Thin orchestrator delegating to work-tracker/carryover/metaskill; it does NOT apply harness changes itself (capture and propose only) and CANNOT run /clear (a CLI command) - only guides the user. Complements harness-review (end-of-session capture vs periodic scan). Slash-invoked only, NOT auto-routed. Do NOT use for mid-session logging without an impending clear (→ work-tracker), nor auto-apply harness edits or auto-run /clear. Re-run keywords - wrapup, 마무리, 세션 마무리, clear 전 정리, 세션 회고."
+description: "Wrap up a session before clearing context - enumerate this session's work and decide by scope whether to persist it via work-tracker (cross-session epics) or carryover (local handoff note, auto-saved), confirming once before writing to work-tracker (GitHub issue or backlog.md) and asking only when scope is ambiguous; and ONLY when signals exist, capture harness/project improvement signals (repeated requests/failures, harness bypass, reusable lessons, subproject skill/agent candidates), log lessons to auto-memory, and PROPOSE metaskill follow-up. Thin orchestrator delegating to work-tracker/carryover/metaskill; it does NOT apply harness changes itself (capture and propose only) and CANNOT run /clear (a CLI command) - only guides the user. Complements harness-review (end-of-session capture vs periodic scan). Slash-invoked only, NOT auto-routed. Do NOT use for mid-session logging without an impending clear (→ work-tracker), nor auto-apply harness edits or auto-run /clear. Re-run keywords - wrapup, 마무리, 세션 마무리, clear 전 정리, 세션 회고."
 ---
 
 # wrapup — clear 전 세션 마무리
@@ -9,7 +9,7 @@ description: "Wrap up a session before clearing context - enumerate this session
 
 `/clear`는 Claude Code **내장 CLI 명령**이라 실행 순간 컨텍스트가 즉시 비워지고, 그 시점에 모델이 끼어들 턴이 없다. 그래서 "clear 하기 직전에 이번 세션에서 남길 것을 챙기는" 일이 매번 누락된다 — 여러 세션에 걸칠 작업을 등록하지 못하거나, 다음 세션에 이어받고 싶던 메모가 사라지거나, **이번 세션에서 드러난 하네스·프로젝트 개선 신호가 컨텍스트와 함께 증발한다.**
 
-이 스킬은 그 간극을 메운다. `/clear`를 직접 고칠 수는 없으므로, **`/clear` 앞에 두는 마무리 관문**으로 동작한다 — 이번 세션 작업을 훑고, 무엇을 어디에 남길지 물어 처리하고, **개선 신호가 있으면 포착·제안**한 뒤, "이제 `/clear` 하세요"를 안내한다.
+이 스킬은 그 간극을 메운다. `/clear`를 직접 고칠 수는 없으므로, **`/clear` 앞에 두는 마무리 관문**으로 동작한다 — 이번 세션 작업을 훑고, **범위를 보고 저장 대상을 판단해** 처리하고(로컬 저장은 무확인 자동, work-tracker 등록만 직전 확인), **개선 신호가 있으면 포착·제안**한 뒤, "이제 `/clear` 하세요"를 안내한다.
 
 **얇은 오케스트레이터다 — 저장·반영 로직을 새로 짜지 않는다.** 작업 저장은 `work-tracker`·`carryover`에, 하네스·프로젝트 개선의 실제 반영은 `metaskill`에 위임한다. 이 스킬이 하는 일은 ⓐ 세션 작업 수집·저장 갈래질 ⓑ 개선 신호 포착·제안 ⓒ clear 안내다. 이유: 저장·반영 로직을 복제하면 원본 스킬과 어긋나 부채가 된다 — 필요가 증명된 자산만 두고 나머지는 재사용한다(ADR 007 지연 생성).
 
@@ -46,13 +46,20 @@ description: "Wrap up a session before clearing context - enumerate this session
 
 **harness-review와의 경계 (중복 아님)**: 이 회고는 세션 **끝**에 맥락이 살아있을 때 신호를 **포착**하는 단계이고, `harness-review`는 세션 **시작** 시 마커로 주기(1일/7일)를 판정해 누적 흔적을 **스캔·제안**하는 단계다. wrapup의 포착은 harness-review를 대체하지 않고 **그 스캔의 입력을 정확하게** 만든다 — 둘은 상보다.
 
-### 3. 무엇을 어디에 남길지 묻기
+### 3. 저장 대상을 범위로 자동 판단
 
-AskUserQuestion으로 저장 대상을 고르게 한다: **work-tracker 등록**(여러 PR·며칠 규모·크로스 머신) / **carryover 이월 노트**(다음 세션 로컬 핸드오프) / **둘 다** / **아무것도 안 남김**. 경계가 헷갈리면 아래 표를 근거로 한 줄 덧붙인다. **자동으로 정하지 말고 사용자 확정을 받는다.**
+1단계에서 수집한 범위(변경 규모·커밋/푸시 상태·미완 항목·크로스 머신 여부)를 아래 경계 표에 대어 **저장 대상을 스스로 판단한다** — 매번 빈 메뉴로 묻지 않는다. 판정 규칙:
 
-### 4. 선택에 위임
+- **남길 것 없음**: 모든 변경이 커밋·푸시됐고 세션을 넘길 미완·핸드오프가 없다 → 저장 없이 5단계로(무확인).
+- **carryover**: 다음 세션이 이어받을 **로컬 핸드오프**(진행 중 작업·미완 메모·이번 머신 한정 맥락)가 있다 → `carryover`(저장 모드) **자동 실행**(로컬·gitignore·저비용·되돌리기 쉬움 → 무확인).
+- **work-tracker**: 여러 PR·며칠 규모의 정형 에픽이거나 **크로스 머신 추적**이 필요하다 → **판단은 자동, 단 등록은 직전에 한 번 확인**한다("이 에픽을 work-tracker에 등록할까요?"). 등록처가 GitHub 이슈든 `docs/backlog.md`든 git 추적·외부 지향이고, 전수 등록은 이슈 무덤을 만들기 때문(§14) — 확인 없이 쓰지 않는다.
+- **둘 다**: 정형 추적과 로컬 핸드오프가 동시에 있으면 분담한다(정형은 work-tracker, 로컬 메모는 carryover — 같은 내용 중복 적재 금지). work-tracker 부분만 위 확인을 거친다.
 
-고른 대상의 스킬을 그대로 호출한다(중복 구현 금지): work-tracker 선택 → `work-tracker`(등록 모드), carryover 선택 → `carryover`(저장 모드), 둘 다 → 순차 호출하되 **같은 내용을 양쪽에 중복 적재하지 않는다**(정형 추적은 work-tracker, 로컬 메모는 carryover로 분담 — 아래 표). 각 스킬이 완료된 뒤에만 다음으로 간다.
+**판정 결과와 근거를 사용자에게 한 줄로 알린다**(예: "전부 커밋·푸시됨 + 미완 없음 → 남길 것 없음"). 사용자가 뒤집으면 그에 따른다. **범위 신호가 애매해 carryover냐 work-tracker냐 가릴 수 없을 때만 AskUserQuestion으로 되묻는다** — 자동 판단이 기본, 되물음은 예외다.
+
+### 4. 판정에 위임
+
+판정된 대상의 스킬을 그대로 호출한다(중복 구현 금지): carryover → `carryover`(저장 모드), work-tracker → **사용자 확인을 받은 뒤** `work-tracker`(등록 모드), 둘 다 → 순차 호출하되 **같은 내용을 양쪽에 중복 적재하지 않는다**(정형 추적은 work-tracker, 로컬 메모는 carryover로 분담 — 아래 표). 각 스킬이 완료된 뒤에만 다음으로 간다.
 
 ### 5. `/clear` 안내
 
@@ -74,5 +81,5 @@ AskUserQuestion으로 저장 대상을 고르게 한다: **work-tracker 등록**
 |---|---|---|
 | clear 전 마무리 | 컨텍스트를 비우고 나서야 "등록할걸" 후회 | clear 직전 관문에서 저장 여부를 강제로 챙김 |
 | 개선 신호 | 세션 끝 생생한 신호가 증발, harness-review가 사후 재구성 | 맥락이 살아있을 때 포착 → 즉시 기록·제안 |
-| 저장 위치 판단 | 매번 work-tracker냐 carryover냐 헷갈림 | 경계 표로 갈래질 후 위임 |
+| 저장 위치 판단 | 매번 work-tracker냐 carryover냐 헷갈림·매번 물음 | 범위로 자동 판단(로컬 저장은 무확인, work-tracker만 등록 직전 확인), 애매할 때만 되물음 |
 | 중복 구현 | 마무리·반영 로직을 매번 즉흥 처리 | 기존 스킬(work-tracker·carryover·metaskill) 재사용 |
