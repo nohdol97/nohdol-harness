@@ -41,7 +41,7 @@ nohdol-harness/
 │   ├── specs/             # 루트 자체 코드(훅 등)의 스펙 (SDD, AGENTS.md 13절)
 │   └── proposals/         # 외부 도구 분석·채택 설계 (ponytail·claude-mem 등 → ADR로 확정)
 ├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적, 하네스 파일 없음)
-└── _workspace/            # 세션 산출물 — 팀 작업 중간 결과물 (미추적)
+└── _workspace/            # 세션 산출물 (미추적) — 팀 작업 중간물 + 세션 넘김 운영 데이터(정리 제외): autoloop/(자율 루프 상태·재개), carryover/(이월 노트), harness-ops-log.md·harness-updates.md·점검 마커
 ```
 
 ## 새 컴퓨터에 설치하기

@@ -38,7 +38,7 @@
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
 - **리포트 구조 — 점진적 공개(2단)**: 발견이 많은 `_workspace/` 리포트는 ① **요약 인덱스**(발견 ID·severity·한 줄 요지)를 맨 위에 두고, ② 각 발견의 **상세·근거**(`파일:줄`/명령 출력)는 ID로 참조되는 하위 섹션에 둔다. 이유: 리포트는 쓰기 1회·읽기 N회라 인덱스 필터가 재독 토큰을 곱으로 줄인다(ADR 018). 단, **발견이 소수인 짧은 리포트는 인덱스를 생략**한다 — 규율이 노이즈가 되면 오히려 우회된다(16절).
 - 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
-- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필), `_workspace/harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`), `_workspace/carryover/`(세션 이월 노트 — `carryover` 스킬이 쓰고 다음 세션이 이어받는 로컬 핸드오프)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
+- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필), `_workspace/harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`), `_workspace/carryover/`(세션 이월 노트 — `carryover` 스킬이 쓰고 다음 세션이 이어받는 로컬 핸드오프), `_workspace/autoloop/<작업명>/`(자율 루프 상태·carryover·로그 — `autoloop` 드라이버가 쓰고 `--work-name` 재개(R10)로 다음 세션이 이어받는다; 완료된 런은 정리 가능)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
 
 ## 5. git 규칙
 
