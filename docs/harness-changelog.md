@@ -80,3 +80,4 @@
 | 2026-07-16 | `@AGENTS.md`를 실제 1행으로 이동("첫 줄" 서술과 일치) + 라우팅 맵에 project-status·defuddle 추가 | CLAUDE.md | 하네스 전체 감사 — STRUCT-F2(문서 서술 vs 실제 3행 드리프트), ASSET-F02(두 스킬이 항상-온 맵 밖이라 스킬 우선순위 보호를 못 받음) |
 | 2026-07-18 | 라우팅 맵에 tool-audit 추가(주기 점검→harness-review, 제거 실행→metaskill 경계 병기) | CLAUDE.md | tool-audit 스킬 신설(신호 ①) — 항상-온 맵 밖 스킬은 우선순위 보호를 못 받음(ASSET-F02 동일 근거) |
 | 2026-07-18 | 라우팅 맵에 context7 추가(라이브러리·프레임워크·SDK 사용법·문서 조회; Anthropic/Claude API→claude-api(내장), 미설치·특정 URL→WebFetch/defuddle 경계 병기) | CLAUDE.md | context7 활용 스킬 신설 — 항상-온 맵 밖 스킬은 우선순위 보호를 못 받음(ASSET-F02 동일 근거) |
+| 2026-07-19 | §4 정리 제외 목록에 `_workspace/carryover/` 추가 | 4절 | `carryover` 스킬 신설 — 세션 이월 노트가 정리로 지워지지 않게 예외 등록(harness-updates.md 등과 동일 취급) |

@@ -62,6 +62,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - orchestrate 연동: 구현·다단계 작업은 루트 orchestrate의 팀 필요성 판정(Phase 0-1)을 거치고, 다중 프로젝트·팀 작업은 orchestrate로 팀을 구성함을 명시(ADR 010).
 - ADR 디렉토리 (구조적 결정 시 NNN-제목.md): 루트 하네스는 `docs/adr/`, 하위 프로젝트는 `.agents/projects/<이름>/adr/`.
 - **문서 지도(MOC) 동기화 (루트 하네스 한정)**: 루트에서 ADR·스펙(`docs/specs/`)·제안(`docs/proposals/`)을 새로 만들거나 상태를 바꾸면(대체·구현·기각) **같은 커밋에서 `docs/README.md` 인덱스의 해당 행을 갱신**한다(루트 AGENTS.md 6절). REGISTRY.md 갱신 의무와 같은 이유 — 인덱스가 현실과 어긋나면 탐색 근거로서 신뢰를 잃는다.
+- **루트 README.md 자산 목록 동기화 (루트 하네스 한정 — 반복 누락 지점)**: 루트 `.agents/skills/`·`.agents/agents/`에 스킬·에이전트를 **신설·개명·폐기**하면 **같은 커밋에서 루트 `README.md`의 디렉토리 트리(스킬·에이전트 한 줄 설명 목록)를 갱신**한다 — 새 스킬 추가 시 이 목록 갱신이 반복 누락됐다(신호 ②, changelog 2026-07-16·07-18 "README 스테일 동기화"가 사후 재동기화의 흔적). 위 MOC(`docs/README.md`)는 ADR·스펙·제안 인덱스이고 **이 트리는 스킬·에이전트 목록이라 별개 파일**이다 — 둘을 혼동해 하나만 갱신하면 다른 하나가 스테일해진다. 하위 프로젝트 스킬·에이전트는 루트 README가 아니라 **하위 AGENTS.md의 목록**을 갱신한다(§12).
 - 에이전트를 만들 때는 **`references/agent-rules.md`의 10섹션 템플릿**을 따른다.
 - 스킬을 만들 때는 아래 "스킬 공통 규칙"을 따른다.
 - 패턴 선택이 필요하면 **`references/patterns.md`의 플로우차트** 참조.
@@ -99,6 +100,7 @@ description: Create, scaffold, audit, improve, and evolve project harnesses (AGE
 - [ ] **하위 프로젝트 한정**: 하네스 원본이 루트 `.agents/projects/<이름>/`에 있고, `project/<이름>/`와 그 git 저장소에는 하네스 파일이 없음. REGISTRY.md에 같은 이름의 행 존재
 - [ ] **하위 프로젝트 한정**: 초기 스킬·에이전트 미생성(지연 생성 원칙), 하위 AGENTS.md에 "스킬 후보" 섹션 존재. 지연 생성된 스킬·에이전트가 있다면 `.agents/projects/<이름>/skills/`·`agents/`에 위치하고 하위 AGENTS.md에 목록·경로가 명시됨
 - [ ] **루트 하네스 한정**: REGISTRY.md에 프로젝트 레지스트리 표 존재(신규 프로젝트면 행 추가됨). 하위 프로젝트 하네스에는 레지스트리를 두지 않는다(루트 단일 원칙)
+- [ ] **루트 하네스 한정**: 루트 스킬·에이전트를 신설·개명·폐기했다면 루트 `README.md` 디렉토리 트리의 해당 목록 행을 같은 커밋에서 갱신함(반복 누락 지점 — `docs/README.md` MOC와 별개 파일)
 - [ ] 파괴적 작업 사용자 확인 가드레일이 루트 AGENTS.md에 존재
 - [ ] 각 SKILL.md가 500줄 이내이고 with/without 지표가 하단에 존재
 - [ ] 각 SKILL.md의 frontmatter가 첫 줄 `---`로 시작하고 `name`(디렉토리명 일치)·`description` 존재, YAML 유효(특수문자 포함 시 큰따옴표) — `head -6`으로 확인
