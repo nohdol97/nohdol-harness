@@ -1,0 +1,101 @@
+# 스펙: autoloop — 자율 멀티세션 루프 드라이버
+
+- 날짜: 2026-07-19 / 상태: 확정
+- 관련: ADR 025(아키텍처 결정), 루트 AGENTS.md §3(안전 가드레일)·§13(SDD/TDD), carryover 스킬(노트 템플릿 차용)
+
+## 배경
+
+한 세션 컨텍스트를 넘는 작업(멀티세션 완주·자율 개발)을 무인으로 돌리려면 세 가지가 필요하다: ① 반복 사이 프롬프트 재구성, ② 작업 중 사용자 질의 제거, ③ 컨텍스트 소진 시 자동 핸드오프 후 새 컨텍스트로 재개("wrapup→clear→재개"). ③이 핵심 공백이다 — `/clear`는 CLI 명령이라 세션 안의 모델이 스스로 부를 수 없다. 해법: **세션 바깥의 드라이버 프로세스가 `claude -p`(headless)를 반복 기동**하면 새 프로세스=새 컨텍스트가 되어 clear가 구조적으로 해결된다. 반복 간 상태는 carryover 노트(로컬 Markdown)로 넘긴다.
+
+리스크는 코드가 아니라 게이트다: (a) 무인 모드가 하네스의 소프트 게이트(리뷰·신선한 증거)를 건너뛰어 결함이 누적되고, (b) 정지 조건이 없으면 토큰을 무한 소각하며, (c) 질의 제거를 permission 전면 bypass로 구현하면 §3(파괴적 작업은 예외 없이 사용자 확인)과 충돌한다. 이 스펙의 본체는 그 3개 게이트의 계약이다.
+
+## 목표
+
+- 사용자가 스펙 파일 하나를 지정해 루프를 기동하면, 사용자 개입 없이 반복(구현→검증→핸드오프)이 진행되고, 완료·차단·정체·상한 중 하나로 반드시 종료된다.
+- 파괴적 명령은 무인 상태에서 직접 호출이 차단된다(협소 화이트리스트 + 블랙리스트 + headless 기본 거부) — 세션이 blocked를 보고하면 루프가 멈추고 사용자에게 이월된다. **완전 봉쇄는 아니다**: 테스트 실행은 곧 저장소 코드 실행이므로, bare 인터프리터 그랜트 금지(R3)로 우회면을 줄이되, 인프라·배포가 걸린 스펙에는 이 도구를 쓰지 않는 것이 사용 가드레일이다(SKILL.md 주의).
+- 각 반복의 완료 주장은 드라이버가 **독립 실행한 테스트 출력**으로만 인정된다(모델 자가보고 불신).
+- 사용자는 별도 세션에서 진행 상태를 확인하고 안전하게 정지시킬 수 있다.
+
+## 비목표
+
+- **전면 무인 승인 아님**: `--dangerously-skip-permissions` / `bypassPermissions`는 어떤 경로로도 쓰지 않는다(§3 완화 불가).
+- **wrapup/carryover 스킬 대체 아님**: 대화형 세션의 수동 이월은 기존 스킬 그대로. autoloop은 자체 노트 파일을 쓴다(스키마만 차용).
+- **오케스트레이션 대체 아님**: 반복 안에서의 팀 구성·검증 라우팅은 headless 세션이 로드하는 하네스(CLAUDE.md/AGENTS.md)가 담당한다. 드라이버는 반복 경계만 관리한다.
+- **크로스 머신 아님**: 산출물은 `_workspace/`(미추적) — 같은 머신 한정. 정식 추적은 work-tracker의 몫.
+- **비용 정밀 회계 아님**: 반복 상한이 1차 백스톱이고 비용 상한은 결과 JSON이 제공될 때만 동작하는 보조 장치다.
+
+## 요구사항
+
+### 드라이버 (`.agents/skills/autoloop/scripts/driver.py`, Python 3 stdlib only)
+
+- **R1 (루프 골격)**: `driver.py --spec <경로> [--project <디렉토리>] [--test-cmd <명령>] [--max-iterations N=10] [--stall-limit N=3] [--max-cost-usd X] [--work-name <슬러그>] [--allow-extra <패턴>]*`로 기동한다. 매 반복: STOP 체크 → 프롬프트 구성 → `claude -p` 실행 → 상태 파싱 → 독립 검증 → 노트·로그 갱신 → 정지 판정.
+- **R2 (불변 앵커)**: 매 반복 프롬프트는 ① 스펙 경로·목표(불변 — 자동 개선으로 절대 수정 불가) ② 직전 carryover 노트 본문 ③ 직전 반복의 독립 테스트 결과 ④ 고정 지시문(하네스 준수·검증·노트 갱신·상태 블록 출력)으로 구성한다. "프롬프트 개선"은 ②·③의 갱신뿐이다 — 드리프트 방지.
+- **R3 (안전 게이트)**: headless 호출은 `--permission-mode acceptEdits` + `--allowedTools`(읽기·편집·안전 Bash 화이트리스트: 고정 테스트/빌드 러너와 `git add/commit/status/diff/log/branch/checkout -b`) + `--disallowedTools`(파괴 패턴 블랙리스트: `git push --force*`, `git clean*`, `rm -rf*`, `kubectl*`, `terraform*`, `aws*`, `helm*`, `gh*`, DB 클라이언트·migrate 류)로 실행한다. **bare 인터프리터·러너 그랜트(`python3:*`, `python:*`, `npx:*`, `npm run:*`, `pnpm:*`, `git checkout:*`) 금지** — 임의 코드 실행으로 블랙리스트를 감싸 우회하면 게이트가 지시 수준으로 격하된다. 프로젝트별 러너가 더 필요하면 `--allow-extra`(반복 가능)로 **사용자가 명시 그랜트**하며, 검증 세션(readonly)에는 확장 그랜트를 주지 않는다. 세션이 `blocked` 상태를 보고하면 드라이버는 즉시 정지하고 노트에 "사용자 확인 필요" 항목을 남긴다.
+- **R4 (상태 계약)**: 세션은 최종 출력 끝에 ```json 펜스로 `{"status": "done"|"continue"|"blocked", "open_items": <int>, "note": "<한 줄>"}` 블록을 출력하도록 지시받는다. 드라이버는 **마지막** 유효 블록을 채택하고, 파싱 실패 시 `continue`로 간주하되 연속 2회 파싱 실패면 정체로 취급한다.
+- **R5 (독립 검증)**: `--test-cmd`가 주어지면 드라이버가 매 반복 종료 후 대상 디렉토리에서 직접 실행해 exit code·출력 tail을 기록한다. 세션의 "테스트 통과" 주장과 무관하게 이 결과만이 증거다(§13).
+- **R6 (완료 판정)**: `done` 확정 조건 = 세션 status `done` **and** open_items 0 **and** 독립 테스트 green(test-cmd 있을 때). 확정 전에 **검증 반복**을 1회 돌린다 — 읽기 전용 reviewer 지시문의 별도 `claude -p`가 스펙 완료 기준 대비 PASS/BLOCK을 판정하고, BLOCK이면 사유를 다음 반복 입력에 넣고 루프를 계속한다(잔여 반복 내에서).
+- **R7 (정지 조건 — 반드시 하나로 종료)**: ① done 확정 ② blocked ③ 정체(연속 `--stall-limit`회 진전 없음 — 진전 = open_items 감소 또는 테스트 결과 개선(red→green 전환 수 증가)) ④ `--max-iterations` 소진 ⑤ STOP 파일 감지 ⑥ 비용 상한 초과(결과 JSON의 `total_cost_usd` 누적, 제공될 때만) ⑦ `claude` 실행 연속 2회 실패(프로세스 에러). 각 종료 사유를 노트·로그에 명시한다.
+- **R8 (산출 구조)**: `_workspace/autoloop/<작업명>/` 아래 — `carryover.md`(핸드오프 노트: 한 일/다음/막힘/사용자 확인 필요/참조), `driver.log`(반복별 타임스탬프·상태·정지 판정), `iters/iter-N.json`(반복별 원시 결과 메타 — 단, claude 프로세스 실패 반복은 로그 줄로만 기록), `STOP`(존재하면 다음 반복 경계에서 안전 종료 후 드라이버가 삭제하지 않고 보존).
+- **R9 (기동 사전 검사)**: 스펙 파일 존재 + "완료 기준" 절 존재를 확인하고, 없으면 기동 거부(완료 판정 오라클 없는 루프 금지). `--test-cmd` 미지정 시 경고를 로그·stdout에 남긴다(증거 약화 모드).
+- **R10 (재개성)**: 같은 `--work-name`으로 재기동하면 기존 `carryover.md`를 이어받아 계속한다(STOP 파일이 있으면 삭제 후 진행할지 묻지 않고 **기동 거부** — 명시적 STOP 해제는 사용자 몫).
+
+### 스킬 (`.agents/skills/autoloop/SKILL.md`)
+
+- **R11 (3동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내) / `status`(carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
+- **R12 (스킬 공통 규칙)**: frontmatter 규격(첫 줄 `---`·name·description **800자 권장·1024자 하드캡**(부정 트리거가 길이보다 우선 — metaskill 공통 규칙 2)·한국어 재실행 키워드·부정 트리거), 본문 500줄 이내, with/without 표.
+
+## 인터페이스 / 설계 개요
+
+```
+사용자 ── /autoloop start <스펙> ──▶ SKILL.md(발사대: 검사·기동·안내)
+                                        │ nohup
+                                        ▼
+                         driver.py (세션 외부 프로세스)
+                           ┌──────── 반복 ────────┐
+                           │ STOP? → 안전 종료      │
+                           │ 프롬프트(앵커+노트+증거) │
+                           │ claude -p (acceptEdits │
+                           │   +allow/disallow)     │──▶ 대상 프로젝트 편집·커밋
+                           │ 상태 블록 파싱          │
+                           │ test-cmd 독립 실행      │
+                           │ carryover.md·로그 갱신  │
+                           │ 정지 판정(R7 7조건)     │
+                           └───────────────────────┘
+                           done 주장 → reviewer 검증 반복(PASS/BLOCK)
+```
+
+- 드라이버 cwd는 하네스 루트(하네스 항상-온 로드 — §12 세션 시작 관행), 대상 프로젝트는 `--project`로 지정하고 프롬프트에 명시한다.
+- 의존성: Python 3 표준 라이브러리만(§16 사다리 5단 — 새 의존성 금지). Claude Agent SDK는 쓰지 않는다 — permission callback의 정밀함보다 무의존이 이 규모에 맞고, allow/disallow 목록으로 동등한 경계를 긋는다.
+
+## 완료 기준 (테스트 가능한 형태)
+
+단위 테스트(`driver_test.py` — fake `claude` 실행파일로 CLI 경계 모킹):
+
+- [ ] C1 (R4): 유효 상태 블록이 여럿이면 마지막 것을 파싱한다; 필드 누락·비JSON이면 `continue` 폴백; 파싱 실패가 연속 2회면 루프가 `stalled`로 종료한다.
+- [ ] C2 (R7③): open_items·테스트 개선이 없는 반복이 stall-limit회 연속되면 `stalled`로 종료한다; 진전이 있으면 카운터가 리셋된다; open_items 미보고(null) 반복은 첫 유효 반복 이후 무진전으로 센다.
+- [ ] C3 (R7④⑤): max-iterations 소진 시 `exhausted`, STOP 파일 존재 시 다음 반복 진입 전 `stopped`로 종료한다.
+- [ ] C4 (R2): 프롬프트에 스펙 경로·앵커 지시문·직전 노트·직전 테스트 결과가 모두 포함되고, 앵커 문자열은 반복이 지나도 불변이다.
+- [ ] C5 (R3): 조립된 claude 인자에 `--permission-mode acceptEdits`·allow·disallow 목록이 포함되고, `bypassPermissions`·`--dangerously-skip-permissions`는 어떤 경로로도 등장하지 않는다; allow 목록에 bare 인터프리터·러너 그랜트가 없다; `--allow-extra` 패턴은 작업 세션에만 실리고 검증 세션에는 실리지 않는다.
+- [ ] C6 (R3): 세션이 `blocked`를 보고하면 즉시 종료하고 carryover.md에 "사용자 확인 필요" 절이 생긴다.
+- [ ] C7 (R5): fake test-cmd의 exit 0/1이 각각 green/red로 기록되고, 세션 주장과 불일치 시 드라이버 기록이 이긴다(green 주장+red 실측 → done 불인정).
+- [ ] C8 (R6): status done+open_items 0+테스트 green이면 검증 반복이 1회 돌고, PASS면 `done`, BLOCK이면 사유가 다음 프롬프트에 포함된 채 루프가 계속된다.
+- [ ] C9 (R9): 스펙 파일 부재 또는 "완료 기준" 절 부재 시 기동 거부(exit≠0, 이유 출력).
+- [ ] C10 (R10): 같은 work-name 재기동 시 기존 노트가 프롬프트에 실린다; STOP 존재 시 기동 거부.
+- [ ] C11 (R7⑦): fake claude가 연속 2회 비정상 종료하면 `error`로 종료한다(1회 실패 후 성공하면 계속).
+- [ ] C12 (R8): 정상 1반복 후 carryover.md·driver.log·iters/iter-1.json이 생성되고 종료 사유가 로그에 있다.
+
+수동 확인(구현 보고에 증거 첨부):
+
+- [ ] C13 (R11): SKILL.md에 start/status/stop 절차와 실제 명령이 있고, frontmatter가 `head -6` 검증을 통과한다.
+- [ ] C14 (R12): SKILL.md 500줄 이내 + with/without 표 존재.
+
+## 미해결 질문
+
+없음 — 목적(멀티세션 완주+자율 개발)·안전 범위(읽기·편집 무인, 파괴적 정지)는 2026-07-19 사용자 확답으로 확정.
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|---|---|---|---|
+| 2026-07-19 | 초안 작성 후 확정 | 이 문서 | 사용자 구축 승인(자율 루프 3게이트 설계 합의) — metaskill 신설 절차 §13 SDD |
+| 2026-07-19 | 리뷰 반영 — R3 bare 인터프리터 그랜트 금지·`--allow-extra` 명시 확장(H1), 목표 절 주장 정직화(완전 봉쇄 아님+사용 가드레일), C1 파싱 실패 정체(L1)·C2 null open_items(M2)·C5 그랜트 검사 보강, R8 실패 반복 기록 명시(L2), R12 800자 권장·1024 캡 정합(M3) | 이 문서 | reviewer 독립 검증 BLOCK(H1·M1~M3·L1~L5) 반영 |

@@ -34,6 +34,7 @@
 | [022](adr/022-superpowers-adoption.md) | 2026-07-17 | 활성 | superpowers 규율 착안 3건 이식 (압박 테스트·신선한 증거·리뷰 수신 규율) |
 | [023](adr/023-secret-gate-hook.md) | 2026-07-18 | 활성 | secret-gate 훅 (3절 시크릿 금지의 실행 계층 승격) |
 | [024](adr/024-remove-dev-dir.md) | 2026-07-19 | 활성 | `dev/` 실험 공간 디렉토리 제거 (실작업은 전부 `project/`, tdd-gate `dev/` 예외 삭제) |
+| [025](adr/025-autoloop-driver.md) | 2026-07-19 | 활성 | autoloop — 세션 외부 드라이버 기반 자율 멀티세션 루프 (게이트 3종·불변 앵커) |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -49,6 +50,7 @@
 | [2026-07-15-hooks-common-bootstrap](specs/2026-07-15-hooks-common-bootstrap.md) | 구현됨 | `.agents/hooks/_common.py` | — |
 | [2026-07-16-worklog-reminder-hook](specs/2026-07-16-worklog-reminder-hook.md) | 구현됨 | `.agents/hooks/worklog-reminder.py` | 018·019 |
 | [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
+| [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 구현됨 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 
