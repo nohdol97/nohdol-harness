@@ -70,6 +70,7 @@ touch _workspace/autoloop/<슬러그>/STOP
 - **파괴적 작업 무인 실행 금지(§3 완화 불가)**: bypass 모드 추가, bare 인터프리터 그랜트 복원, 파괴 패턴의 `--allow-extra` 그랜트(kubectl·terraform·배포 명령 등) 요청은 거절하고 이유를 설명한다 — 이 게이트가 이 도구의 존재 조건이다. `--allow-extra`는 테스트·빌드 러너 수준까지만.
 - **인프라·배포 스펙에 사용 금지**: k8s·AWS·릴리스가 걸린 작업은 orchestrate(infra-specialist 경유)·release로 — 무인 루프의 대상이 아니다.
 - **한 컨텍스트에 들어가는 작업엔 쓰지 않는다 (비용 경계)**: 반복마다 새 `-p` 세션이 AGENTS.md 재주입·스펙/코드 재탐색·검증 세션 비용을 다시 치른다. 이 재확립 비용은 작업이 **컨텍스트 윈도우를 넘길 때만** 회수된다 — 그 규모에선 누적 단일 세션이 전체 이력을 매 턴 재청구하는 것보다 오히려 싸다. **한 세션에 들어갈 작업은 `/loop`(인세션 반복)나 단일 대화형 세션으로** 보낸다. start 사전 검사에서 작업이 소규모로 판단되면 이 경계를 사용자에게 알린다.
+- **엔진은 Claude Code CLI 전용 (멀티 CLI 패리티의 알려진 예외 — §11/ADR 019)**: 이 스킬·드라이버는 공용 `.agents/`에 있어 **Codex 세션도 읽고 기동할 수 있으나**, 드라이버는 헤드리스 세션을 `claude -p`(+ `--permission-mode`·`--allowedTools`/`--disallowedTools`)로 돌린다 — Claude Code CLI 고유 표면이다. 따라서 **Codex에서 기동해도 루프는 Claude를 구동**하며(`claude` 설치·인증 필요), 안전 게이트도 Claude Code 권한 모델이다. Codex 네이티브 실행(`codex exec` + 샌드박스 레벨)은 표면·권한 모델이 달라 별도 설계·안전 재검증이 필요하므로 **미지원**이다(필요 시 `--engine` 분기로 확장 — 지연).
 - **드라이버 수정 시** `python3 .agents/skills/autoloop/scripts/driver_test.py` 통과 필수(C1~C12, tdd-gate와 같은 규율).
 - 완주 후 정식 기록이 필요한 작업이면 work-tracker로 승격한다(`_workspace/`는 미보존 — §4).
 
