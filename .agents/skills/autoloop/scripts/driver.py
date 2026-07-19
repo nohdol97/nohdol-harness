@@ -131,14 +131,20 @@ def build_anchor(cfg):
     )
 
 
-def build_prompt(anchor, note_text, test_result, feedback):
-    """반복 프롬프트(R2): 앵커 + 직전 노트 + 독립 테스트 결과 + 피드백 + 고정 지시문."""
+def build_prompt(anchor, note_path, note_text, test_result, feedback, prev_status=""):
+    """반복 프롬프트(R2): 앵커 + 직전 노트(경로·드라이버 기록) + 독립 테스트 결과 + 피드백 + 고정 지시문."""
     parts = [
         anchor,
-        "\n[HANDOFF NOTE from previous iteration]\n" + (note_text or "(first iteration - no note yet)"),
-        "\n[INDEPENDENT TEST RESULT (driver-run, this is the only trusted evidence)]\n"
-        + (test_result or "(not yet run)"),
+        "\n[HANDOFF NOTE from previous iteration - file: %s]\n" % note_path
+        + (note_text or "(first iteration - no note yet)"),
     ]
+    if prev_status:
+        # 드라이버가 직전 반복에서 파싱한 한 줄 상태 — 노트 파일이 비어도 핸드오프가
+        # 끊기지 않게 보장하는 플로어(세션의 노트 갱신 재량에 의존하지 않음).
+        parts.append("\n[LAST STATUS (driver record, authoritative)]\n" + prev_status)
+    parts.append(
+        "\n[INDEPENDENT TEST RESULT (driver-run, this is the only trusted evidence)]\n"
+        + (test_result or "(not yet run)"))
     if feedback:
         parts.append("\n[REVIEWER FEEDBACK - fix these before claiming done]\n" + feedback)
     parts.append(
@@ -147,8 +153,10 @@ def build_prompt(anchor, note_text, test_result, feedback):
         "2. Pick the highest-priority open item from the note (or derive from the spec) and complete it.\n"
         "3. NEVER attempt destructive operations (deploy, resource deletion, force push, DB migration,\n"
         "   IAM changes). If one becomes necessary, stop and report status \"blocked\".\n"
-        "4. Update the handoff note file (Korean, keep sections: 한 일/진행 중 · 다음 할 일/막힌 점/참조).\n"
-        "   Keep '한 줄 요약' current. List remaining work as concrete open items.\n"
+        "4. Update the handoff note file at " + note_path + " (Korean; sections 한 일 (완료)/\n"
+        "   진행 중 · 다음 할 일/막힌 점/참조; keep '한 줄 요약' current). This file is the ONLY rich\n"
+        "   state that survives your context reset - the next iteration reads exactly this file, so\n"
+        "   record what you did and list remaining work as open items. Update it even when done.\n"
         "5. End your final reply with EXACTLY one fenced json block:\n"
         "```json\n{\"status\": \"done|continue|blocked\", \"open_items\": <int>, \"note\": \"<one line>\"}\n```\n"
         "   \"done\" ONLY when every completion criterion is met and open_items is 0.\n"
@@ -283,7 +291,7 @@ class Driver:
         cfg = self.cfg
         self._ensure_workdir()
         anchor = build_anchor(cfg)
-        last_test, feedback = None, ""
+        last_test, feedback, prev_status = None, "", ""
         prev_open, stall, proc_fail, parse_fail, total_cost = None, 0, 0, 0, 0.0
         seen_valid, prev_green = False, None  # M2: 최초 유효 반복만 기본 진전으로 인정
         self._log("START spec=%s project=%s max_iter=%d stall_limit=%d"
@@ -298,8 +306,8 @@ class Driver:
                 exit_reason = "stopped"
                 break
 
-            prompt = build_prompt(anchor, self._read_note(),
-                                  self._format_test(last_test), feedback)
+            prompt = build_prompt(anchor, self.note_path, self._read_note(),
+                                  self._format_test(last_test), feedback, prev_status)
             feedback = ""  # L4: 피드백은 1회 주입 후 소거(다음 판정에서 재설정)
             ok, text, cost = self._run_claude(prompt)
             total_cost += cost
@@ -314,6 +322,9 @@ class Driver:
 
             status = parse_status_block(text)
             parse_fail = 0 if status["parsed"] else parse_fail + 1
+            # 다음 반복 프롬프트의 핸드오프 플로어(노트 파일 갱신 재량에 비의존)
+            prev_status = "status=%s open_items=%s — %s" % (
+                status["status"], status["open_items"], status["note"] or "(no note)")
             last_test = self._run_test()                # R5: 세션 주장과 무관하게 실측
             self._write_iter(n, status, last_test, cost)
             self._log("iter %d | status=%s open=%s test=%s cost=%.4f"

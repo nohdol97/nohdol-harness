@@ -165,11 +165,20 @@ class TestC4PromptAnchor(DriverTestBase):
         anchor2 = driver.build_anchor(cfg)
         self.assertEqual(anchor1, anchor2)
         self.assertIn(self.spec, anchor1)
-        prompt = driver.build_prompt(anchor1, "NOTE-BODY-MARKER", "TEST-RESULT-MARKER", "FEEDBACK-MARKER")
-        for marker in [anchor1, "NOTE-BODY-MARKER", "TEST-RESULT-MARKER", "FEEDBACK-MARKER"]:
+        prompt = driver.build_prompt(anchor1, "/path/to/NOTE-FILE.md", "NOTE-BODY-MARKER",
+                                     "TEST-RESULT-MARKER", "FEEDBACK-MARKER", "PREV-STATUS-MARKER")
+        for marker in [anchor1, "/path/to/NOTE-FILE.md", "NOTE-BODY-MARKER", "TEST-RESULT-MARKER",
+                       "FEEDBACK-MARKER", "PREV-STATUS-MARKER"]:
             self.assertIn(marker, prompt)
         # 고정 지시문: 상태 블록 출력 지시가 있다
         self.assertIn('"status"', prompt)
+
+    def test_note_path_stated_in_instructions(self):
+        # 튜닝: 세션이 노트 파일을 추측·검색하지 않도록 경로를 지시문에 명시한다
+        prompt = driver.build_prompt("A", "/wd/carryover.md", "", "", "")
+        # 지시문 4항이 그 경로를 갱신 대상으로 지목한다
+        after_instructions = prompt.split("[INSTRUCTIONS")[1]
+        self.assertIn("/wd/carryover.md", after_instructions)
 
 
 class TestC5SafetyArgs(DriverTestBase):
@@ -283,6 +292,23 @@ class TestC10Resume(DriverTestBase):
         ok, reason = driver.startup_guard(self.make_config())
         self.assertFalse(ok)
         self.assertIn("STOP", reason)
+
+
+class TestHandoffFloor(DriverTestBase):
+    """튜닝: 세션이 노트 파일을 안 채워도 드라이버가 직전 상태를 다음 프롬프트에 보장 주입."""
+
+    def test_prev_status_injected_even_if_note_empty(self):
+        # 두 반복 모두 노트 파일에 아무것도 쓰지 않는(touch 없는) 세션
+        self.write_scenario([
+            {"text": status_text("continue", 2, note="did step A")},
+            {"text": status_text("continue", 1, note="did step B")},
+        ])
+        cfg = self.make_config(max_iterations=2, stall_limit=99)
+        driver.Driver(cfg).run()
+        # 2번째 반복(call-1) 프롬프트에 드라이버 기록 플로어와 직전 note가 실렸다
+        second = self.recorded_prompt(1)
+        self.assertIn("LAST STATUS (driver record", second)
+        self.assertIn("did step A", second)
 
 
 class TestC11ProcessFailure(DriverTestBase):
