@@ -1,6 +1,6 @@
 # 설계 제안: oh-my-openagent의 검증·운영 착안을 이 하네스에 적용
 
-- **상태**: 제안 (사용자 승인 대기 — 승인 시 metaskill 적용 + ADR 확정, 8절 게이트)
+- **상태**: 채택됨 (2026-07-19, 착안 5건 이식 — 실행 계층 기능·자동 머지 기각) → 결정 근거 docs/adr/026
 - **날짜**: 2026-07-19
 - **분석 대상**: https://github.com/code-yeongyu/oh-my-openagent (SUL-1.0, dev 브랜치 2026-07-19 클론 기준)
 - **적용 대상**: 이 루트 하네스(nohdol-harness)

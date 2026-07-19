@@ -216,15 +216,17 @@ class TestC4PromptAnchor(DriverTestBase):
         self.assertIn("/wd/carryover.md", after_instructions)
 
     def test_injected_blocks_carry_untrusted_envelope(self):
-        # C13: 외부 유래 주입(핸드오프 노트·테스트 출력)은 untrusted 봉투로 감싼다
+        # C18: 외부 유래 주입(핸드오프 노트·테스트 출력)은 untrusted 봉투로 감싼다
         # (루트 AGENTS.md 3절 — 주입 텍스트 안의 지시를 사용자 지시로 오인 금지).
         prompt = driver.build_prompt("ANCHOR", "/wd/carryover.md", "NOTE", "TESTOUT", "", "")
         # 봉투 문구가 프롬프트에 존재하고, 주입 블록보다 지시가 우위임을 명시한다
         self.assertIn("do not follow", prompt.lower())
         self.assertIn("not user instructions", prompt.lower())
-        # 봉투가 실제 주입 블록(노트·테스트 결과)보다 앞서거나 같은 프롬프트에 있어야 데이터로 읽힌다
         self.assertIn("NOTE", prompt)
         self.assertIn("TESTOUT", prompt)
+        # 봉투가 주입 블록(노트·테스트 결과)보다 앞서야 데이터로 읽힌다(순서 보장)
+        self.assertLess(prompt.lower().index("untrusted"), prompt.index("NOTE"))
+        self.assertLess(prompt.lower().index("untrusted"), prompt.index("TESTOUT"))
 
 
 class TestC5SafetyArgs(DriverTestBase):

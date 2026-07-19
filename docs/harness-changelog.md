@@ -6,6 +6,7 @@
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-07-19 | oh-my-openagent 착안 5건 이식 — 완료 증거 4필드(§13·reviewer), untrusted 봉투(§3·defuddle·autoloop driver.py), 긍정형 제약+7요소 발행 골격(§10·orchestrate), 팀 런 교훈 노트(orchestrate), integrity-check 무결성 점검 훅 신설(harness-review) | §3·§10·§13, reviewer, defuddle·orchestrate·harness-review, .agents/hooks/integrity-check.py, autoloop driver.py | 검증·발행의 형식·기계화 공백 — 중복이라도 더 나은 형식은 채택(①②⑤), 순수 공백(③④). reviewer 2차 검증(설계·구현) 통과. docs/adr/026, 제안 2026-07-19-oh-my-openagent-adoption |
 | 2026-07-12 | 루트 하네스 초기 구성 (AGENTS.md, CLAUDE.md, orchestrate, metaskill, ADR 001) | 루트 전체 | harness-bootstrap-prompt.md 기반 초기 구축. 상세 결정은 docs/adr/001-initial-harness.md |
 | 2026-07-12 | `project/`·`dev/` 분리 구조 반영 — 경로 규약·저장소 분리 규칙 추가, README 신설 | 1절, 5절, .gitignore, README.md | 하위 프로젝트를 독립 저장소로 운영하기로 사용자 확정. docs/adr/002-project-dir-separation.md |
 | 2026-07-12 | `.claude/` 직접 생성 금지 규칙 명시. explorer·reviewer 에이전트, harness-review 스킬 신설 | 11절(구 12절), .agents/agents/, .agents/skills/harness-review/ | 심링크 원본 규칙이 암시에 그침(사용자 지적). orchestrate 반복 역할 2종과 주 1회 진화 관찰 절차의 실행 수단 부재 |

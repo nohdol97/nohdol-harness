@@ -43,7 +43,9 @@ description: Harness operations review in two modes - daily lite (scan the three
 
 ### 2. 구조 무결성 점검
 
-- 심링크: `readlink .claude/agents .claude/skills`가 `../.agents/*`를 가리키는지. **`.claude/` 아래에 심링크가 아닌 실파일이 생겼는지** (생겼다면 우회 신호 — 원본은 `.agents/`에만 있어야 한다).
+**기계 판정 먼저 (integrity-check.py)**: 아래 항목 중 심링크(R1)·`.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md 첫 줄(R6)·gitignore 필수 항목(R7)은 **`python3 .agents/hooks/integrity-check.py`가 결정론적으로 판정**한다(스펙: docs/specs/2026-07-19-integrity-check-script.md). **먼저 실행**하고 그 PASS/FAIL/SKIP을 소화해 보고에 반영한다 — 하네스 파일을 재독하지 않는다(주간 점검 토큰 절감·결정론). 심링크 불가 설치처는 R1·R2가 SKIP으로 나온다. 스크립트가 커버하지 않는 **의미 판정 항목**(git 훅 등록·`_common.py`·Codex 훅 대칭·하위 하네스 정합·AGENTS.md 크기 예산·레지스트리·잔여물)만 아래 절차로 직접 확인한다. 아래 개별 불릿은 스크립트 미설치·폴백 시의 판정 기준 상세다.
+
+- 심링크: `readlink .claude/agents .claude/skills`가 `../.agents/*`를 가리키는지. **`.claude/` 아래에 심링크가 아닌 실파일이 생겼는지** (생겼다면 우회 신호 — 원본은 `.agents/`에만 있어야 한다). → integrity-check.py R1·R2가 기계 판정(gitignore된 런타임 산출물은 제외).
 - git 훅 계층: `git config --global --get core.hooksPath`가 이 하네스의 `.agents/githooks`를 가리키는지 — tdd-gate(13절)의 **유일한 실행 계층**이라 미등록 머신은 게이트가 통째로 꺼진 상태다(pull만 하고 harness-install 1단계를 안 돌린 경우 발생 — ADR 015). 미등록이면 등록 명령을 제안한다.
 - 훅 공통 모듈: `.agents/hooks/_common.py`가 존재하는지 — 훅 3종의 stdio UTF-8 재구성 단일 원본이라(스펙 2026-07-15-hooks-common-bootstrap) 유실되면 각 훅이 no-op 폴백으로 조용히 넘어가 cp949 보호가 사라진다(fail-open이라 에러도 안 남). 부재면 복구를 제안한다.
 - Codex 훅 등록 일관성: `.claude/settings.json`의 SessionStart 리마인더 2종(`harness-review-reminder`·`worklog-reminder`)이 `.codex/hooks.json`에도 등록돼 있는지 — 한쪽에만 추가되면 Codex 세션에서 리마인더가 누락된다(ADR 019는 두 파일 대칭 등록이 전제). `.codex/config.toml`의 `[features] codex_hooks = true`가 있는지도 확인.

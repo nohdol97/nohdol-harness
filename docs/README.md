@@ -35,6 +35,7 @@
 | [023](adr/023-secret-gate-hook.md) | 2026-07-18 | 활성 | secret-gate 훅 (3절 시크릿 금지의 실행 계층 승격) |
 | [024](adr/024-remove-dev-dir.md) | 2026-07-19 | 활성 | `dev/` 실험 공간 디렉토리 제거 (실작업은 전부 `project/`, tdd-gate `dev/` 예외 삭제) |
 | [025](adr/025-autoloop-driver.md) | 2026-07-19 | 활성 | autoloop — 세션 외부 드라이버 기반 자율 멀티세션 루프 (게이트 3종·불변 앵커) |
+| [026](adr/026-oh-my-openagent-adoption.md) | 2026-07-19 | 활성 | oh-my-openagent 검증·운영 착안 5건 이식 + integrity-check 무결성 점검 훅 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -51,7 +52,7 @@
 | [2026-07-16-worklog-reminder-hook](specs/2026-07-16-worklog-reminder-hook.md) | 구현됨 | `.agents/hooks/worklog-reminder.py` | 018·019 |
 | [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
 | [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 구현됨 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
-| [2026-07-19-integrity-check-script](specs/2026-07-19-integrity-check-script.md) | 제안(승인 대기) | `.agents/hooks/integrity-check.py` (미구현) | — (제안: 2026-07-19-oh-my-openagent-adoption) |
+| [2026-07-19-integrity-check-script](specs/2026-07-19-integrity-check-script.md) | 구현됨 | `.agents/hooks/integrity-check.py` | — (제안: 2026-07-19-oh-my-openagent-adoption) |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 
@@ -64,4 +65,4 @@
 | [2026-07-17-superpowers-adoption](proposals/2026-07-17-superpowers-adoption.md) | → ADR 022 | superpowers 규율 착안 3개 문서 이식(플러그인 통설치·나머지 11스킬 기각) |
 | [2026-07-18-loop-engineering-adoption](proposals/2026-07-18-loop-engineering-adoption.md) | → ADR 023 | loop-engineering 시크릿 게이트 1건 이식(unattended 루프·npm 도구군·L1-L3 기각 — 원칙 층은 기수렴) |
 | [2026-07-18-graphify-review](proposals/2026-07-18-graphify-review.md) | 기각(파일럿 미달) | graphify 코드 지식 그래프 — sona_app 실측: Dart 줄번호 0%·역추적 빈결과·범위 grep보다 ~17배 토큰. TS 등 타 스택 재검토 여지 |
-| [2026-07-19-oh-my-openagent-adoption](proposals/2026-07-19-oh-my-openagent-adoption.md) | 제안(승인 대기) | oh-my-openagent 검증·운영 착안 5건(증거 4필드·무결성 기계 점검·untrusted 봉투·팀 런 교훈 노트·위임 발행 형식 강화) — 오케스트레이션·루프 층은 기수렴 판정, 실행 계층 기능·자동 머지 기각 |
+| [2026-07-19-oh-my-openagent-adoption](proposals/2026-07-19-oh-my-openagent-adoption.md) | → ADR 026 | oh-my-openagent 검증·운영 착안 5건(증거 4필드·무결성 기계 점검·untrusted 봉투·팀 런 교훈 노트·위임 발행 형식 강화) — 오케스트레이션·루프 층은 기수렴 판정, 실행 계층 기능·자동 머지 기각 |

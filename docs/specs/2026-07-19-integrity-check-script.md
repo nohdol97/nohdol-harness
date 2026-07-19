@@ -1,6 +1,6 @@
 # 스펙: 하네스 무결성 기계 점검 스크립트 (integrity-check)
 
-- **상태**: 제안 (구현 전 — 사용자 승인 대기)
+- **상태**: 구현됨 (2026-07-19 — TDD 14 케이스 통과, 현 저장소 29 pass/0 fail)
 - **날짜**: 2026-07-19
 - **대상 코드**: `.agents/hooks/integrity-check.py` (+ 회귀 테스트 `.agents/hooks/integrity-check_test.py`)
 - **관련**: docs/proposals/2026-07-19-oh-my-openagent-adoption.md (채택 ②), AGENTS.md 8절 승격 원칙, harness-review 주간 무결성 점검
