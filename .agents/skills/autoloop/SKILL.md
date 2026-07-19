@@ -1,6 +1,6 @@
 ---
 name: autoloop
-description: "Launch, monitor, and stop an unattended multi-session loop that repeatedly runs headless claude -p against one spec until its completion criteria pass - each iteration gets a fresh context (new process = auto clear) with state handed over via a local carryover note, edits run unattended while destructive ops halt the loop (never bypassPermissions), and done claims must survive a driver-run test plus a read-only reviewer verdict. Three verbs: start (preflight then nohup driver), status (digest note+log), stop (STOP file, graceful). Use when the user wants work to continue autonomously across context limits - 자율 루프, 무인 실행, 밤새 돌려줘, autoloop, autonomous loop, 루프 돌려줘, 무인 개발. Do NOT use for a recurring prompt on an interval (→ /loop, Claude Code built-in), scheduled cloud agents (→ schedule, Claude Code built-in), manual same-machine handoff (→ carryover), cross-session epic tracking (→ work-tracker), or infra/deploy specs (destructive ops halt it). Re-run keywords - autoloop, 자율 루프, 무인 실행, 루프 상태, 루프 정지."
+description: "Launch, monitor, and stop an unattended multi-session loop that repeatedly runs a headless CLI session (claude/codex, per role) against one spec until its completion criteria pass - each iteration gets a fresh context (new process = auto clear) via a carryover note, edits run unattended while destructive ops halt the loop (never bypass/danger-full-access), and done claims must survive a driver-run test plus a read-only reviewer verdict. Three verbs: start (preflight then nohup driver), status (digest note+log), stop (STOP file, graceful). Use when the user wants work to continue autonomously across context limits - 자율 루프, 무인 실행, 밤새 돌려줘, autoloop, autonomous loop, 루프 돌려줘, 무인 개발. Do NOT use for a recurring prompt on an interval (→ /loop, Claude Code built-in), scheduled cloud agents (→ schedule, Claude Code built-in), manual same-machine handoff (→ carryover), cross-session epic tracking (→ work-tracker), or infra/deploy specs (destructive ops halt it). Re-run keywords - autoloop, 자율 루프, 무인 실행, 루프 상태, 루프 정지."
 ---
 
 # autoloop — 자율 멀티세션 루프 (발사대)
@@ -28,6 +28,7 @@ description: "Launch, monitor, and stop an unattended multi-session loop that re
    - `_workspace/autoloop/<슬러그>/STOP`이 남아 있으면 드라이버가 기동을 거부한다(R10) — 사용자에게 STOP 삭제 여부를 확인한 뒤 진행한다.
    - 표준 러너(pytest·npm test·go/cargo test) 밖의 테스트 명령이 필요하면 `--allow-extra 'Bash(<러너>:*)'`를 사용자 확인 후 붙인다(명시 그랜트 — 임의로 넓히지 않는다).
    - **기능별 모델 티어 해석(§9)**: autoloop은 두 역할에 서로 다른 티어를 쓴다 — **구현 반복 = implement 티어**(표준 모델), **검증 세션 = design 티어**(최고 성능 — reviewer 역할). 드라이버 코드엔 모델명이 없으므로(§9 탈모델명), **이 세션이 현재 CLI 라인업에서 각 티어 모델을 골라** `--implement-model`·`--verify-model`로 넘긴다. **경량(최저가) 모델 금지**(§9·사용자 전역 정책 — 검증에 경량은 오탐 위험). 라인업 판단이 안 서면 두 플래그를 생략해 균일(`--model` 또는 세션 기본)로 두되, 그 사실을 사용자에게 알린다.
+   - **엔진 선택(R13·R15 — Claude Code CLI / Codex CLI)**: 기본 엔진을 **이 기동 세션의 CLI에 맞춘다** — Codex 세션이 기동하면 `--engine codex`, Claude 세션이면 기본(`claude`). 불확실하면 사용자에게 확인한다. 사용자가 **역할별 엔진을 명시**하면(예: "구현은 claude, 검증은 codex") `--implement-engine`·`--verify-engine`로 전달한다. **Codex 안전 게이트는 sandbox 레벨**(구현=workspace-write·검증=read-only)이라 Claude의 fine-grained denylist보다 coarse하다 — 네트워크 기본 차단으로 원격 파괴 작업은 봉쇄되나 워크스페이스 내 로컬 파괴 명령은 정책 차단 밖이다(주의 참조). **bypass 계열은 두 엔진 모두 절대 금지**. `--allow-extra`는 Claude 전용(Codex는 sandbox라 무의미).
 2. **기동** (하네스 루트에서 — headless 세션이 하네스를 항상-온 로드해야 하므로 §12):
    ```bash
    mkdir -p _workspace/autoloop/<슬러그>
@@ -35,9 +36,10 @@ description: "Launch, monitor, and stop an unattended multi-session loop that re
      --spec <스펙 경로> --project <대상 디렉토리> \
      --test-cmd '<테스트 명령>' --max-iterations 10 --stall-limit 3 \
      --implement-model <implement 티어 모델> --verify-model <design 티어 모델> \
+     [--engine codex | --implement-engine claude --verify-engine codex] \
      --work-name <슬러그> > _workspace/autoloop/<슬러그>/launch.log 2>&1 &
    ```
-   기본값: max-iterations 10, stall-limit 3. 티어 모델은 §9 매핑을 이 세션이 라인업에서 해석해 채운다(위). 밤새 돌리는 큰 작업이면 max-iterations를 올리되 반드시 유한하게.
+   기본값: max-iterations 10, stall-limit 3, engine claude. 티어 모델·엔진은 §9 매핑·기동 CLI를 이 세션이 해석해 채운다(위). 밤새 돌리는 큰 작업이면 max-iterations를 올리되 반드시 유한하게.
 3. **기동 확인 후 보고**: 2~3초 뒤 `launch.log`를 읽는다 — "기동 거부"가 있으면 그 이유를 사용자에게 전하고 종료한다(조용한 no-op 금지). 정상이면 산출 경로(`_workspace/autoloop/<슬러그>/`)와 "다른 세션에서 `/autoloop status`로 확인, `/autoloop stop`으로 정지"를 안내한다.
 
 ## status — 조회
@@ -70,7 +72,7 @@ touch _workspace/autoloop/<슬러그>/STOP
 - **파괴적 작업 무인 실행 금지(§3 완화 불가)**: bypass 모드 추가, bare 인터프리터 그랜트 복원, 파괴 패턴의 `--allow-extra` 그랜트(kubectl·terraform·배포 명령 등) 요청은 거절하고 이유를 설명한다 — 이 게이트가 이 도구의 존재 조건이다. `--allow-extra`는 테스트·빌드 러너 수준까지만.
 - **인프라·배포 스펙에 사용 금지**: k8s·AWS·릴리스가 걸린 작업은 orchestrate(infra-specialist 경유)·release로 — 무인 루프의 대상이 아니다.
 - **한 컨텍스트에 들어가는 작업엔 쓰지 않는다 (비용 경계)**: 반복마다 새 `-p` 세션이 AGENTS.md 재주입·스펙/코드 재탐색·검증 세션 비용을 다시 치른다. 이 재확립 비용은 작업이 **컨텍스트 윈도우를 넘길 때만** 회수된다 — 그 규모에선 누적 단일 세션이 전체 이력을 매 턴 재청구하는 것보다 오히려 싸다. **한 세션에 들어갈 작업은 `/loop`(인세션 반복)나 단일 대화형 세션으로** 보낸다. start 사전 검사에서 작업이 소규모로 판단되면 이 경계를 사용자에게 알린다.
-- **엔진은 Claude Code CLI 전용 (멀티 CLI 패리티의 알려진 예외 — §11/ADR 019)**: 이 스킬·드라이버는 공용 `.agents/`에 있어 **Codex 세션도 읽고 기동할 수 있으나**, 드라이버는 헤드리스 세션을 `claude -p`(+ `--permission-mode`·`--allowedTools`/`--disallowedTools`)로 돌린다 — Claude Code CLI 고유 표면이다. 따라서 **Codex에서 기동해도 루프는 Claude를 구동**하며(`claude` 설치·인증 필요), 안전 게이트도 Claude Code 권한 모델이다. Codex 네이티브 실행(`codex exec` + 샌드박스 레벨)은 표면·권한 모델이 달라 별도 설계·안전 재검증이 필요하므로 **미지원**이다(필요 시 `--engine` 분기로 확장 — 지연).
+- **멀티 엔진 (Claude Code CLI + Codex CLI)**: 드라이버는 역할별로 `claude -p` 또는 `codex exec`를 쓴다(R13·R14). **Codex 안전 매핑은 sandbox 레벨**: 구현=`--sandbox workspace-write`(쓰기 워크스페이스 confine·네트워크 기본 차단), 검증=`--sandbox read-only`(쓰기 자체 차단). **bypass 계열 절대 금지**(Claude `--dangerously-skip-permissions` / Codex `--dangerously-bypass-approvals-and-sandbox`). **정직한 한계**: Codex는 fine-grained denylist가 없어 워크스페이스 내 로컬 파괴 명령(예: 프로젝트 파일 rm)까지는 정책으로 막지 못한다(네트워크 차단으로 원격 파괴는 봉쇄) — Claude 엔진의 블랙리스트보다 coarse하므로, 어느 엔진이든 인프라·배포 스펙 금지·백업 전제는 동일하고 blocked 이월이 1차 방어다. Codex는 USD 비용을 미제공해 `--max-cost-usd`가 비활성(반복 상한이 백스톱). 또 Codex는 `-C <project>`로 실행돼 하네스 루트 AGENTS.md 자동 로드가 약할 수 있어(쓰기 confine 우선) — 필수 게이트는 프롬프트 anchor·instructions·untrusted 봉투에 임베드, 하드 게이트는 sandbox가 담당한다.
 - **드라이버 수정 시** `python3 .agents/skills/autoloop/scripts/driver_test.py` 통과 필수(C1~C12, tdd-gate와 같은 규율).
 - 완주 후 정식 기록이 필요한 작업이면 work-tracker로 승격한다(`_workspace/`는 미보존 — §4).
 

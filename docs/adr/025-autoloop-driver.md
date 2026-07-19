@@ -10,4 +10,5 @@
   - **완료 판정 오라클은 스펙**: "완료 기준" 절 없는 스펙으로는 기동을 거부한다(R9) — 모델 자가평가가 결승선이 되는 것을 차단.
   - **무의존**: Python 3 stdlib만 사용(§16 사다리 5단). Claude Agent SDK의 permission callback 대신 CLI allow/disallow 목록으로 동등 경계를 긋는다 — 이 규모에서 새 의존성보다 낫다.
   - **기존 자산과의 경계**: `/loop`(내장, 세션 안 반복)·carryover(수동 이월)·work-tracker(크로스 세션 정식 추적)를 대체하지 않는다 — autoloop은 "세션 교체가 필요한 무인 반복"만 담당하고, 노트 스키마는 carryover 템플릿을 차용한다.
-- **스펙**: docs/specs/2026-07-19-autoloop-driver.md (완료 기준 C1~C14, 회귀 테스트 25항목 통과 — reviewer 독립 검증 BLOCK→재작업→PASS)
+  - **멀티 엔진(2026-07-19 확장)**: 드라이버는 헤드리스 세션을 `claude -p` 또는 `codex exec`로 돌리며, 역할별 엔진을 지원한다(`--engine`·`--implement-engine`·`--verify-engine`) — "구현은 Claude, 검증은 Codex" 같은 교차 엔진 요구를 충족한다. **Codex 안전 게이트는 sandbox 레벨**(구현=workspace-write·검증=read-only)이라 Claude의 fine-grained allow/deny보다 coarse하다: 네트워크 기본 차단으로 원격 파괴 작업(kubectl·aws·push)은 봉쇄되나 워크스페이스 내 로컬 파괴 명령은 정책 밖이라, 어느 엔진이든 인프라·배포 스펙 금지·blocked 이월이 방어선이다. **bypass 계열은 두 엔진 모두 절대 금지**(§3 완화 불가 — Claude `--dangerously-skip-permissions`, Codex `--dangerously-bypass-approvals-and-sandbox`). 티어→모델 해석은 엔진과 직교로 유지(§9 탈모델명). 스펙 R13~R15, 완료 기준 C16·C17.
+- **스펙**: docs/specs/2026-07-19-autoloop-driver.md (완료 기준 C1~C17, 회귀 테스트 37항목 통과 — reviewer 독립 검증 2회: 초기 BLOCK→재작업→PASS, 멀티엔진 PASS)

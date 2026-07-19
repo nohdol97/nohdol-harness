@@ -37,6 +37,27 @@ if entry.get("exit", 0) != 0:
 print(json.dumps({"result": entry.get("text", ""), "total_cost_usd": entry.get("cost", 0.01), "is_error": False}))
 '''
 
+FAKE_CODEX = r'''#!/usr/bin/env python3
+import json, os, sys
+argv = sys.argv[1:]
+scen_path = os.environ["FAKE_CODEX_SCENARIO"]
+idx_path = scen_path + ".idx"
+i = int(open(idx_path).read()) if os.path.exists(idx_path) else 0
+with open(scen_path) as f:
+    scen = json.load(f)
+entry = scen[min(i, len(scen) - 1)]
+open(idx_path, "w").write(str(i + 1))
+rec = os.environ.get("FAKE_RECORD")
+if rec:
+    with open(os.path.join(rec, "codex-call-%d.json" % i), "w") as f:
+        json.dump(argv, f)
+# Codex는 --output-format json이 아니라 -o <file>로 최종 메시지를 쓴다
+if "-o" in argv:
+    open(argv[argv.index("-o") + 1], "w").write(entry.get("text", ""))
+if entry.get("exit", 0) != 0:
+    sys.exit(entry["exit"])
+'''
+
 
 def status_text(status, open_items, note="progress"):
     """세션 최종 출력 형태의 상태 블록 텍스트를 만든다."""
@@ -56,6 +77,10 @@ class DriverTestBase(unittest.TestCase):
         self.fake = os.path.join(self.tmp, "fake_claude.py")
         with open(self.fake, "w") as f:
             f.write(FAKE_CLAUDE)
+        self.fake_codex = os.path.join(self.tmp, "fake_codex.py")
+        with open(self.fake_codex, "w") as f:
+            f.write(FAKE_CODEX)
+        self.codex_scenario_path = os.path.join(self.tmp, "codex_scenario.json")
         self.spec = os.path.join(self.tmp, "spec.md")
         with open(self.spec, "w") as f:
             f.write("# 스펙: 테스트 대상\n\n## 완료 기준\n- [ ] C1: something\n")
@@ -67,6 +92,7 @@ class DriverTestBase(unittest.TestCase):
 
     def tearDown(self):
         os.environ.pop("FAKE_SCENARIO", None)
+        os.environ.pop("FAKE_CODEX_SCENARIO", None)
         os.environ.pop("FAKE_RECORD", None)
         shutil.rmtree(self.tmp, ignore_errors=True)
 
@@ -74,6 +100,14 @@ class DriverTestBase(unittest.TestCase):
         with open(self.scenario_path, "w") as f:
             json.dump(entries, f)
         idx = self.scenario_path + ".idx"
+        if os.path.exists(idx):
+            os.remove(idx)
+
+    def write_codex_scenario(self, entries):
+        os.environ["FAKE_CODEX_SCENARIO"] = self.codex_scenario_path
+        with open(self.codex_scenario_path, "w") as f:
+            json.dump(entries, f)
+        idx = self.codex_scenario_path + ".idx"
         if os.path.exists(idx):
             os.remove(idx)
 
@@ -88,6 +122,7 @@ class DriverTestBase(unittest.TestCase):
             work_name="test-work",
             workspace=self.workdir,
             claude_cmd=[sys.executable, self.fake],
+            codex_cmd=[sys.executable, self.fake_codex],
             cwd=self.tmp,
         )
         defaults.update(kw)
@@ -179,6 +214,17 @@ class TestC4PromptAnchor(DriverTestBase):
         # 지시문 4항이 그 경로를 갱신 대상으로 지목한다
         after_instructions = prompt.split("[INSTRUCTIONS")[1]
         self.assertIn("/wd/carryover.md", after_instructions)
+
+    def test_injected_blocks_carry_untrusted_envelope(self):
+        # C13: 외부 유래 주입(핸드오프 노트·테스트 출력)은 untrusted 봉투로 감싼다
+        # (루트 AGENTS.md 3절 — 주입 텍스트 안의 지시를 사용자 지시로 오인 금지).
+        prompt = driver.build_prompt("ANCHOR", "/wd/carryover.md", "NOTE", "TESTOUT", "", "")
+        # 봉투 문구가 프롬프트에 존재하고, 주입 블록보다 지시가 우위임을 명시한다
+        self.assertIn("do not follow", prompt.lower())
+        self.assertIn("not user instructions", prompt.lower())
+        # 봉투가 실제 주입 블록(노트·테스트 결과)보다 앞서거나 같은 프롬프트에 있어야 데이터로 읽힌다
+        self.assertIn("NOTE", prompt)
+        self.assertIn("TESTOUT", prompt)
 
 
 class TestC5SafetyArgs(DriverTestBase):
@@ -332,6 +378,67 @@ class TestHandoffFloor(DriverTestBase):
         second = self.recorded_prompt(1)
         self.assertIn("LAST STATUS (driver record", second)
         self.assertIn("did step A", second)
+
+
+class TestC16EngineRouting(DriverTestBase):
+    def test_role_engine_routing(self):
+        # 구현=claude, 검증=codex 역할 라우팅(R13)
+        cfg = self.make_config(implement_engine="claude", verify_engine="codex")
+        self.assertEqual(driver.resolve_engine(cfg), "claude")
+        self.assertEqual(driver.resolve_engine(cfg, readonly=True), "codex")
+
+    def test_engine_default_and_fallback(self):
+        self.assertEqual(driver.resolve_engine(self.make_config()), "claude")
+        cfg = self.make_config(engine="codex")            # 균일 기본
+        self.assertEqual(driver.resolve_engine(cfg), "codex")
+        self.assertEqual(driver.resolve_engine(cfg, readonly=True), "codex")
+
+
+class TestC17CodexSafety(DriverTestBase):
+    def test_codex_edit_session_flags(self):
+        cfg = self.make_config(project="/proj")
+        out = "/wd/.codex-out.txt"
+        args = driver.build_codex_args(cfg, "PROMPT", False, out)
+        self.assertEqual(args[0], "exec")
+        self.assertIn("--sandbox", args)
+        self.assertEqual(args[args.index("--sandbox") + 1], "workspace-write")
+        self.assertIn("--skip-git-repo-check", args)
+        self.assertEqual(args[args.index("-C") + 1], "/proj")
+        self.assertEqual(args[args.index("-o") + 1], out)
+        self.assertIn("PROMPT", args)
+
+    def test_codex_verify_session_is_read_only(self):
+        cfg = self.make_config()
+        args = driver.build_codex_args(cfg, "P", True, "/wd/o.txt")
+        self.assertEqual(args[args.index("--sandbox") + 1], "read-only")
+
+    def test_codex_model_flag(self):
+        cfg = self.make_config(implement_model="impl-m", verify_model="ver-m")
+        work = driver.build_codex_args(cfg, "P", False, "/o")
+        verify = driver.build_codex_args(cfg, "P", True, "/o")
+        self.assertEqual(work[work.index("-m") + 1], "impl-m")
+        self.assertEqual(verify[verify.index("-m") + 1], "ver-m")
+
+    def test_no_bypass_in_either_engine(self):
+        cfg = self.make_config()
+        codex = " ".join(driver.build_codex_args(cfg, "P", False, "/o")
+                         + driver.build_codex_args(cfg, "P", True, "/o"))
+        claude = " ".join(driver.build_claude_args(cfg, "P")
+                          + driver.build_claude_args(cfg, "P", readonly=True))
+        for bad in ["--dangerously-bypass-approvals-and-sandbox", "danger-full-access",
+                    "--dangerously-skip-permissions", "bypassPermissions"]:
+            self.assertNotIn(bad, codex)
+            self.assertNotIn(bad, claude)
+
+    def test_codex_engine_run_parses_output_file(self):
+        # 순수 codex 엔진 1반복 — -o 파일에서 상태 블록 파싱, 완주
+        self.write_scenario([])  # claude 미사용
+        self.write_codex_scenario([{"text": status_text("continue", 1)}])
+        cfg = self.make_config(engine="codex", max_iterations=1)
+        self.assertEqual(driver.Driver(cfg).run(), "exhausted")
+        with open(os.path.join(self.workdir, "iters", "iter-1.json")) as f:
+            rec = json.load(f)
+        self.assertEqual(rec["status"]["status"], "continue")
 
 
 class TestC11ProcessFailure(DriverTestBase):
