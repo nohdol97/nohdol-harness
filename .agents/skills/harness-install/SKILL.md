@@ -57,6 +57,19 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 > **SuperClaude 잔재 MCP 주의**: 과거 SuperClaude가 심어둔 `magic`·`sequential-thinking` MCP가 남아 있으면 이 설치처의 정책상 제거 대상이다(sequential-thinking은 네이티브 사고가 대체, magic은 실사용 미확인 — 2026-07-18 결정). `claude mcp list`에서 발견되면 사용자에게 알리고, 승인 시 `claude mcp remove <이름> --scope user`로 제거한다. `playwright`·`context7`은 유지한다.
 
+#### 3d. 컨텍스트 상시 표시 (선택 — Claude Code statusLine)
+
+세션에 컨텍스트(토큰)가 얼마나 쌓였는지 입력창 근처에 **상시 표시**한다. 오토컴팩트가 다가오는지 곁눈질로 파악해 세션 관리에 도움이 된다.
+
+- **Codex**: TUI 푸터에 토큰/컨텍스트 사용량이 **기본 상시 표시**된다 — 설정할 것이 없다(`config.toml`에 관련 토글 없음). "켜져 있나" 물어볼 필요 없이 이미 켜진 상태로 안내한다.
+- **Claude Code**: **네이티브 토글이 없어** statusLine 스크립트가 필요하다. stdin JSON의 `model.display_name`·`context_window.used_percentage`·`total_input_tokens`·`context_window_size`를 읽어 한 줄로 출력한다(어떤 입력에도 크래시 없이 `[claude]`로 폴백).
+- **설정 여부 확인**: `~/.claude/settings.json`에 `statusLine` 키가 있는지 본다. **없으면 사용자에게 켤지 묻고**(선택), 승인 시 아래를 적용한다:
+  1. 단일 원본 스크립트를 전역 위치로 복사: `cp .agents/skills/harness-install/references/claude-statusline.py ~/.claude/statusline.py` (표준 라이브러리만 쓰는 python3 스크립트 — jq 미설치 환경 대비, 하네스 훅과 같은 `python3` 사용).
+  2. `~/.claude/settings.json`(전역 — 머신별 설정)에 `statusLine` 병합: `{"type":"command","command":"python3 ~/.claude/statusline.py","padding":0}`. 기존 키를 보존하고 JSON 유효성을 파싱으로 검증한다.
+  3. 샘플 JSON을 파이프로 넣어 스크립트가 한 줄 출력하는지 확인(정상·null·경고·깨진 입력). 다음 렌더부터 표시된다.
+- **전역(`~/.claude/`)에 둔다** — 컨텍스트 표시는 개인 표시 취향이라 추적 하네스 `settings.json`(정책)이 아니라 머신별 전역 설정에 넣는다(hooksPath·MCP 전역 등록과 같은 계층). 스크립트의 단일 원본만 하네스가 추적한다.
+- 사용자 거부 시 건너뛰고 완료 보고에 남긴다 — 표시 편의 기능이라 미설정이어도 무해하다(`/context` 명령으로 언제든 상세 조회 가능).
+
 ### 4. 기존 프로젝트 스캔
 
 `project/` 하위 디렉토리를 나열하고, 각각에 대해 관찰 가능한 사실(하위 구성, git 저장소 여부, 하네스 유무 — `.agents/projects/<이름>/` 존재 기준(루트 AGENTS.md 12절), 스택 단서)을 수집한다. **역할·목적은 각 프로젝트의 README·문서를 직접 읽어 요약해 채운다** — 문서가 없으면 "미확인". **추측으로 채우지 않는다** — 관찰과 추측이 섞이면 레지스트리 전체를 믿을 수 없게 된다.
@@ -78,6 +91,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 - [ ] agentsview 설치됨 + 로컬 SQLite DB(`~/.agentsview/` 또는 `AGENTSVIEW_DATA_DIR`) 생성 확인 + 외부 DB 동기화 미설정 + finding-history 스킬 전역 설치됨 (건너뛰었으면 사유가 완료 보고에 있음)
 - [ ] (선택) defuddle 설치됨 또는 건너뜀 사유가 완료 보고에 있음 — 미설치는 무해(`defuddle` 스킬이 WebFetch로 폴백)
 - [ ] (선택) context7 MCP가 `claude mcp list`에 있음(user 스코프) 또는 건너뜀 사유가 완료 보고에 있음 — 미설치는 무해(`context7` 스킬이 WebFetch/WebSearch로 폴백). SuperClaude 잔재 magic·sequential-thinking이 있으면 제거 안내됨
+- [ ] (선택) 컨텍스트 상시 표시 — Claude Code `~/.claude/settings.json`에 `statusLine`이 있고 `~/.claude/statusline.py` 배치됨, 또는 사용자 거부/건너뜀 사유가 완료 보고에 있음. Codex는 기본 상시 표시(설정 불요)임을 안내
 - [ ] REGISTRY.md 존재 + **설치처 프로필(개인/사내)** + 경로 규약 + 표 + 변경 이력 (사내 프로필이면 수정·푸시 금지 의미가 안내됨)
 - [ ] `git status`에 REGISTRY.md·project/가 나타나지 않음 (ignore 확인)
 - [ ] 미확인 항목이 "미확인"으로 정직하게 표기됨
