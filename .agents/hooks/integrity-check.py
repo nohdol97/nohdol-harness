@@ -42,6 +42,9 @@ GITIGNORE_REQUIRED = ["_workspace/", "project/", "REGISTRY.md",
                       "!.codex/agents/*.toml"]
 EXPECTED_LINKS = {".claude/agents": "../.agents/agents",
                   ".claude/skills": "../.agents/skills"}
+# CLI 로더 하드캡 — 초과하면 스킬이 통째로 로드되지 않는다(2026-07-20 Codex 실장애: wrapup 1041자).
+# 권장값은 800자(metaskill 공통 규칙 2)지만, 권장 초과는 노이즈라 하드캡만 FAIL로 잡는다.
+DESC_HARDCAP = 1024
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 
 
@@ -169,7 +172,13 @@ def check_skill_frontmatter(root):
         elif crlf:
             out.append(("R3 skill %s" % name, FAIL, "CRLF line endings (must be LF)"))
         else:
-            out.append(("R3 skill %s" % name, PASS, ""))
+            desc = (_frontmatter_values(skill_md) or {}).get("description", "")
+            if len(desc) > DESC_HARDCAP:
+                out.append(("R13 skill %s" % name, FAIL,
+                            "description %d chars exceeds %d hardcap — CLI loader rejects the skill"
+                            % (len(desc), DESC_HARDCAP)))
+            else:
+                out.append(("R3 skill %s" % name, PASS, ""))
     return out or [("R3 skills", SKIP, "no SKILL.md found")]
 
 

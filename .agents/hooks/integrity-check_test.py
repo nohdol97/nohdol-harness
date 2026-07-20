@@ -129,6 +129,22 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("bar", out)
 
+    # --- R13 description 하드캡 (초과 시 Codex 로더가 스킬을 거부 — 2026-07-20 실장애) ---
+    def test_skill_description_over_hardcap_fails(self):
+        write(os.path.join(self.root, ".agents/skills/bar/SKILL.md"),
+              '---\nname: bar\ndescription: "%s"\n---\n# bar\n' % ("x" * 1100))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("bar", out)
+        self.assertIn("1024", out)
+
+    def test_skill_description_at_hardcap_ok(self):
+        # 경계값: 정확히 1024자는 통과해야 한다(오탐 방지)
+        write(os.path.join(self.root, ".agents/skills/bar/SKILL.md"),
+              '---\nname: bar\ndescription: "%s"\n---\n# bar\n' % ("x" * 1024))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0, out)
+
     # --- R4 에이전트 frontmatter ---
     def test_agent_missing_tier_fails(self):
         write(os.path.join(self.root, ".agents/agents/foo.md"),

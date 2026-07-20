@@ -35,6 +35,7 @@ harness-review 주간 점검의 "구조 무결성" 단계(심링크·frontmatter
 - **R9 오류 처리**: 검사 대상 부재·읽기 실패는 해당 항목 FAIL로 보고(조용한 통과 금지 — 점검 도구는 게이트와 달리 fail-loud가 맞다). 스크립트 자체 예외로 전체가 죽지 않게 항목 단위 격리.
 - **R10 의존성**: 표준 라이브러리만(§16 사다리 3) — 서드파티 설치 불요.
 - **R11 설치처 범위**: 지원 대상은 macOS·Linux 심링크 설치처다(ADR 019와 같은 범위). §11이 허용하는 **심링크 불가 설치처(sync 스크립트 대체)에서는 R1·R2를 SKIP으로 판정하고 사유를 출력**한다(FAIL 아님) — 판별은 `.claude/agents`가 심링크가 아니면서 해당 설치가 ADR 기록상 sync 방식인 경우인데, 스크립트는 ADR을 읽지 않으므로 단순화한다: `.claude/agents`가 심링크가 아니면 R1·R2를 `SKIP (non-symlink installation — verify sync script per §11)`으로 출력하고 종료 코드에 반영하지 않는다. Windows 등 그 외 플랫폼 지원은 범위 밖(doc-writer 크로스 플랫폼 체크리스트는 이 사유로 스코프 아웃).
+- **R13 스킬 description 하드캡**: `.agents/skills/*/SKILL.md`의 frontmatter `description` 값이 **1024자를 초과하면 FAIL**한다 — CLI 로더(Codex 실측)가 초과 스킬을 통째로 거부해 트리거가 조용히 죽는다(2026-07-20 실장애: wrapup 1041자). 권장값 800자(metaskill 공통 규칙 2) 초과는 검사하지 않는다 — 권장 위반까지 FAIL로 잡으면 노이즈가 되어 점검 자체가 우회된다. 경계값 1024자는 통과(오탐 방지, 테스트로 고정).
 - **R12 Codex custom-agent 어댑터 정합**: `.agents/agents/*.md`와 `.codex/agents/*.toml` stem 집합이 1:1이어야 한다. TOML은 파싱 가능하고 `name`·`description`·`developer_instructions`만 가지며, 앞의 두 값은 대응 Markdown frontmatter와 일치해야 한다. `developer_instructions`는 대응 Markdown 경로와 전문 선로드·누락 보고를 포함해야 한다. 그 밖의 키(`model`·`model_reasoning_effort`·`sandbox_mode`·`mcp_servers`·`skills` 포함)는 AGENTS.md 9절 티어·부모 권한과 원본을 갈라놓으므로 FAIL이다. Python 3.11 미만에서는 `tomllib`이 없어 TOML 내부 검사를 SKIP하되, 파일 집합 1:1 검사는 유지한다(실제 구문은 Codex 로더가 추가 검증).
 
 ## 5. 완료 기준
@@ -49,3 +50,4 @@ harness-review 주간 점검의 "구조 무결성" 단계(심링크·frontmatter
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
 | 2026-07-19 | R12 Codex custom-agent 어댑터 정합 검사와 회귀 케이스 5종, R7 TOML 추적 예외 검사 1종 추가 | 요구사항·완료 기준 | `.agents/agents/` 원본과 `.codex/agents/` 로더 어댑터의 조용한 드리프트·미추적 방지(ADR 027) |
+| 2026-07-20 | R13 스킬 description 1024자 하드캡 검사 + 회귀 케이스 2종(초과 FAIL·경계값 통과) 추가 | 요구사항·완료 기준, `check_skill_frontmatter` | wrapup(1041자)이 Codex에서 로드 실패한 실장애 — 기계로 막을 수 있는 규격 위반이라 8절 승격 원칙 적용(재발 시 주간 점검이 자동 포착) |
