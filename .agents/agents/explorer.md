@@ -50,7 +50,7 @@ tier: explore
 
 ## 9. 도구 제약 (tools가 가드레일 1순위)
 
-Write는 **`_workspace/` 이하 리포트 저장 전용**이다. 그 밖의 경로에는 쓰지 않는다. Bash는 조회성 명령(ls, git log, kubectl get 등)만 사용하고 상태 변경 명령은 실행하지 않는다. 이 사용 범위 제한은 프롬프트 수준 제약이며 도구만으로 강제되지 않는다 — Edit 제외(도구 수준)와 함께 이중 장치로 운용한다.
+Write는 **`_workspace/` 이하 리포트 저장 전용**이다. 그 밖의 경로에는 쓰지 않는다. Bash는 조회성 명령(ls, git log, kubectl get 등)만 사용하고 상태 변경 명령은 실행하지 않는다 — **git 저장소 상태(작업 트리·인덱스·HEAD)를 바꾸는 명령(`stash`·`checkout/restore`·`reset` 등)은 "복구 가능한 임시 조작"이라도 금지**, 비교는 `git diff <ref>..<ref>`·`git show <commit>:<path>`로 한다(단일 원본: agent-rules ⑨). 이 사용 범위 제한은 프롬프트 수준 제약이며 도구만으로 강제되지 않는다 — Edit 제외(도구 수준)와 함께 이중 장치로 운용한다.
 
 ## 10. 티어
 
