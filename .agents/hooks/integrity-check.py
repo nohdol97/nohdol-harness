@@ -83,7 +83,10 @@ def check_symlinks(root):
         path = os.path.join(root, rel)
         if not os.path.islink(path):
             out.append(("R1 symlink %s" % rel, FAIL, "not a symlink"))
-        elif os.readlink(path) != target:
+        # Windows os.readlink()는 백슬래시 표기('..\\.agents\\agents')로 반환한다 —
+        # 표기 형식 차이는 무결성 문제가 아니므로 양쪽을 '/'로 정규화해 비교한다
+        # (2026-07-21 주간 점검 실측: 정상 심링크 R1 FAIL 오판정).
+        elif os.readlink(path).replace("\\", "/") != target.replace("\\", "/"):
             out.append(("R1 symlink %s" % rel, FAIL, "points to %r, expected %r" % (os.readlink(path), target)))
         elif not os.path.exists(path):
             out.append(("R1 symlink %s" % rel, FAIL, "dangling symlink — target %r does not exist" % target))
