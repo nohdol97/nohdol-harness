@@ -11,6 +11,11 @@ Claude Code가 stdin으로 넘기는 세션 JSON(model.display_name·context_win
 import json
 import sys
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # cp949 콘솔(한글 Windows) 대비
+except Exception:
+    pass
+
 
 def render(data):
     cw = data.get("context_window") or {}

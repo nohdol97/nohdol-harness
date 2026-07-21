@@ -158,6 +158,7 @@ Codex 네이티브 custom agent로도 노출하려면 같은 이름의 **얇은 
 - 서브에이전트·팀원 **발행 프롬프트** (Agent 호출의 지시문)
 - `_workspace/` **팀 중간 리포트** (explorer·reviewer·troubleshooter·implementer·architect 설계 리포트 등 phase 산출물)
 - 팀 P2P 메시지(SendMessage)의 claim·request 본문, team-log.jsonl 이벤트 서술
+- **서브에이전트가 오케스트레이터에게 반환하는 최종 응답 텍스트**(Agent 도구 호출의 return 값 자체 — `_workspace/` 파일 출력과는 **별개 채널**이다. 오케스트레이터가 이걸 받아 한국어로 소화해 사용자에게 보고한다). 예외: 산출물 자체가 사용자 대면 문서라 파일=반환 내용인 경우(integrator 최종 리포트 등)는 한국어
 
 **한국어를 유지한다 (사용자가 읽음 — 사용자 대면 출력은 한국어로 고정)**. CLAUDE.md 항상-온 앵커로도 이중 보장된다(ADR 021 — 영어 컨텍스트 직후의 언어 미끄러짐 방지). 대상:
 - 사용자 채팅 보고·질문, PR 본문, 커밋 메시지, 이슈·코멘트(work-tracker 포함)
