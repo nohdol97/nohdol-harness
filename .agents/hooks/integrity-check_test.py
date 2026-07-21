@@ -97,6 +97,24 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertIn("FAIL", out)
         self.assertIn("symlink", out.lower())
 
+    def test_windows_backslash_readlink_passes(self):
+        # R1 — Windows os.readlink()는 '..\\.agents\\agents' 형태로 반환한다.
+        # 정규화 없이 슬래시 리터럴과 비교하면 정상 심링크를 FAIL로 오판정한다
+        # (2026-07-21 주간 점검 실측). 표기 차이는 무결성 문제가 아니다.
+        import importlib.util
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location(
+            "integrity_check_mod",
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "integrity-check.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        real_readlink = os.readlink
+        with mock.patch.object(mod.os, "readlink",
+                               side_effect=lambda p: real_readlink(p).replace("/", "\\")):
+            results = mod.check_symlinks(self.root)
+        fails = [r for r in results if r[1] == "FAIL"]
+        self.assertEqual(fails, [], "백슬래시 표기 심링크가 FAIL로 오판정됨: %r" % fails)
+
     # --- R2 .claude/ 실파일 침입 ---
     def test_claude_intrusion_real_file_fails(self):
         write(os.path.join(self.root, ".claude/rogue.md"), "real file\n")
