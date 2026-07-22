@@ -12,9 +12,10 @@
 재시도는 통과 — 차단은 세션당 최대 1회다. 판정 내용의 품질은 검증하지
 않는다(orchestrate·리뷰 몫). 모든 오류는 통과(fail-open).
 
-Codex 미등록: PreToolUse 상당 이벤트가 없다 — Codex 세션은 AGENTS.md 7절
-3항 문구가 담당한다(ADR 028, tdd-gate의 git 계층 이동과 달리 이 훅은 커밋
-산출물이 아닌 세션 중 라우팅 행동 교정이라 git 훅으로 옮길 수 없다).
+Codex 미등록: 검증된 Codex 훅 이벤트는 SessionStart뿐, PreToolUse 상당
+이벤트·차단 시맨틱스는 미확인(확인 시 파리티 검토 — ADR 028 결정 2).
+그 전까지 Codex 세션은 AGENTS.md 7절 3항 문구가 담당한다(이 훅은 커밋
+산출물이 아닌 세션 중 라우팅 행동 교정이라 git 계층으로도 못 옮긴다).
 
 스펙: docs/specs/2026-07-22-gate-reminder-hook.md
 회귀 테스트: .agents/hooks/gate-reminder_test.py (수정 시 반드시 통과)
