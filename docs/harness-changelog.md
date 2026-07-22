@@ -110,6 +110,7 @@
 | 2026-07-22 | 5절 원격 PR 사이클 ②에 후속 푸시 전 머지 확인 추가(머지 시 ④→① 전환) + 원격 사이클·커밋 컨벤션 서술 압축(40KB 예산 내), orchestrate 공통 팀원 규칙 ⑧ "읽기는 좁혀서" 신설(B모드 적용 목록에 편입) | 5절, .agents/skills/orchestrate/ | 사용자 승인 — 머지 경합 3회 실발생(신호 ② — PR #32·34·36 각각 복구 PR 1개씩 추가 비용), 통파일 Read가 팀원 입력 토큰 최대 소비처(입력 절감 검토 2026-07-22) |
 | 2026-07-23 | 모델-로드 하네스 자산 영어 단일 원본 전환(ADR 030) — AGENTS.md·CLAUDE.md·에이전트 정의 7종·스킬 16종(SKILL.md+references) 전량 영어화(§15 개정: 하네스 운영 자산=모델-read 재분류), 한글 뷰 3종 신설(AGENTS.ko.md 다이제스트·skills/agents README.ko.md 카탈로그, 편집금지 배너+source-hash), integrity-check 드리프트 가드 추가(뷰 스테일 기계 차단), metaskill 산출 언어 기본값 영어. 한국어 유지: 사용자 대면 출력 전부·트리거 키워드·ADR·스펙·changelog·루트 README·사용자 대면 템플릿 | 전 하네스 자산, AGENTS.ko.md, .agents/{skills,agents}/README.ko.md, .agents/hooks/integrity-check.py(+테스트), docs/adr/030, docs/README.md | 사용자 결정(2026-07-22) — 입력 토큰 절감 실측: AGENTS.md 한글 9,313자≈세션당 5–9k 토큰 초과 지출+R14 예산 여유 70B 포화, hot 스킬·에이전트 본문 재로드 누적. 전문 병렬 사본은 드리프트 부채라 기각, 생성 뷰+기계 가드로 이해도·단일 원본 양립. reviewer 독립 검증 동반 |
 | 2026-07-23 | 한글 다이제스트 파일명 개명 AGENTS_KR.md → AGENTS.ko.md — 전 참조(§15·R16·테스트·ADR 030·README·changelog) 일괄 치환, 배너 source-hash 재생성 | AGENTS.ko.md, AGENTS.md 15절, .agents/hooks/integrity-check.py(+테스트), docs/adr/030, README.md | 사용자 요청 — README.ko.md와 .ko.md 접미 형태 통일 |
+| 2026-07-23 | autoloop description 압축 1,023→729자 — 메커니즘 서술(3동사·게이트 상세) 제거, 트리거·한국어 키워드·부정 경계 15항목 바이트 유지(기계 검증) | .agents/skills/autoloop/SKILL.md | R13 하드캡(1024자) 여유 1자 → 295자 확보 — 07-20 wrapup 실파손 유형의 잠복 재현 해소(주간 점검 P1 축소판, 앵커링 우려로 절감 목적 전면 압축은 미실행) |
 
 ## CLAUDE.md
 
