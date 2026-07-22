@@ -332,6 +332,12 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertNotIn("FAIL R15", out)
 
+    def test_adr_ref_four_digit_number_not_matched(self):
+        """R15: 'ADR 2026' 같은 4자리+ 숫자는 참조로 추출하지 않는다(F2 경계)."""
+        write(os.path.join(self.root, "AGENTS.md"), "# AGENTS.md\n연도 표기 ADR 2026 텍스트.\n")
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R15", out)
+
 
 if __name__ == "__main__":
     utf8_stdio()

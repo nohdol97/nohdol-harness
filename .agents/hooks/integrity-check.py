@@ -358,7 +358,8 @@ def check_adr_refs(root):
             text = f.read()
         refs = set()
         # "ADR 021", "ADR 019·029", "ADR 002·005·006·027" 같은 열거를 전부 편다.
-        for m in re.finditer(r"ADR\s*((?:\d{3})(?:\s*[·,]\s*\d{3})*)", text):
+        # (?!\d): "ADR 2026" 같은 4자리+ 숫자에서 앞 3자리를 오탐 추출하지 않는다(리뷰 F2).
+        for m in re.finditer(r"ADR\s*((?:\d{3})(?:\s*[·,]\s*\d{3})*)(?!\d)", text):
             refs.update(re.findall(r"\d{3}", m.group(1)))
         for missing in sorted(refs - existing):
             out.append(("R15 ADR ref %s" % rel, FAIL,
