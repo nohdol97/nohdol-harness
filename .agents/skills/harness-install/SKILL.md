@@ -75,7 +75,7 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 
 `rtk <cmd>`가 명령을 대신 실행하고 출력을 압축해(git status ~3,000→~600토큰 등) 컨텍스트 소모를 줄이는 Rust CLI다(Apache-2.0, 채택 설계: docs/proposals/2026-07-22-rtk-adoption.md). kubectl·로그·git·테스트 출력이 무거운 이 워크스페이스와 표면이 겹친다. **필수가 아니다** — 미설치여도 아무것도 죽지 않는다.
 
-1. 설치(전역 — 워크스페이스에 아무것도 커밋하지 않는다): macOS `brew install rtk-ai/tap/rtk`, Linux는 GitHub Releases 바이너리 또는 `cargo install --git https://github.com/rtk-ai/rtk`(crates.io의 동명 타 패키지 주의 — README 경고 실재). 사용자 확인 후 진행, **무단 설치 금지**.
+1. 설치(전역 — 워크스페이스에 아무것도 커밋하지 않는다): macOS `brew install rtk`(코어 포뮬러 — README 검증 경로), Linux는 GitHub Releases 바이너리 또는 `cargo install --git https://github.com/rtk-ai/rtk`(crates.io의 동명 타 패키지 주의 — README 경고 실재). 사용자 확인 후 진행, **무단 설치 금지**.
 2. **텔레메트리 명시 비활성**: `RTK_TELEMETRY_DISABLED=1`을 셸 프로필에 추가한다 — 공식 문서 간 기본값 서술이 모순(README opt-in vs DISCLAIMER 기본 수집)이라 명시 차단이 3절 정합이다(agentsview와 동일 처방).
 3. 훅 모드 등록: `rtk init -g` — 전역 `~/.claude/settings.json`에 PreToolUse(Bash) 재작성 훅 + `~/.claude/CLAUDE.md`에 `@RTK.md` 임포트가 추가된다(전역 대상이라 하네스 추적 파일과 무관). `rtk verify`로 훅 무결성 확인. **Codex 모드는 보류** — 훅이 아닌 전역 AGENTS.md 행동 지시 패치라 효과·정합이 약하다(제안 문서 판정 표).
 4. **증거 규칙 안내**(루트 §13-2): 완료 증거의 검증 명령은 압축 출력이 아니라 원문으로 남긴다 — `rtk proxy <cmd>`(패스스루) 또는 실패 시 자동 저장되는 tee 원문(`~/.local/share/rtk/tee/`) 확인.
