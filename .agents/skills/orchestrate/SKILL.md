@@ -94,7 +94,7 @@ description: "Gate and orchestrate agent work. Phase 0 judges whether a request 
 
 ## 공통 팀원 규칙 (에이전트 팀 모드의 모든 팀원 프롬프트에 삽입)
 
-> B. 서브에이전트 모드에서는 ①·③·⑤·⑥·⑦을 적용하고(⑥은 SendMessage 부분만 제외 — 발행 프롬프트·리포트·반환 텍스트에는 그대로 적용), Critical은 최종 응답으로 오케스트레이터에게 보고한다.
+> B. 서브에이전트 모드에서는 ①·③·⑤·⑥·⑦·⑧을 적용하고(⑥은 SendMessage 부분만 제외 — 발행 프롬프트·리포트·반환 텍스트에는 그대로 적용), Critical은 최종 응답으로 오케스트레이터에게 보고한다.
 
 1. **작업 전 대상 프로젝트의 하네스를 읽는다** — `.agents/projects/<이름>/AGENTS.md`. 팀원·서브에이전트는 하위 프로젝트의 훅·설정을 상속받지 못하므로, 문서를 읽는 것이 그 프로젝트 규칙을 받는 유일한 경로다(루트 AGENTS.md 12절).
 2. 발견 즉시 관련 팀원에게 SendMessage로 알린다.
@@ -103,6 +103,7 @@ description: "Gate and orchestrate agent work. Phase 0 judges whether a request 
 5. 역할 범위 밖 수정은 하지 않는다 (예: 리뷰어는 코드 수정 금지).
 6. **내부 통신은 영어**(루트 AGENTS.md 15절) — 발행 프롬프트, `_workspace/` 중간 리포트, SendMessage의 claim·request 본문, **오케스트레이터에게 반환하는 최종 텍스트**(15절 4번째 채널). 예외: integrator 최종 리포트·배포 런북은 한국어(사용자가 직접 읽는 문서 — 파일=반환이면 반환도 한국어), 코드·로그 인용은 원어. 이유: 한국어는 같은 내용에 ~1.5-2배 토큰이고 중간 리포트는 여러 번 재독된다.
 7. **저장소 상태(작업 트리·인덱스·HEAD)를 바꾸는 git 명령을 조회·비교 목적으로 쓰지 않는다** — `git stash`·`checkout/restore`·`reset`·`clean` 금지, 비교는 `git diff <ref>..<ref>`·`git show <commit>:<path>`, HEAD 이동이 필요한 진단(bisect)은 `git worktree add` 격리 사본에서(단일 원본: agent-rules ⑨ 보칙 — 공유 트리에 병행 uncommitted 변경이 공존할 수 있다).
+8. **읽기는 좁혀서**: Grep/Glob으로 후보를 좁힌 뒤 필요한 줄 범위만 Read한다 — 통파일 Read는 파일 전체 이해가 목적일 때만. 이유: 통파일 적재가 팀원 컨텍스트 입력 토큰의 최대 소비처다(입력 절감 검토 2026-07-22 — 산출물 계층 §15·§4와 별개의 인제스천 축).
 
 메시지 형식 고정(JSON): `{type, severity, file, line, claim, request}` — 발견 사실과 수신자가 취해야 할 행동을 모두 담는다.
 
