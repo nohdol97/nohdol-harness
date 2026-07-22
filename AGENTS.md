@@ -39,7 +39,7 @@
 - 산출물 네이밍: `phase{N}_{에이전트명}_{내용}.md` (예: `phase2_researcher-a_report.md`)
 - **리포트 구조 — 점진적 공개(2단)**: 발견이 많은 `_workspace/` 리포트는 ① **요약 인덱스**(발견 ID·severity·한 줄 요지)를 맨 위에 두고, ② 각 발견의 **상세·근거**(`파일:줄`/명령 출력)는 ID로 참조되는 하위 섹션에 둔다. 이유: 리포트는 쓰기 1회·읽기 N회라 인덱스 필터가 재독 토큰을 곱으로 줄인다(ADR 018). 단, **발견이 소수인 짧은 리포트는 인덱스를 생략**한다 — 규율이 노이즈가 되면 오히려 우회된다(16절).
 - 팀 이벤트: `_workspace/<작업명>/team-log.jsonl`에 append-only — 이벤트 스키마(7종)와 기록 시점은 orchestrate 스킬의 **이벤트 계약**이 단일 원본이다. 실행 모드(팀/서브에이전트) 무관하게 오케스트레이터가 기록한다.
-- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**: `_workspace/harness-updates.md`(하네스 업데이트 대기 큐, 5절 설치처 프로필), `_workspace/harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`), `_workspace/carryover/`(세션 이월 노트 — `carryover` 스킬이 쓰고 다음 세션이 이어받는 로컬 핸드오프), `_workspace/autoloop/<작업명>/`(자율 루프 상태·로그 — autoloop 드라이버 소관, 완료 런은 정리 가능)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
+- `_workspace/`는 gitignore 대상이다. 세션 산출물이지 하네스가 아니다. team-log.jsonl 포함 전체 미보존(2026-07-12 사용자 확정). **예외**(모두 `_workspace/` 아래): `harness-updates.md`(하네스 업데이트 대기 큐 — 5절 설치처 프로필), `harness-ops-log.md`(점검·개선 운영 로그 — harness-review·metaskill이 append), 점검 마커(`.harness-review-*`), 게이트 상기 상태 `.gate-reminder/`(ADR 028), `carryover/`(세션 이월 노트 — 로컬 핸드오프), `autoloop/<작업명>/`(자율 루프 상태 — 드라이버 소관, 완료 런은 정리 가능)는 세션을 넘는 운영 데이터라 정리 대상에서 제외한다.
 
 ## 5. git 규칙
 
@@ -65,7 +65,7 @@
 
 1. 요청을 받으면 **REGISTRY.md의 프로젝트 레지스트리**에서 관련 프로젝트를 식별한다.
 2. 해당 프로젝트의 AGENTS.md(하네스)를 로드한다.
-3. **단일 프로젝트**면 그 하네스로 작업하되, **구현·다단계 작업이면 `orchestrate`의 팀 필요성 판정(Phase 0-1 게이트)을 거쳐** 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 하나로 정한다(ADR 010). 판정 없이 복잡한 작업을 단일 컨텍스트로 처리하는 것은 하네스 우회 신호로 취급한다(8절). **continuation("진행해줘"·"계속") 요청도 대상 작업이 새 구현·동작 변경·인프라 매니페스트 변경이면 게이트를 다시 밟는다**(등록된 세션 넘김 작업의 재개 "이어서"는 work-tracker — 여기서는 진행 중 구현·인프라 단계의 이어가기) — 이전에 판정이 있었다는 이유로 판정 없이 직행하면 게이트가 무력화된다(실사례: changelog 2026-07-16 PVC continuation).
+3. **단일 프로젝트**면 그 하네스로 작업하되, **구현·다단계 작업이면 `orchestrate`의 팀 필요성 판정(Phase 0-1 게이트)을 거쳐** 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 하나로 정한다(ADR 010). 판정 없이 복잡한 작업을 단일 컨텍스트로 처리하는 것은 하네스 우회 신호로 취급한다(8절). **continuation("진행해줘"·"계속") 요청도 대상 작업이 새 구현·동작 변경·인프라 매니페스트 변경이면 게이트를 다시 밟는다**(등록된 세션 넘김 작업의 재개 "이어서"는 work-tracker — 여기서는 진행 중 구현·인프라 단계의 이어가기) — 이전에 판정이 있었다는 이유로 판정 없이 직행하면 게이트가 무력화된다(실사례: changelog 2026-07-16 PVC). **읽기 전용 진단이 코드 수정으로 넘어가는 전환점도 동일하다 — 제품 코드 첫 Edit/Write가 게이트 트리거다**(gate-reminder 훅이 상기, ADR 028).
 4. **다중 프로젝트**(레지스트리의 "연관 프로젝트" 컬럼이 얽히는 요청)면 `orchestrate` 스킬로 팀을 구성한다. 패턴 선택은 `.agents/skills/metaskill/references/patterns.md`의 플로우차트·전환 신호 표를 따르고, **위임 깊이는 2단계(총괄→팀장→실무자)를 초과하지 않는다** — 지연이 기하급수적으로 증가하기 때문이다.
 5. **k8s·인프라 매니페스트 변경은 반드시 `infra-specialist`를 경유한다**: 리소스 limit/request·PVC·환경변수·볼륨 등 매니페스트·IaC 수정은 orchestrate Phase 0에서 infra-specialist 배치로 판정한다(continuation 포함 — 위 3항). 이유: 인프라 변경은 실수 반경이 실행 중인 시스템이고(3절), admission 제약 선확인 없이 쓴 값은 파드·PVC **생성 시점**에 FailedCreate로 터진다. 선확인 단일 원본: infra-specialist.md 2절(pre-flight).
 6. **수집형 서브에이전트는 `explorer` 타입으로 발행한다**: 메인 루프·오케스트레이터가 읽기 전용 수집·요약·상태 파악 서브에이전트를 발행할 때는(orchestrate 안팎 무관) general-purpose가 아니라 `explorer`를 지정한다(내장 Explore도 대신 쓰지 않는다). 원인 규명은 troubleshooter, 검증·판정은 reviewer — 각 특화 타입으로. 이유: 범용 타입은 하네스의 출력 규약(`_workspace/` 리포트 경로·점진적 공개)과 최소 권한 화이트리스트(10절 ⑨)를 모른 채 뜨고, description 트리거만으로는 발행 순간에 참조되지 않는다(유출 실측: changelog 2026-07-17).
@@ -117,7 +117,7 @@ Codex 네이티브 custom agent로도 노출하려면 같은 이름의 **얇은 
 - **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 새 루트 에이전트는 원본과 함께 `.codex/agents/` 얇은 어댑터도 생성한다. 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견과 Markdown↔TOML 어댑터 드리프트는 하네스 우회 신호로 취급한다(8절).
 - 심링크가 불가한 환경이면 sync 스크립트로 대체하고 그 사실을 ADR에 기록한다.
 - **외부 도구가 스킬을 설치할 때는 전역 경로(홈 디렉토리)로** 설치한다 — 예: `agentsview skills install` → `~/.claude/skills/`·`~/.agents/skills/`. 이 워크스페이스에 프로젝트 모드(`--project` 등)로 설치하지 않는다. 이유: 워크스페이스의 `.claude/`는 심링크라 설치물이 공용 `.agents/skills/`에 떨어져 **설치처별 도구 산출물이 공용 저장소의 커밋 대상**이 된다.
-- **SessionStart 세션 훅의 Codex 병행 (ADR 019)**: 리마인더 훅 2종은 `.claude/settings.json`과 **`.codex/hooks.json`**(추적)에 대칭 등록하고, 활성화(`.codex/config.toml`)는 커밋되어 클론 즉시 켜진다 — 훅 스크립트는 도구 무관(fail-open)이라 config만 추가한다. macOS·Linux 한정, `agentsview-daemon` 제외. 등록 형식·#17532 폴백·플랫폼 제약 상세: ADR 019·harness-install.
+- **세션 훅의 Codex 병행 — 파리티 기본값 (ADR 019·029)**: 세션 훅 신설 시 `.claude/settings.json`과 **`.codex/hooks.json`**(추적)에 대칭 등록한다. Codex 미검증 이벤트도 선제 등록한다(fail-open이라 미지원이면 무해 — 동작 확인은 설치 머신에서). 활성화(`.codex/config.toml`)는 커밋되어 클론 즉시 켜진다. macOS·Linux 한정, `agentsview-daemon` 제외. 상세: ADR 019·029·harness-install.
 
 ## 12. 하위 프로젝트 하네스 중앙 관리 (ADR 006)
 
