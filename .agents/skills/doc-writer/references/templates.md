@@ -1,10 +1,12 @@
-# 문서 템플릿 (타입별 단일 원본)
+# Document templates (single source per type)
 
-절 구조·순서는 고정이다. 해당 없는 절은 "해당 없음 — <사유>"로 남긴다.
+Section structure and order are fixed. Leave inapplicable sections as "해당 없음 — <사유>" (not applicable — reason).
 
-## 1. 스펙 (SDD — 루트 AGENTS.md 13절)
+> Templates 1, 3, 4, 5 produce **user-facing documents** (root AGENTS.md section 15) — their template text is Korean and the drafted document is written in Korean. Template 2 produces a model-only internal report — written in English.
 
-파일명: `docs/specs/YYYY-MM-DD-<제목>.md`
+## 1. Spec (SDD — root AGENTS.md section 13)
+
+Filename: `docs/specs/YYYY-MM-DD-<제목>.md`
 
 ```markdown
 # 스펙: <제목>
@@ -40,35 +42,35 @@
 |---|---|---|---|
 ```
 
-체크: 완료 기준이 전부 테스트로 옮길 수 있는 문장인가 / 비목표가 있는가 / 요구사항에 번호가 있는가.
+Check: can every completion criterion be turned into a test as-is / is there a non-goals section / are the requirements numbered.
 
-**루트 훅(`.agents/hooks/` 세션 훅·`.agents/githooks/` git 훅) 스펙이면 완료 기준에 크로스 플랫폼 체크리스트를 반드시 포함한다** — 2026-07-14 Windows 장애가 커밋 단위 fix 연쇄(3연쇄 2건)로 이어진 원인이 사전 검증 절차 부재였다(스펙 2026-07-15-hooks-common-bootstrap): ① **인코딩** — cp949(한글 Windows) 콘솔에서 출력·차단 메시지가 실제로 나가는 케이스(공통 원본은 `_common.utf8_stdio`) ② **인터프리터** — 등록 command(설정의 셸 체인)가 인터프리터 부재·Windows Store 스텁(존재하지만 실행 실패)에서 fail-open하는지 ③ **외부 CLI 출력 판정** — 문구 기반 판정은 **실측 문구 fixture**(긍정문·부정문 모두)로 테스트한다(가공 fixture는 "no ... running" 류 부정문 오판을 통과시킨다).
+**For specs of root hooks (`.agents/hooks/` session hooks, `.agents/githooks/` git hooks), the completion criteria must include a cross-platform checklist** — the 2026-07-14 Windows failure turned into chains of per-commit fixes (two 3-fix chains) because there was no pre-verification procedure (spec 2026-07-15-hooks-common-bootstrap): ① **Encoding** — the case where output/blocking messages actually get through on a cp949 (Korean Windows) console (common source: `_common.utf8_stdio`) ② **Interpreter** — whether the registered command (the shell chain in settings) fails open when the interpreter is absent or is a Windows Store stub (exists but fails to execute) ③ **External-CLI output judgment** — phrase-based judgment must be tested with **fixtures of actually observed phrases** (both affirmative and negative sentences) (fabricated fixtures let negative-sentence misjudgments like "no ... running" pass).
 
-## 2. 작업 리포트 (_workspace 산출물)
+## 2. Work report (_workspace deliverable)
 
-파일명: `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md`
+Filename: `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md`
 
-> **영어로 작성한다**(루트 AGENTS.md 15절 — 모델만 읽는 내부 산출물, 코드·로그 인용은 원어). 절 구조는 아래와 동일(Summary / Findings / Judgement·Recommendations / Limits). **예외**: integrator 최종 리포트·배포 런북·harness-review 제안서는 사용자가 직접 읽으므로 한국어.
+> **Written in English** (root AGENTS.md section 15 — model-only internal deliverable; code/log quotes stay in the original language). Section structure as below (Summary / Findings / Judgement·Recommendations / Limits). **Exception**: integrator final reports, deployment runbooks, and harness-review proposals are read directly by the user, so they are in Korean.
 
 ```markdown
-# <작업명> — <내용> (phase{N}, {에이전트명})
+# <work-name> — <content> (phase{N}, {agent-name})
 
-- 날짜: YYYY-MM-DD / 입력: <읽은 파일·지시> / 범위: <다룬 것과 다루지 않은 것>
+- Date: YYYY-MM-DD / Input: <files read, instructions> / Scope: <what was and was not covered>
 
-## 요약
-<3줄 이내 — 발견·결론 핵심>
+## Summary
+<3 lines max — core findings and conclusions>
 
-## 발견 사항
-<심각도 내림차순. 각 항목: 심각도(Critical/High/Med/Low) / 위치(file:line) / 주장 / 증거>
+## Findings
+<Descending severity. Each item: severity (Critical/High/Med/Low) / location (file:line) / claim / evidence>
 
-## 판단·권고
-<발견에서 도출되는 행동. 증거 없는 권고는 쓰지 않는다>
+## Judgement · Recommendations
+<Actions derived from the findings. No recommendation without evidence>
 
-## 한계
-<확인하지 못한 것 — 다음 사람이 이어받을 지점>
+## Limits
+<What could not be verified — where the next person picks up>
 ```
 
-체크: 발견마다 증거가 있는가 / 한계 절이 정직한가.
+Check: does every finding have evidence / is the Limits section honest.
 
 ## 3. README
 
@@ -87,11 +89,11 @@
 <더 깊은 문서로의 링크 — 내용 복사 금지, 링크만>
 ```
 
-체크: 첫 문단만 읽고 용도를 알 수 있는가 / 다른 문서 내용을 복사하지 않았는가.
+Check: can the purpose be understood from the first paragraph alone / was no other document's content copied.
 
-## 4. 런북 (운영 절차서)
+## 4. Runbook (operational procedure)
 
-파일명: `docs/runbooks/<절차명>.md`
+Filename: `docs/runbooks/<절차명>.md`
 
 ```markdown
 # 런북: <절차명>
@@ -115,11 +117,11 @@
 |---|---|---|---|
 ```
 
-체크: 모든 단계에 기대 결과가 있는가 / 파괴적 단계에 ⚠️와 확인 절차가 있는가 / 롤백 절이 있는가.
+Check: does every step have an expected result / do destructive steps carry ⚠️ and a confirmation procedure / is there a rollback section.
 
-## 5. PR 본문 (branch-workflow 마무리 절차에서 사용)
+## 5. PR body (used in the branch-workflow finish procedure)
 
-제목: 커밋 컨벤션 형식 `type(프로젝트스코프): 요약` (루트 AGENTS.md 5절)
+Title: commit-convention format `type(프로젝트스코프): 요약` (root AGENTS.md section 5)
 
 ```markdown
 ## 요약
@@ -139,4 +141,4 @@
 <판단이 필요한 지점, 자신 없는 부분, 트레이드오프 — 없으면 "없음">
 ```
 
-체크: 검증 절에 실제 명령·수치가 있는가 / 스펙·이슈 연결이 명시됐는가(없으면 사유) / 요약만 읽고 PR의 목적을 알 수 있는가.
+Check: does the verification section contain actual commands and numbers / are spec/issue links stated (with a reason if absent) / can the PR's purpose be understood from the summary alone.

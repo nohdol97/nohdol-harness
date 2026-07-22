@@ -3,117 +3,117 @@ name: carryover
 description: "Save selected work from the current session to a local _workspace carryover note (Markdown) so a later same-machine session can resume it, and load an existing note to continue. Slash-invoked only (/carryover) — the user manually triggers save or resume; this skill is intentionally NOT part of harness auto-routing. Save mode: enumerate this session's work (changed files, decisions, done/open items, blockers), let the user pick which to keep, write a resume-ready template to _workspace/carryover/backlog/YYYY-MM-DD-<topic>.md. Resume mode: scan backlog/ (queued) + progress/ (in-flight), list notes, load the chosen one (moving it backlog→progress) and continue, deleting it on completion. Do NOT use for cross-session/cross-machine epics or multi-PR work tracked in git (→ work-tracker: GitHub Issues/backlog.md) — carryover is local, gitignored, lightweight, same-machine only. Re-run keywords - carryover, 이월 노트, 세션 이월, 카리오버, 이어받기."
 ---
 
-# carryover — 세션 이월 노트
+# carryover — session carryover notes
 
-## 왜 이 스킬인가
+## Why this skill
 
-세션 컨텍스트와 `_workspace/`는 세션을 넘겨 자동으로 이어지지 않는다. 그런데 GitHub 이슈를 열 정도는 아닌 "이번 세션에서 한 것 중 다음에 이어받고 싶은 몇 가지"가 매번 사라진다. 이 스킬은 그 간극만 메운다 — 사용자가 **남길 작업을 직접 골라** 로컬 `_workspace/carryover/`에 재개 가능한 형식으로 적고, 다음 세션이 그 노트를 골라 이어받게 한다.
+Session context and `_workspace/` do not automatically carry over across sessions. Yet "the few things from this session I want to pick up next time" — not big enough to open a GitHub issue — get lost every time. This skill fills exactly that gap: the user **personally picks the work to keep**, it is written in a resume-ready format under local `_workspace/carryover/`, and the next session picks a note and takes over.
 
-**work-tracker와의 경계 (중요 — 대체 아니라 공존)**:
+**Boundary with work-tracker (important — coexistence, not replacement)**:
 
-| | work-tracker | **carryover (이 스킬)** |
+| | work-tracker | **carryover (this skill)** |
 |---|---|---|
-| 저장처 | GitHub Issues / `docs/backlog.md` (git 추적, 크로스 머신) | `_workspace/carryover/{backlog,progress}/*.md` (gitignore, **같은 머신 로컬**) |
-| 대상 | 여러 PR·며칠 규모 에픽, 정형 | 이번 세션→다음 세션 **가벼운 핸드오프 메모** |
-| 호출 | 자동 라우팅 + 슬래시 | **슬래시 전용**, 자동 라우팅 없음 |
+| Storage | GitHub Issues / `docs/backlog.md` (git-tracked, cross-machine) | `_workspace/carryover/{backlog,progress}/*.md` (gitignored, **same-machine local**) |
+| Target | Multi-PR, multi-day epics, formal | This-session→next-session **lightweight handoff memo** |
+| Invocation | Auto-routing + slash | **Slash-only**, no auto-routing |
 
-→ 정식 추적이 필요하면 work-tracker로 보낸다. carryover는 로컬 스크래치 핸드오프다. 이유: 이 둘을 섞으면 이슈 무덤이 생기거나(모든 걸 GitHub에), 중요한 크로스 머신 작업이 로컬에만 남아 유실된다.
+→ If formal tracking is needed, send it to work-tracker. carryover is a local scratch handoff. Reason: mixing the two either creates an issue graveyard (everything into GitHub) or leaves important cross-machine work stranded locally and lost.
 
-**이 스킬은 슬래시(`/carryover`)로만 호출된다** — 하네스 라우팅(CLAUDE.md 앵커·§7)에 등록하지 않는다. 이유: 사용자가 "지금 남기겠다/이어받겠다"고 명시적으로 결정하는 순간에만 동작해야 하는 도구이기 때문이다.
+**This skill is invoked only via slash (`/carryover`)** — it is not registered in harness routing (CLAUDE.md anchor, §7). Reason: it is a tool that must act only at the moment the user explicitly decides "I will save now / I will resume now."
 
-## 모드 분기 (첫 판단)
+## Mode dispatch (first decision)
 
-호출 인자로 모드를 정한다.
+Determine the mode from the invocation arguments.
 
-- 인자에 **재개 신호**(`재개`·`resume`·`이어서`·`이어받`·`불러와`·`load`)가 있으면 → **재개 모드**.
-- 그 외(인자 없음 포함) → **저장 모드**. 단, 저장 모드 진입 시 `backlog/`·`progress/`(및 최상위 미마이그레이션 평면 노트)에 기존 노트가 있으면 "기존 이월 노트 N개가 있습니다(재개하려면 `/carryover 재개`)"를 한 줄로 알린다.
+- If the arguments contain a **resume signal** (`재개`·`resume`·`이어서`·`이어받`·`불러와`·`load`) → **resume mode**.
+- Otherwise (including no arguments) → **save mode**. However, on entering save mode, if existing notes are present in `backlog/`·`progress/` (or as top-level unmigrated flat notes), notify in one line: "기존 이월 노트 N개가 있습니다(재개하려면 `/carryover 재개`)".
 
-**디렉토리 구조** (2분할 — 재개 목록이 완료·진행 노트로 흐려지지 않게):
-- `_workspace/carryover/backlog/` — 대기(저장 모드가 여기에 쓴다)
-- `_workspace/carryover/progress/` — 이어가는 중(재개 시 backlog에서 이동)
-- 완료 노트는 **삭제**한다(done/ 아카이브를 두지 않는다 — gitignore 스크래치라 쌓이면 cruft, 영속 기록은 work-tracker의 몫).
+**Directory structure** (two-way split — so the resume list is not blurred by completed/in-flight notes):
+- `_workspace/carryover/backlog/` — queued (save mode writes here)
+- `_workspace/carryover/progress/` — in flight (moved from backlog on resume)
+- Completed notes are **deleted** (no done/ archive — this is gitignored scratch, so accumulation is cruft; persistent records are work-tracker's job).
 
-## 저장 모드
+## Save mode
 
-이번 세션에서 한 작업 중 사용자가 고른 것만 로컬 노트로 남긴다.
+Keep only the work the user picks from this session as a local note.
 
-1. **후보 수집**: 이번 세션의 작업을 후보 항목으로 열거한다.
-   - `git status --short`와 `git diff --stat`으로 변경·미커밋 파일을 확인한다(대상 저장소가 하위 프로젝트면 그 저장소에서).
-   - 대화에서 내린 **결정**, **완료한 것**, **진행 중·다음 할 일**, **막힌 점**을 뽑는다.
-   - 각 후보는 한 줄 요지로 표현한다(예: `sona_app 로그인 리팩토링 — AuthProvider 분리 완료, 테스트 미작성`).
-   - **남길 만한 작업이 하나도 없으면**(변경·결정·미완 항목 없음) 저장하지 않고 "이월할 작업이 없습니다"를 알리고 종료한다 — 빈 노트는 부채다.
+1. **Collect candidates**: enumerate this session's work as candidate items.
+   - Check changed/uncommitted files with `git status --short` and `git diff --stat` (in the subproject's repository if the target is a subproject).
+   - Extract the **decisions** made in conversation, **what was completed**, **in-progress / next actions**, and **blockers**.
+   - Express each candidate as a one-line gist (e.g. `sona_app 로그인 리팩토링 — AuthProvider 분리 완료, 테스트 미작성`).
+   - **If there is nothing worth carrying over** (no changes, decisions, or open items), do not save; notify "이월할 작업이 없습니다" and stop — an empty note is debt.
 
-2. **사용자 선택** (핵심 — 반드시 사용자가 고른다):
-   - 후보가 **4개 이하**면 `AskUserQuestion`(multiSelect: true)로 제시해 고르게 한다.
-   - 후보가 **5개 이상**이면 번호 매긴 목록을 채팅에 제시하고, 사용자가 남길 번호(또는 "전부")로 답하게 한다 — AskUserQuestion은 옵션 4개가 상한이라 목록이 길면 이 방식이 정확하다.
-   - 아무것도 선택하지 않으면 저장하지 않고 종료한다(빈 노트는 부채다).
+2. **User selection** (the core — the user must choose):
+   - If there are **4 or fewer** candidates, present them with `AskUserQuestion` (multiSelect: true) and let the user pick.
+   - If there are **5 or more**, present a numbered list in chat and have the user answer with the numbers to keep (or "전부"/all) — AskUserQuestion caps at 4 options, so this method is accurate for long lists.
+   - If nothing is selected, do not save and stop (an empty note is debt).
 
-3. **주제 확정**: 선택된 항목들의 공통 주제로 짧은 슬러그를 만든다(사용자에게 한 번 확인하거나 자명하면 그대로). 여러 무관한 주제가 섞였으면 주제별로 파일을 나눌지 사용자에게 묻는다.
+3. **Fix the topic**: build a short slug from the common topic of the selected items (confirm once with the user, or proceed if self-evident). If several unrelated topics are mixed, ask the user whether to split into per-topic files.
 
-4. **파일 작성**: `_workspace/carryover/backlog/YYYY-MM-DD-<주제슬러그>.md`에 아래 템플릿으로 쓴다. 날짜는 `date +%F`로 얻는다(추정 금지). `backlog/`가 없으면 만든다.
-   - 같은 날 같은 주제 파일이 이미 있으면 덮어쓰지 말고 세션 구분 섹션을 append하거나 슬러그에 `-2`를 붙인다(기존 이월 내용 유실 방지).
+4. **Write the file**: write to `_workspace/carryover/backlog/YYYY-MM-DD-<topic-slug>.md` using the template below. Get the date with `date +%F` (no guessing). Create `backlog/` if missing.
+   - If a same-day same-topic file already exists, do not overwrite — append a session-delimited section or add `-2` to the slug (prevents losing previously carried-over content).
 
-5. **보고**: 작성한 파일 경로를 사용자에게 알리고, **다음 세션 시작 프롬프트를 복붙용 코드블록으로 제시**한다(wrapup 5단계와 동일 형식 — 단독 호출에서도 같은 경험): `/carryover 재개 — <주제슬러그> 노트. 첫 행동: <"다음 할 일" 첫 항목>`. "첫 행동"은 노트에서 그대로 가져온다(지어내지 않는다).
+5. **Report**: tell the user the written file path, and **present the next session's start prompt as a copy-paste code block** (same format as wrapup step 5 — same experience in standalone invocation): `/carryover 재개 — <주제슬러그> 노트. 첫 행동: <first item of "In progress · Next">`. Take the "first action" verbatim from the note (do not invent it).
 
-### 노트 템플릿 (재개를 위한 골격)
+### Note template (skeleton for resuming)
 
 ```markdown
-# Carryover: <제목>
+# Carryover: <title>
 
-- 날짜: YYYY-MM-DD
-- 대상 프로젝트/저장소: <이름 또는 경로>
-- 한 줄 요약: <이 노트가 무엇에 관한 것인지 — 재개 모드 목록에 이 줄이 뜬다>
+- Date: YYYY-MM-DD
+- Target project/repo: <name or path>
+- One-line summary: <what this note is about — this line appears in the resume-mode list>
 
-## 한 일 (완료)
+## Done
 - …
 
-## 진행 중 · 다음 할 일
+## In progress · Next
 - …
 
-## 막힌 점 · 미해결
+## Blockers · Unresolved
 - …
 
-## 참조 (파일:줄, 명령, 경로, 이슈/PR)
+## References (file:line, commands, paths, issues/PRs)
 - `path/to/file.ts:120` — …
-- 실행 명령: `…`
+- Command run: `…`
 
-## 재개 방법
-- 어디서부터 어떻게 이어가는지. 재진입할 스킬을 명시한다
-  (구현 이어가기면 orchestrate 게이트 재진입, 리뷰면 team-review 등).
+## How to resume
+- Where and how to pick up. Name the skill to re-enter
+  (orchestrate gate re-entry for continued implementation, team-review for review, etc.).
 ```
 
-**"한 줄 요약"은 반드시 채운다** — 재개 모드의 목록이 이 줄로 노트를 구분한다(스킬 description 트리거와 같은 원리로, 목록 품질이 이 줄에 달린다).
+**The "One-line summary" must always be filled** — the resume-mode list distinguishes notes by this line (same principle as skill description triggers: list quality hinges on this line).
 
-## 재개 모드
+## Resume mode
 
-기존 이월 노트를 골라 이어받는다.
+Pick an existing carryover note and take over.
 
-1. **스캔**: `backlog/`와 `progress/`의 `*.md`를 나열한다. 각 노트의 파일명·날짜·"한 줄 요약"에 **상태(대기/이어가는 중)**를 붙여 목록으로 만든다(이어가는 중=progress를 위에). 노트가 없으면 "이월 노트가 없습니다"를 알리고 종료한다.
-   - **구버전 마이그레이션(1회)**: `_workspace/carryover/` 바로 아래에 평면 노트(`*.md`)가 남아 있으면(2분할 이전 저장분) `backlog/`로 옮긴 뒤 함께 나열한다.
+1. **Scan**: list `*.md` in `backlog/` and `progress/`. Build a list from each note's filename, date, and "One-line summary", tagging **state (queued / in flight)** (in flight = progress goes on top). If there are no notes, notify "이월 노트가 없습니다" and stop.
+   - **Legacy migration (one-time)**: if flat notes (`*.md`) remain directly under `_workspace/carryover/` (saved before the two-way split), move them to `backlog/` and list them together.
 
-2. **선택**: 노트가 4개 이하면 `AskUserQuestion`으로, 초과면 번호 목록으로 사용자가 하나(또는 여럿)를 고르게 한다.
+2. **Select**: if 4 or fewer notes, use `AskUserQuestion`; if more, use a numbered list, letting the user pick one (or several).
 
-3. **로드·소화 + 이동**: 선택한 노트를 읽고 **한국어로 소화해** 현황(한 일/다음 할 일/막힌 점/참조)을 요약 보고한다(원문 붙여넣기가 아니라 지금 이어가기 좋게). 선택한 노트가 `backlog/`에 있으면 **`progress/`로 옮긴다** — 이번 세션에 집었으니 다음 스캔의 "대기" 목록을 흐리지 않게. 이미 `progress/`면 그대로 둔다.
+3. **Load, digest + move**: read the chosen note and report the situation (done / next / blockers / references) **digested into Korean** (not pasted verbatim — summarized so it is easy to continue now). If the chosen note is in `backlog/`, **move it to `progress/`** — this session has picked it up, so keep the next scan's "queued" list clean. If already in `progress/`, leave it.
 
-4. **재진입**: 노트의 "재개 방법"이 가리키는 경로로 이어간다 — 새 구현·동작 변경이면 **orchestrate 게이트를 다시 밟는다**(§7 3항, continuation도 게이트 재진입). 게이트가 **구현 주체까지 판정한다**(3+파일이면 implementer 발행, 위험도 높음이면 팀 판정 — orchestrate 구현 주체 규칙): 재개 직후 세션이 게이트 판정 없이 직접 구현으로 직행하는 것은 우회 신호다(실사례 2026-07-21). 리뷰면 team-review, 문서면 doc-writer. carryover 자체는 작업을 수행하지 않고 재진입 지점만 넘긴다.
+4. **Re-entry**: continue along the path the note's "How to resume" points to — if it is new implementation or behavior change, **step through the orchestrate gate again** (§7 item 3; continuation also re-enters the gate). The gate **also rules on the implementation owner** (3+ files → dispatch implementer; high risk → team ruling — orchestrate implementation-owner rule): a session heading straight into direct implementation right after resume, without a gate ruling, is a bypass signal (real case 2026-07-21). Review → team-review; documents → doc-writer. carryover itself performs no work — it only hands over the re-entry point.
 
-5. **정리(선택)**: 작업을 마쳐 노트가 더 필요 없으면 사용자에게 확인 후 해당 노트(`progress/`)를 **지운다** — 완료는 삭제이지 done/ 이동이 아니다(위 구조). 미완이면 `progress/`에 남겨 다음 세션이 이어받는다.
+5. **Cleanup (optional)**: if the work is finished and the note is no longer needed, **delete** the note (in `progress/`) after confirming with the user — completion means deletion, not a move to done/ (see structure above). If unfinished, leave it in `progress/` for the next session to take over.
 
-## 보존 규약 (`_workspace/`인데 왜 안 지워지나)
+## Preservation convention (it's `_workspace/` — why isn't it cleaned up?)
 
-`_workspace/`는 세션 산출물이라 원칙적으로 정리 대상이지만(루트 AGENTS.md §4), `_workspace/carryover/`는(하위 `backlog/`·`progress/` 포함) **정리 제외 목록에 포함**된다(harness-updates.md·harness-ops-log.md·점검 마커와 같은 취급) — 세션을 넘겨 이어받는 것이 존재 이유이기 때문이다. gitignore 대상인 것은 그대로라 **같은 머신에서만** 이어받을 수 있다. 크로스 머신 이월이 필요하면 이건 잘못된 도구다 → work-tracker(git 추적)로 보낸다.
+`_workspace/` is session output and in principle a cleanup target (root AGENTS.md §4), but `_workspace/carryover/` (including `backlog/`·`progress/`) is **on the cleanup-exclusion list** (same treatment as harness-updates.md, harness-ops-log.md, and review markers) — being taken over across sessions is its reason to exist. It remains gitignored, so takeover works **on the same machine only**. If cross-machine carryover is needed, this is the wrong tool → send it to work-tracker (git-tracked).
 
-## 주의
+## Cautions
 
-- **시크릿·`<private>` 금지의 연장**: 노트에 자격증명을 적지 않는다(§3). 민감 경로·내부 URL 등 `<private>`로 감쌀 내용은 노트에서 제외하거나 태그로 감싼다 — 다만 `_workspace/`는 발행물이 아니라 로컬 스크래치이므로, 외부로 옮길 때(work-tracker 승격 등)의 필터가 핵심이다.
-- **완료·통과 주장 금지**: 노트는 "무엇을 했다"의 기록일 뿐, 완료 판정은 §13 신선한 증거(테스트 출력)로만 한다. "다음 할 일"에 검증 미완이면 그 사실을 적는다.
-- **파괴적 작업 없음**: 이 스킬은 노트 파일 쓰기·읽기·이동(backlog→progress)·(확인 후)삭제만 한다. 코드·인프라를 건드리지 않는다.
+- **Extension of the secrets/`<private>` ban**: do not write credentials into notes (§3). Content that would be wrapped in `<private>` (sensitive paths, internal URLs, etc.) is excluded from the note or wrapped in the tag — though `_workspace/` is local scratch, not a publication, so the critical filter is at export time (promotion to work-tracker, etc.).
+- **No done/pass claims**: a note is only a record of "what was done"; completion verdicts come only from §13 fresh evidence (test output). If verification is incomplete, say so under "Next".
+- **No destructive operations**: this skill only writes, reads, moves (backlog→progress), and (after confirmation) deletes note files. It does not touch code or infrastructure.
 
 ## with / without
 
-| 지표 | 이 스킬 없이 | 이 스킬로 |
+| Metric | Without this skill | With this skill |
 |---|---|---|
-| 세션 넘김 | 이슈 열 정도 아닌 작업이 매 세션 유실 | 고른 작업만 로컬 노트로 이월 |
-| 선택성 | 전부 남기거나(무덤) 전부 잃거나 | 사용자가 남길 것만 선택 |
-| 재개 | 지난 세션 뭐 했는지 수동 복기 | 노트 골라 즉시 재진입 지점 확보 |
-| work-tracker 경계 | 경량 메모까지 GitHub 이슈로 → 무덤 | 경량=로컬 carryover, 정식=work-tracker |
+| Session handoff | Work not worth an issue is lost every session | Only chosen work carried over as a local note |
+| Selectivity | Keep everything (graveyard) or lose everything | The user selects only what to keep |
+| Resume | Manually reconstruct what the last session did | Pick a note and get the re-entry point instantly |
+| work-tracker boundary | Even lightweight memos become GitHub issues → graveyard | Lightweight = local carryover, formal = work-tracker |

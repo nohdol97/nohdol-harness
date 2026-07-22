@@ -1,86 +1,86 @@
-# 신규 프로젝트 스캐폴딩 절차
+# New-project scaffolding procedure
 
-"프로젝트 새로 만들어줘" 요청 시 이 절차를 따른다. 하네스 없는 프로젝트를 만들지 않는다 — 프로젝트 생성과 하네스 생성은 한 몸이다.
+Follow this procedure on a "프로젝트 새로 만들어줘" request. Never create a project without a harness — project creation and harness creation are one body.
 
-## 1. 구체화 인터뷰 (필수)
+## 1. Clarification interview (mandatory)
 
-최소 확인 항목:
+Minimum items to confirm:
 
-| 항목 | 왜 필요한가 |
+| Item | Why needed |
 |---|---|
-| 스택 (언어·프레임워크·패키지 매니저) | 스캐폴딩 도구와 초기 스킬 결정 |
-| 배포 방식 (k8s? 서버리스? 정적?) | 가드레일 범위와 스킬 후보 기록 결정 |
-| 반복 작업 예상 | 초기 스킬/에이전트 후보 |
-| GitHub 레포 생성 여부 — owner·공개범위 | 원격 연동·work-tracker(Issues) 기반 결정 (아래 2.5) |
+| Stack (language, framework, package manager) | Determines scaffolding tool and initial skills |
+| Deployment method (k8s? serverless? static?) | Determines guardrail scope and skill-candidate recording |
+| Expected recurring tasks | Initial skill/agent candidates |
+| Whether to create a GitHub repo — owner & visibility | Determines remote linkage & work-tracker (Issues) basis (see 2.5 below) |
 
-역할·목적은 묻기 전에 README 등 문서를 먼저 읽는다(관찰 우선). **연관 프로젝트는 묻지 않는다** — 실작업에서 프로젝트들이 함께 엮일 때 갱신된다(루트 AGENTS.md 1절).
+Read documents such as README before asking about role/purpose (observation first). **Do not ask about related projects** — they get updated when projects are woven together in real work (root AGENTS.md §1).
 
-## 2. 디렉토리·기본 스캐폴딩
+## 2. Directory & basic scaffolding
 
-- `project/<프로젝트명>/` 디렉토리 생성 (경로 규약 — 루트 REGISTRY.md, 설치처별). 스택 표준 스캐폴더 사용 (예: `npm create vite`, `uv init`). 스캐폴더가 없으면 최소 구조만 수동 생성.
-- git: `project/<프로젝트명>/`에 **독립 저장소**로 `git init` 한다 (ADR 002). 루트 저장소는 `project/`를 추적하지 않으며, **프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다** — 하네스는 루트 `.agents/projects/`에서 중앙 관리한다(루트 AGENTS.md 12절, ADR 006).
-- 스택 표준 `.gitignore` 생성 후 스캐폴딩 산출물을 **최초 커밋**한다(`gh repo create --source=. --push`가 커밋을 전제로 하므로 레포 연동 전에 커밋이 있어야 한다). 커밋 컨벤션은 루트 AGENTS.md 5절(Conventional Commits, 스코프에 프로젝트명).
+- Create the `project/<name>/` directory (path convention — root REGISTRY.md, install-site-specific). Use the stack's standard scaffolder (e.g. `npm create vite`, `uv init`). If no scaffolder exists, create only the minimal structure by hand.
+- git: `git init` in `project/<name>/` as an **independent repository** (ADR 002). The root repository does not track `project/`, and **no harness files go into the project directory or its repository** — the harness is centrally managed in root `.agents/projects/` (root AGENTS.md §12, ADR 006).
+- Create the stack-standard `.gitignore`, then make the **initial commit** of the scaffolding output (`gh repo create --source=. --push` presupposes a commit, so one must exist before repo linkage). Commit convention: root AGENTS.md §5 (Conventional Commits, project name in scope).
 
-## 2.5 GitHub 레포 연동 (선택 — 인터뷰에서 "생성"이면 수행)
+## 2.5 GitHub repo linkage (optional — perform if the interview said "create")
 
-레포 생성은 **외부 발행 작업**이라(루트 AGENTS.md 3절) 실행 직전 확인이 필수다. 인터뷰에서 "로컬만"이면 이 절을 건너뛴다.
+Repo creation is an **externally publishing operation** (root AGENTS.md §3), so confirmation immediately before execution is mandatory. Skip this section if the interview said "local only".
 
-1. **사전 확인**: `gh auth status`로 인증·계정을 확인한다. 미인증이면 사용자에게 `gh auth login`을 안내하고 로컬 저장소만 둔 채 중단(레포 연동은 나중에).
-2. **owner·공개범위 확인 (매번, 기본값 없음 — 2026-07-18 사용자 확정)**: 레포 생성 직전에 **owner**(개인 계정 vs org)와 **공개범위**(`--public`/`--private`)를 사용자에게 확인한다. 실수로 민감정보가 public에 노출되는 것을 막는 게이트이므로 생략하지 않는다.
-3. **생성·연동·푸시** (확인된 값으로):
+1. **Pre-check**: Verify authentication/account with `gh auth status`. If unauthenticated, guide the user to `gh auth login` and stop with only the local repository in place (repo linkage later).
+2. **Confirm owner & visibility (every time, no default — user-confirmed 2026-07-18)**: Immediately before repo creation, confirm the **owner** (personal account vs org) and **visibility** (`--public`/`--private`) with the user. This is the gate that prevents sensitive information accidentally landing in a public repo — never skip it.
+3. **Create, link, push** (with the confirmed values):
    ```
-   gh repo create <owner>/<프로젝트명> --private|--public --source=. --remote=origin --push
+   gh repo create <owner>/<project-name> --private|--public --source=. --remote=origin --push
    ```
-   `--source=.`는 현재 로컬 저장소를, `--remote=origin`은 origin 등록을, `--push`는 최초 커밋 푸시를 한 번에 처리한다(최초 커밋 선행 필수 — 위 2절).
-4. **검증**: `git remote -v`로 origin 연결, `gh repo view --json url,visibility`로 생성 결과(URL·공개범위)를 확인해 보고한다.
-5. **레포가 생기면** work-tracker가 GitHub Issues로 세션 넘김 작업을 관리할 수 있다(루트 AGENTS.md 14절) — 세션을 넘길 작업이 있으면 안내한다. 없으면 등록하지 않는다(이슈 무덤 방지).
+   `--source=.` uses the current local repository, `--remote=origin` registers origin, and `--push` pushes the initial commit — all in one step (initial commit must precede — §2 above).
+4. **Verify**: Confirm the origin link with `git remote -v` and the creation result (URL, visibility) with `gh repo view --json url,visibility`, then report.
+5. **Once the repo exists**, work-tracker can manage session-spanning work via GitHub Issues (root AGENTS.md §14) — mention this if there is work that will span sessions. If not, do not register (prevent an issue graveyard).
 
-## 3. 하네스 생성 (중앙 관리 — 루트 AGENTS.md 12절, ADR 006·007)
+## 3. Harness creation (central management — root AGENTS.md §12, ADR 006/007)
 
-**하네스는 프로젝트 디렉토리가 아니라 루트 `.agents/projects/`에 만든다. 배포(심링크·복사)는 없다 — 라우팅(REGISTRY.md → 원본 읽기)이 프로젝트와 하네스를 연결한다.**
+**The harness is created in root `.agents/projects/`, not in the project directory. There is no distribution (symlink/copy) — routing (REGISTRY.md → read the original) connects project and harness.**
 
 ```
-.agents/projects/<프로젝트명>/   # 원본이자 유일본 — git 미추적(설치처별 데이터)
-├── AGENTS.md          # 첫 줄: "이 문서는 루트 AGENTS.md를 상속한다." + "스킬 후보" 섹션
-├── adr/               # 이 프로젝트의 구조적 결정 기록
-├── skills/            # 지연 생성 — 초기에는 만들지 않음 (아래 지연 생성 원칙)
-└── agents/            # 지연 생성 — 초기에는 만들지 않음
+.agents/projects/<project-name>/   # original and only copy — untracked by git (install-site data)
+├── AGENTS.md          # first line: "This document inherits the root AGENTS.md." + "skill candidates" section
+├── adr/               # structural decision records for this project
+├── skills/            # deferred creation — not created initially (deferred-creation principle below)
+└── agents/            # deferred creation — not created initially
 
-project/<프로젝트명>/            # 코드만 — 하네스 파일 없음
+project/<project-name>/            # code only — no harness files
 ```
 
-- `<프로젝트명>`은 REGISTRY.md 레지스트리 행의 "이름"과 일치시킨다 — 라우팅이 이 이름으로 원본을 찾는다.
-- **하위 CLAUDE.md는 만들지 않는다** — 이 경로에서 세션을 시작할 일이 없어 로더가 없는 죽은 파일이다.
-- 하위 AGENTS.md에는 **도메인 특화 규칙만** 담는다. 공통 관심사(git, 문서, 가드레일, 라우팅)는 루트에 있고 상속된다 — 복사하지 않는다. 이유: 복사본은 루트 갱신 시 어긋난다.
-- 프로젝트 전용 `.agents/`·`.claude/`는 `project/` 쪽에 만들지 않는다. 훅은 루트 `.claude/settings.json`에 경로 분기형으로만.
-- **스킬·에이전트 지연 생성**: 초기에는 만들지 않는다. 인터뷰의 "반복 작업 예상"과 아래 참고표의 해당 항목을 **하위 AGENTS.md "스킬 후보" 섹션에 기록만** 하고, 실제 생성은 반복 관찰·등록 가치 발견 시 metaskill "하위 스킬·에이전트 생성 시나리오"로 한다 → 생성 위치는 `.agents/projects/<프로젝트명>/skills/`·`agents/`.
+- `<project-name>` must match the "name" of the REGISTRY.md registry row — routing finds the original by this name.
+- **Do not create a sub CLAUDE.md** — no session ever starts at that path, so it is a dead file with no loader.
+- The sub AGENTS.md holds **domain-specific rules only**. Common concerns (git, documents, guardrails, routing) live in root and are inherited — do not copy them. Reason: copies drift when root is updated.
+- Do not create project-local `.agents/`/`.claude/` under `project/`. Hooks go only into root `.claude/settings.json` as path-branching hooks.
+- **Deferred skill/agent creation**: create nothing initially. Only **record** the interview's "expected recurring tasks" and matching entries from the reference table below in the sub AGENTS.md "skill candidates" section; actual creation happens on observed repetition / discovered registration value via metaskill's "sub skill/agent creation scenario" → creation location `.agents/projects/<project-name>/skills/`/`agents/`.
 
-## 3.5 스킬·에이전트 후보 참고표 (지연 생성 시점에 참조)
+## 3.5 Skill/agent candidate reference table (consulted at deferred-creation time)
 
-**원칙**: "실행·검증·배포하는 반복 절차"는 스킬로, "도메인 판단이 필요한 역할"은 에이전트로. 아래는 후보 기록과 훗날 생성 시의 명명·범위 참고용이지, 초기 생성 목록이 아니다.
+**Principle**: "recurring procedures that run/verify/deploy" become skills; "roles requiring domain judgment" become agents. This is for candidate recording and future naming/scoping reference — not an initial creation list.
 
-| 도메인 | 스킬 후보 | 에이전트 후보 |
+| Domain | Skill candidates | Agent candidates |
 |---|---|---|
-| 웹 (Next.js 등) | `dev`(로컬 실행·확인), `test`(테스트·린트), `deploy`(배포 절차) | 필요 시 UI 리뷰어 |
-| 앱 (Flutter·Android) | `build`(빌드·에뮬레이터 실행), `release`(서명·스토어 절차) | — |
-| 백엔드·도구 (Go·Python) | `run`(실행·검증), `test`, `release` | — |
-| k8s·인프라 | `plan`(diff·dry-run — 적용 전 확인), `apply`(가드레일 연동 적용 절차) | 매니페스트 검증가 (`references/k8s.md` 참조) |
-| 봇·자동화 | `run`, `monitor`(로그·상태 점검) | — |
+| Web (Next.js etc.) | `dev` (local run & check), `test` (tests & lint), `deploy` (deployment procedure) | UI reviewer if needed |
+| App (Flutter, Android) | `build` (build & emulator run), `release` (signing & store procedure) | — |
+| Backend/tools (Go, Python) | `run` (run & verify), `test`, `release` | — |
+| k8s/infra | `plan` (diff & dry-run — pre-apply check), `apply` (guardrail-linked apply procedure) | manifest verifier (see `references/k8s.md`) |
+| Bots/automation | `run`, `monitor` (log & status check) | — |
 
-후보는 출발점이지 정답이 아니다 — 생성 시점에 프로젝트의 실제 명령어(빌드·테스트·배포)를 확인해 스킬 본문에 구체 명령으로 싣는다. 명령 없는 스킬은 안 만드느니만 못하다.
+Candidates are a starting point, not the answer — at creation time, check the project's actual commands (build/test/deploy) and put the concrete commands in the skill body. A skill without commands is worse than none.
 
-## 4. 루트 레지스트리 갱신 (누락 금지)
+## 4. Root registry update (must not be missed)
 
-루트 REGISTRY.md 프로젝트 레지스트리에 행 추가:
+Add a row to the root REGISTRY.md project registry:
 
-| 이름 | 경로 | 스택 | 역할 | 연관 프로젝트 | 하네스 유무 |
+| Name | Path | Stack | Role | Related projects | Harness |
 |---|---|---|---|---|---|
-| web | `project/web/` | Next.js | 사용자 웹 (README 관찰 기반) | 미기록 | ✅ |
+| web | `project/web/` | Next.js | user web (based on README observation) | 미기록 | ✅ |
 
-연관 프로젝트는 "미기록"으로 시작한다 — 실작업에서 엮일 때 그 세션이 갱신한다(루트 AGENTS.md 1절).
+Related projects start as "미기록" (unrecorded) — the session that weaves them together in real work updates it (root AGENTS.md §1).
 
-## 5. 마무리
+## 5. Wrap-up
 
-- 루트 REGISTRY.md 변경 이력에 1행 추가 (REGISTRY.md는 미추적이므로 커밋 대상 아님).
-- metaskill 완료 판정 체크리스트로 자체 검증.
-- 작업 완료 시 커밋·푸시 진행 (루트 AGENTS.md 5절 — 사용자 상시 승인).
+- Add 1 row to the root REGISTRY.md change history (REGISTRY.md is untracked, so not a commit target).
+- Self-verify with the metaskill completion checklist.
+- Commit & push on work completion (root AGENTS.md §5 — standing user approval).

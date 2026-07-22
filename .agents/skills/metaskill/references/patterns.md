@@ -1,76 +1,76 @@
-# 오케스트레이션 패턴 선택 가이드
+# Orchestration pattern selection guide
 
-## 플로우차트 — 문제의 모양으로 고른다
+## Flowchart — choose by the shape of the problem
 
 ```
-문제의 모양은?
-├─ 단계가 순차 의존인가? (앞 산출물이 뒤 입력)      → 1. 파이프라인
-├─ 같은 입력을 여러 관점에서 동시에 봐야 하나?        → 2. 팬아웃·팬인
-├─ 입력을 분류해 맞는 전문가 한 명에게 보내야 하나?    → 3. 전문가 풀
-├─ 산출물 품질을 별도 에이전트가 보장해야 하나?        → 4. 생성-검증
-├─ 작업이 런타임에 동적으로 생기고 분배되나?          → 5. 감독자
-└─ 문제가 하위 영역으로 쪼개지는가? (한 팀이 감당 불가) → 6. 계층적 위임
+What shape is the problem?
+├─ Are the steps sequentially dependent? (earlier output feeds later input) → 1. Pipeline
+├─ Must the same input be viewed from several angles at once?               → 2. Fan-out/fan-in
+├─ Must input be classified and sent to one matching expert?                → 3. Expert pool
+├─ Must a separate agent guarantee deliverable quality?                     → 4. Generate-verify
+├─ Does work arise and get distributed dynamically at runtime?              → 5. Supervisor
+└─ Does the problem split into sub-domains? (one team cannot cover it)      → 6. Hierarchical delegation
 ```
 
-시작은 항상 가장 단순한 패턴으로. 전환은 아래 신호 표가 가리킬 때만 한다 — 전환 신호 없는 중량 패턴은 품질 이득 없이 지연과 비용만 늘린다.
+Always start with the simplest pattern. Transition only when the signal table below points to it — a heavyweight pattern without a transition signal adds latency and cost with no quality gain.
 
-## 전환 신호 표
+## Transition-signal table
 
-| 현재 패턴 | 전환 신호 | 다음 패턴 |
+| Current pattern | Transition signal | Next pattern |
 |---|---|---|
-| 단일 에이전트 | 컨텍스트 폭발, 세션 중단 빈발 | 파이프라인 |
-| 파이프라인 | 독립적 작업을 순차 처리하여 시간 낭비 | 팬아웃·팬인 |
-| 팬아웃·팬인 | 작업별 다른 전문성 필요, 동일 역할로 한계 | 전문가 풀 |
-| 전문가 풀 | 산출물 품질 편차, 검증 부재 | 생성-검증 |
-| 생성-검증 | 에이전트 간 실시간 조율 필요, 동적 작업 할당 | 감독자 |
-| 감독자 | 단일 감독자가 5~10명 초과, 도메인이 서브팀으로 분해 가능 | 계층적 위임 |
+| Single agent | Context explosion, frequent session breaks | Pipeline |
+| Pipeline | Time wasted processing independent work sequentially | Fan-out/fan-in |
+| Fan-out/fan-in | Different expertise needed per task, same role hits its limit | Expert pool |
+| Expert pool | Deliverable quality variance, no verification | Generate-verify |
+| Generate-verify | Real-time coordination between agents needed, dynamic task allocation | Supervisor |
+| Supervisor | Single supervisor exceeds 5–10 members, domain decomposes into sub-teams | Hierarchical delegation |
 
-## 패턴별 핵심
+## Pattern essentials
 
-### 1. 파이프라인 — 순서가 의미를 만든다
+### 1. Pipeline — order creates meaning
 
-각 단계는 앞 단계 산출물을 `_workspace/` 파일로 넘겨받는다. **논리적으로 가능한 유일한 순서일 때** 사용한다 — 순서를 바꿔도 되는 작업을 파이프라인에 넣으면 시간만 낭비된다.
+Each stage receives the previous stage's deliverable as a `_workspace/` file. Use **only when it is the only logically possible order** — putting order-swappable work into a pipeline just wastes time.
 
-예: spec-drafter → api-designer → schema-migrator / CI·CD의 lint → build → test → deploy
+e.g. spec-drafter → api-designer → schema-migrator / CI·CD's lint → build → test → deploy
 
-### 2. 팬아웃·팬인 — 같은 입력, 다른 관점 (고전 분배)
+### 2. Fan-out/fan-in — same input, different angles (classic distribution)
 
-팀원 간 **실시간 교차 검증**이 가능해야 하므로 SendMessage가 중요하다 (보안 담당의 발견이 성능 담당의 판단을 바꿀 수 있다). 팬아웃 발행은 반드시 **한 턴 동시 발행**(orchestrate B모드 동시 발행 규약) — 하나씩 호출-대기하면 직렬로 퇴화한다.
+**Real-time cross-verification** between members must be possible, so SendMessage matters (a security member's finding can change a performance member's judgment). Fan-out dispatch must be **simultaneous in one turn** (orchestrate B-mode simultaneous-dispatch convention) — calling and waiting one by one degenerates into serial.
 
-예: 같은 diff → 보안·성능·테스트·스타일 관점 병렬 리뷰 → 통합
+e.g. same diff → parallel security/performance/test/style reviews → integration
 
-### 3. 전문가 풀 — 라우터 + 전문가
+### 3. Expert pool — router + experts
 
-팬아웃은 N명 **모두**가 일하지만, 전문가 풀은 N명 중 **한 명만** 일한다. 따라서 **라우터의 분류 정확도가 매우 중요**하다 — 잘못 분류하면 엉뚱한 전문가가 엉뚱한 답을 낸다.
+Fan-out has **all** N members working, but the expert pool has **only one** of N working. Therefore **the router's classification accuracy is critical** — misclassify and the wrong expert gives the wrong answer.
 
-예: 버그 리포트 라우팅 — UI 버그는 ui-bug-specialist, 데이터 이슈는 data-bug-specialist
+e.g. bug-report routing — UI bugs to ui-bug-specialist, data issues to data-bug-specialist
 
-### 4. 생성-검증 — 만들고 검사하고 다시 만든다
+### 4. Generate-verify — make, inspect, remake
 
-한 에이전트가 산출물을 만들면 **다른** 에이전트가 검증한다 (자기 검증은 자기 편향을 통과시킨다). 재시도 기본값 2~3회, 한계 도달 시 사람에게 판단 요청. 산출물 품질 보장이 중요할 때 사용.
+One agent produces the deliverable and a **different** agent verifies it (self-verification passes self-bias). Default retries 2–3; at the limit, request human judgment. Use when deliverable quality assurance matters.
 
-예: TDD 자동화 — code-generator + test-runner
+e.g. TDD automation — code-generator + test-runner
 
-### 5. 감독자 — 런타임 동적 분배
+### 5. Supervisor — runtime dynamic distribution
 
-감독자가 작업 큐를 관리하고, 워커들이 TaskCreate 큐를 읽어 스스로 "이거 가져갈게요"라고 claim한다. 감독자는 진행 상황을 보며 동적 조정. **워커 수 3~5가 적정** — 그 이상이면 감독자가 병목이 된다.
+The supervisor manages the task queue; workers read the TaskCreate queue and claim tasks themselves ("I'll take this one"). The supervisor adjusts dynamically while watching progress. **3–5 workers is optimal** — beyond that the supervisor becomes the bottleneck.
 
-### 6. 계층적 위임 — 총괄 → 팀장 → 실무자
+### 6. Hierarchical delegation — director → team leads → workers
 
-문제가 너무 크거나 복잡해서 한 팀이 전부 담당하기 어려울 때, 영역별로 쪼개 하위 팀에 맡긴다 (팬아웃에 깊이 하나 추가한 형태). 총괄은 팀장의 결과물만 보고, 팀장은 실무자의 결과물만 본다 — 계층을 건너뛰는 보고는 구조를 무너뜨린다.
+When the problem is too large or complex for one team, split by domain and hand to sub-teams (fan-out plus one level of depth). The director sees only the leads' outputs; leads see only the workers' outputs — reporting that skips a layer collapses the structure.
 
-**깊이 2단계 초과 금지** — 지연이 기하급수적으로 증가한다.
+**Never exceed 2 levels of depth** — latency grows exponentially.
 
-예: PM이 "결제 기능 추가"를 프론트/백엔드 팀장에게 넘기면 각 팀장이 실무자 3인을 지휘
+e.g. a PM hands "add payment feature" to frontend/backend leads, each directing 3 workers
 
-## 복합 패턴 — 하이브리드 구성 규칙
+## Composite patterns — hybrid composition rules
 
-실제 하네스는 Phase마다 다른 패턴을 쓴다. 조합은 아래 규칙을 따른다:
+Real harnesses use a different pattern per Phase. Combine per these rules:
 
-1. **Phase 분해 먼저**: 작업을 표준 스켈레톤 `수집 → 설계·합의 → 구현 → 독립 검증 → 통합`(orchestrate C모드 표)에 대응시키고, 필요 없는 Phase는 제거한다 — 단 **순서는 유지**하고, 구현이 포함되면 검증 Phase는 생략 불가다(orchestrate 검증 필수 규칙).
-2. **Phase별 독립 판정**: 각 Phase의 패턴은 그 Phase의 문제 모양으로 위 플로우차트에서 따로 고른다. 작업 전체에 한 패턴을 강요하면 어느 Phase는 반드시 맞지 않는 옷을 입는다.
-3. **모드 매핑**: 팀원 간 통신이 필요한 Phase(합의·교차 검증·동적 분배) = 에이전트 팀, 독립 병렬 Phase(수집·격리 검증) = 서브에이전트. 검증자는 구현 팀과 **분리(서브에이전트)**가 기본이다 — 격리가 곧 독립성이다.
-4. **경계는 `_workspace/` 파일**: Phase 간 데이터는 `phase{N}_{에이전트명}_{내용}.md`로만 전달하고, 각 Phase 상단에 실행 모드를 명시한다 (orchestrate 하이브리드 모드 규약). 메모리로 넘기면 Phase 재실행·디버깅이 불가능해진다.
-5. **전환 신호로만 무거워진다**: 스켈레톤에서 시작해, 위 전환 신호 표가 가리킬 때만 Phase 내부 패턴을 승격한다.
+1. **Phase decomposition first**: Map the work onto the standard skeleton `collect → design/consensus → implement → independent verify → integrate` (orchestrate C-mode table) and drop unneeded Phases — but **keep the order**, and if implementation is included, the verification Phase cannot be skipped (orchestrate mandatory-verification rule).
+2. **Independent judgment per Phase**: Choose each Phase's pattern separately from the flowchart above by that Phase's problem shape. Forcing one pattern on the whole job guarantees some Phase wears clothes that do not fit.
+3. **Mode mapping**: Phases needing inter-member communication (consensus, cross-verification, dynamic distribution) = agent team; independent parallel Phases (collection, isolated verification) = subagents. The verifier defaults to **separation from the implementation team (subagent)** — isolation is independence.
+4. **Boundaries are `_workspace/` files**: Pass inter-Phase data only via `phase{N}_{agent}_{content}.md`, and state the execution mode at the top of each Phase (orchestrate hybrid-mode convention). Passing via memory makes Phase re-runs and debugging impossible.
+5. **Get heavier only on transition signals**: Start from the skeleton, and promote a Phase's internal pattern only when the transition-signal table above points to it.
 
-예: "결제 모듈 리팩토링" → ① 수집(팬아웃 서브에이전트 3: 코드 구조·테스트 현황·의존성) → ③ 구현(implementer 파이프라인: 스펙 → 테스트 → 구현) → ④ 검증(reviewer 서브에이전트 — 스펙 완료 기준 대비) → ⑤ 통합(integrator). 설계 쟁점이 없어 ②는 생략.
+e.g. "payment module refactoring" → ① collect (3 fan-out subagents: code structure, test status, dependencies) → ③ implement (implementer pipeline: spec → tests → implementation) → ④ verify (reviewer subagent — against spec completion criteria) → ⑤ integrate (integrator). No design disputes, so ② is skipped.

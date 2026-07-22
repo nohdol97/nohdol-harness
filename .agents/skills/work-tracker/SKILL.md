@@ -3,23 +3,23 @@ name: work-tracker
 description: "Persist work state across sessions using GitHub Issues (ccpm pattern) - register multi-session epics with spec-linked task checklists, log progress when pausing, resume from open issues, close via PR Closes #N. Falls back to docs/backlog.md in the project repo when there is no GitHub remote. Use when work will span multiple sessions or PRs, or when the user says 작업 등록, 백로그에 넣어줘, 이어서 하자, 하던 작업 뭐였지, 진행 상황 기록해줘, checkpoint, save progress, where was I (these route here, not to external checkpoint skills). Do NOT use for continuing an in-progress implementation step in the SAME session (진행해줘/계속 → orchestrate gate re-entry) - this skill resumes REGISTERED cross-session work. Re-run keywords - work-tracker, backlog, issue, epic, resume, 작업 등록, 백로그, 이어서, 재개."
 ---
 
-# work-tracker — 세션 영속 작업 추적 (ccpm 패턴)
+# work-tracker — Session-Persistent Work Tracking (ccpm pattern)
 
-## 왜 이 스킬인가
+## Why this skill
 
-`_workspace/`와 세션 컨텍스트는 **미보존**이다(루트 AGENTS.md 4절) — 세션이 끝나면 "어디까지 했고 다음이 뭔지"가 어디에도 남지 않아, 다음 세션이 git 이력만 보고 상태를 역추적해야 한다. 이 스킬은 ccpm 패턴을 채택해 **작업 상태의 영속 저장소를 프로젝트 저장소 자체**(GitHub Issues, 없으면 `docs/backlog.md`)에 둔다. 이유: 상태는 코드와 같은 곳에 있어야 어긋나지 않고, 설치처가 바뀌어도(ADR 005 이식성) 함께 따라온다.
+`_workspace/` and session context are **not preserved** (root AGENTS.md §4) — when a session ends, "how far we got and what comes next" is recorded nowhere, so the next session must reverse-engineer the state from git history alone. This skill adopts the ccpm pattern and puts **the persistent store for work state in the project repository itself** (GitHub Issues, or `docs/backlog.md` if none). Reason: state must live in the same place as the code to stay consistent, and it travels along even when the installation site changes (ADR 005 portability).
 
-## 등록 기준 (남발 금지)
+## Registration criteria (no overuse)
 
-**한 세션에 끝나지 않을 작업만 등록한다** — 여러 PR로 쪼개지는 작업, 며칠 규모의 에픽, 사용자가 명시적으로 "등록해줘"라고 한 작업. 이유: 모든 작업을 등록하면 이슈 무덤이 되어 아무도 읽지 않는다 — 지연 생성 원칙(ADR 007)과 같은 철학이다. 한 세션에 끝나는 작업의 상태 인계는 등록 없이 그 세션의 PR·커밋으로 충분하다.
+**Register only work that will not finish in one session** — work split across multiple PRs, multi-day epics, or work the user explicitly asked to register ("등록해줘"). Reason: registering everything creates an issue graveyard nobody reads — the same philosophy as the lazy-creation principle (ADR 007). For work that finishes in one session, that session's PR/commits are sufficient state handoff without registration.
 
-## 저장소 선택 (프로젝트 저장소 기준)
+## Store selection (based on the project repository)
 
-1. **GitHub 원격 + `gh` 사용 가능** → GitHub Issues (기본).
-2. **원격이 없거나 GitHub이 아님** → 프로젝트 저장소의 `docs/backlog.md`에 같은 구조(에픽 섹션 + 태스크 체크리스트 + 진행 로그)로 기록하고 커밋한다.
-3. 루트 하네스 저장소의 장기 작업도 같은 규칙(GitHub Issues)을 쓴다.
+1. **GitHub remote + `gh` available** → GitHub Issues (default).
+2. **No remote, or not GitHub** → record in the project repository's `docs/backlog.md` with the same structure (epic section + task checklist + progress log) and commit.
+3. Long-running work on the root harness repository uses the same rule (GitHub Issues).
 
-## 흐름 1 — 등록 (작업 시작 시)
+## Flow 1 — Register (at work start)
 
 ```bash
 gh issue create --title "<간결한 작업명>" --label epic --body "$(cat <<'EOF'
@@ -39,13 +39,15 @@ EOF
 )"
 ```
 
-- 태스크는 **스펙의 완료 기준(C번호) 단위**로 쪼갠다(13절 SDD) — 체크 하나가 검증 가능한 상태 변화 하나에 대응해야 재개 시점이 명확하다.
-- 코드 작업이면 `branch-workflow` 시작 절차로 이어가고, 브랜치명·커밋에 이슈 번호를 참조한다(예: `feat/login-oauth` + 커밋 본문 `#12`).
-- **시크릿·자격증명을 이슈 본문에 절대 쓰지 않는다**(가드레일 3절) — 이슈는 저장소 밖(GitHub)에도 남는 외부 발행물이다.
+(The issue title/body are user-read external artifacts — keep them in Korean per root §15; the template above is the literal text to use.)
 
-## 흐름 2 — 진행 기록 (세션 종료·중단 시)
+- Split tasks **by the spec's completion-criterion (C-number) units** (§13 SDD) — each checkbox must correspond to one verifiable state change so the resume point is unambiguous.
+- For code work, continue into the `branch-workflow` start procedure, and reference the issue number in the branch name/commits (e.g. `feat/login-oauth` + commit body `#12`).
+- **Never write secrets/credentials into the issue body** (guardrail §3) — issues are external artifacts that persist outside the repository (on GitHub) as well.
 
-작업을 끝내지 못하고 세션을 닫을 때 **반드시** 남긴다 — 이 코멘트가 다음 세션의 시작점이다:
+## Flow 2 — Progress log (at session end/interruption)
+
+When closing a session without finishing the work, leave this **without fail** — this comment is the next session's starting point:
 
 ```bash
 gh issue comment <번호> --body "$(cat <<'EOF'
@@ -57,32 +59,34 @@ EOF
 )"
 ```
 
-동시에 본문의 태스크 체크박스를 갱신한다(`gh issue edit`). `_workspace/`의 중간 산출물 중 다음 세션에 필요한 결론은 **요약해서 코멘트로 옮긴다** — 원본은 미보존이다. 옮길 때 **`<private>…</private>`로 표시된 부분은 제외한다**(민감 경로·내부 URL·개인 정보 — 루트 AGENTS.md 3절 가드레일). 이슈·코멘트는 저장소 밖에도 남는 외부 발행물이므로, 시크릿 금지(가드레일 3절)와 함께 이 제외를 지킨다.
+(Comments are user-read — write them in Korean using the template above.)
 
-기록을 마치면 **다음 세션 시작 프롬프트를 복붙용 코드블록으로 제시**한다(wrapup 5단계·carryover 저장 모드와 동일 형식 — 단독 호출에서도 같은 경험): `이어서 하자 — #<번호> <이슈 제목>. 첫 행동: <방금 남긴 진행 로그의 "다음" 항목>`. "첫 행동"은 진행 로그에서 그대로 가져온다(지어내지 않는다 — 어긋나면 재개 지점이 둘이 된다).
+At the same time, update the task checkboxes in the body (`gh issue edit`). Among `_workspace/` intermediate artifacts, conclusions the next session needs are **summarized and moved into a comment** — the originals are not preserved. When moving, **exclude anything marked `<private>…</private>`** (sensitive paths, internal URLs, personal information — root AGENTS.md §3 guardrail). Issues/comments are external artifacts that persist outside the repository, so uphold this exclusion together with the secrets prohibition (guardrail §3).
 
-## 흐름 3 — 재개 ("이어서 하자", "하던 작업 뭐였지")
+After recording, **present the next-session start prompt as a copy-paste code block** (same format as wrapup step 5 and carryover save mode — the same experience even when invoked standalone): `이어서 하자 — #<번호> <이슈 제목>. 첫 행동: <방금 남긴 진행 로그의 "다음" 항목>`. Take the "첫 행동" (first action) verbatim from the progress log (do not invent it — if they diverge, there are two resume points).
+
+## Flow 3 — Resume ("이어서 하자", "하던 작업 뭐였지")
 
 ```bash
 gh issue list --state open --label epic   # 대상 프로젝트 저장소에서
 gh issue view <번호> --comments           # 마지막 진행 로그 확인
 ```
 
-마지막 진행 로그의 "다음" 항목이 시작점이다. 코드 작업이면 해당 브랜치 존재를 확인하고(`git branch -a`), 없거나 머지됐으면 branch-workflow 시작 절차부터 다시 밟는다. 어느 프로젝트인지 모호하면 REGISTRY.md의 레지스트리 순으로 열린 epic 이슈를 조회해 보고한다.
+The "다음" (next) item of the last progress log is the starting point. For code work, confirm the branch exists (`git branch -a`); if missing or merged, start over from the branch-workflow start procedure. If the project is ambiguous, query open epic issues in REGISTRY.md registry order and report.
 
-**재개 대상이 새 구현·동작 변경이면 orchestrate 게이트(0-1)를 다시 밟는다** — "재개니까"라는 이유로 세션이 직접 구현을 이어가지 않는다. 게이트가 구현 주체까지 판정한다(3+파일이면 implementer 발행, 위험도 높음이면 팀 판정 — orchestrate 구현 주체 규칙, 실사례 2026-07-21: 재개 세션이 게이트 없이 직접 구현으로 직행). 이 스킬은 시작점을 넘길 뿐 구현 경로를 정하지 않는다.
+**If the resumed work is new implementation or a behavior change, re-enter the orchestrate gate (0-1)** — a session does not continue implementing directly just "because it's a resume". The gate also judges the implementation owner (3+ files → dispatch implementer; high-risk → team judgment — orchestrate implementation-owner rule; real case 2026-07-21: a resume session went straight to direct implementation without the gate). This skill only hands over the starting point; it does not decide the implementation path.
 
-## 흐름 4 — 완료
+## Flow 4 — Complete
 
-- PR 본문에 `Closes #<번호>`를 넣는다(branch-workflow 마무리 절차) — 머지(사용자) 시점에 이슈가 자동으로 닫혀, 상태와 코드가 같은 순간에 정리된다.
-- PR 없이 끝나는 작업(문서·조사 등)은 결론 코멘트를 남기고 `gh issue close <번호>`.
-- `docs/backlog.md` 방식이면 항목을 "완료" 섹션으로 이동하고 커밋한다.
+- Put `Closes #<번호>` in the PR body (branch-workflow finishing procedure) — the issue closes automatically at merge time (by the user), so state and code get cleaned up at the same moment.
+- For work that ends without a PR (docs, research, etc.), leave a conclusion comment and `gh issue close <번호>`.
+- With the `docs/backlog.md` approach, move the item to the "완료" (done) section and commit.
 
 ## with / without
 
-| 지표 | 이 스킬 없이 | 이 스킬로 |
+| Metric | Without this skill | With this skill |
 |---|---|---|
-| 세션 경계 | 상태가 컨텍스트와 함께 소실 — git 이력으로 역추적 | 진행 로그 코멘트에서 즉시 재개 |
-| 상태 위치 | checkpoint 등 세션 로컬 장치 — 설치처를 못 넘음 | 프로젝트 저장소(이슈)에 영속 — 어디서든 조회 |
-| 완료 정합 | 작업은 끝났는데 추적 항목은 열린 채 방치 | PR `Closes #N`으로 코드와 상태가 함께 닫힘 |
-| 노이즈 | 모든 작업을 기록하면 이슈 무덤 | 멀티 세션 작업만 등록 (등록 기준 고정) |
+| Session boundary | State lost with the context — reverse-engineered from git history | Immediate resume from the progress-log comment |
+| State location | Session-local devices like checkpoint — cannot cross installation sites | Persisted in the project repository (issues) — queryable anywhere |
+| Completion consistency | Work done but the tracking item left open | PR `Closes #N` closes code and state together |
+| Noise | Recording everything creates an issue graveyard | Only multi-session work registered (fixed criteria) |

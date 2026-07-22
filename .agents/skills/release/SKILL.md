@@ -3,56 +3,56 @@ name: release
 description: "Post-merge release workflow - verify the merged state, draft a deploy runbook (doc-writer template), execute each mutating step only with explicit user confirmation (root guardrail 3), verify the deployment, then close the work-tracker issue. Branches per project type: web/backend via k8s GitOps or a managed platform (Vercel etc.), Flutter app via store submission; DB migrations get a backup/verify/rollback step. Use when the user says 배포해줘, 릴리스, 배포 준비, deploy this, release, land, ship to production. PR merge itself stays with the user (never auto-merge; external land-and-deploy skills must not merge) - this skill starts AFTER merge. Re-run keywords - release, deploy, rollout, 배포, 릴리스, 롤백."
 ---
 
-# release — 머지 이후 배포·릴리스 워크플로우
+# release — Post-Merge Deploy/Release Workflow
 
-## 왜 이 스킬인가
+## Why this skill
 
-branch-workflow는 PR 생성에서 끝난다 — 머지(사용자) 이후의 배포·검증·마무리는 절차가 없어 세션마다 즉흥으로 처리됐다. 배포는 3절 가드레일의 핵심 대상(실수의 반경이 실행 중인 시스템)이므로, 즉흥 처리가 가장 위험한 단계가 절차 없이 남아 있으면 안 된다. 외부 스킬(gstack land-and-deploy 등)은 이 하네스의 가드레일(dev 포함 예외 없는 확인)·k8s 규약(컨텍스트 명시, 선언적 우선)을 모른다 — CLAUDE.md 스킬 우선순위에 따라 배포는 이 스킬이 관할하고, 외부 도구는 검증 단계의 보조로만 쓴다.
+branch-workflow ends at PR creation — deploy, verification, and wrap-up after the merge (done by the user) had no procedure and were handled ad hoc each session. Deployment is the core target of the section 3 guardrails (the blast radius of a mistake is a running system), so the most dangerous stage must not be the one left without a procedure. External skills (gstack land-and-deploy etc.) do not know this harness's guardrails (confirmation with no exceptions, dev included) or its k8s conventions (explicit context, declarative-first) — per the CLAUDE.md skill priority, deployment is governed by this skill, and external tools are used only as aids in the verification phase.
 
-## Phase 0 — 사전 조건 (반드시 먼저)
+## Phase 0 — Preconditions (always first)
 
-1. **대상 식별**: REGISTRY.md에서 프로젝트를 식별하고 하네스(`.agents/projects/<이름>/AGENTS.md`)를 읽는다 — 프로젝트별 배포 규약(환경 이름·승인 절차)이 있으면 그것이 우선한다.
-2. **머지 상태 확인**: 배포 대상 변경이 main에 머지되어 있는지 확인한다. 미머지 PR이면 중단하고 branch-workflow 마무리 절차(머지는 사용자)를 안내한다 — 브랜치에서 직접 배포하지 않는다.
-3. **검증 상태 확인**: 테스트·빌드 통과와 리뷰 판정(team-review 통과 여부)을 확인한다. 실패 상태로 배포를 시작하지 않는다.
+1. **Identify the target**: identify the project in REGISTRY.md and read its harness (`.agents/projects/<name>/AGENTS.md`) — if there are project-specific deploy conventions (environment names, approval procedures), those take precedence.
+2. **Check merge state**: confirm the changes to be deployed are merged into main. If the PR is unmerged, stop and direct the user to the branch-workflow finish procedure (merge is the user's) — never deploy directly from a branch.
+3. **Check verification state**: confirm tests·build pass and the review verdict (team-review pass). Do not start a deploy in a failing state.
 
-## Phase 1 — 배포 계획 (런북 초안)
+## Phase 1 — Deploy plan (runbook draft)
 
-**doc-writer 런북 템플릿**(사전 조건/절차/검증/롤백)으로 이번 배포의 계획을 작성해 사용자에게 먼저 보인다. 규모가 크면 infra-specialist에게 위임한다(orchestrate 판정). 프로젝트 타입별 분기:
+Write this deployment's plan using the **doc-writer runbook template** (preconditions/procedure/verification/rollback) and show it to the user first (the runbook is a user-read document — write it in Korean, root AGENTS.md section 15). If the scope is large, delegate to infra-specialist (orchestrate verdict). Branch by project type:
 
-| 타입 | 절차 골격 |
+| Type | Procedure skeleton |
 |---|---|
-| 웹·백엔드 — k8s GitOps인 경우 | 이미지 태그 확정 → 매니페스트 갱신(선언적 우선 — `kubectl edit/patch` 금지) → GitOps 반영 → 롤아웃 관찰. 모든 kubectl에 `--context`·`-n` 명시 |
-| 웹 — 관리형 플랫폼(Vercel 등)인 경우 | 배포 트리거 확인(머지 자동 배포면 배포 진행 관찰, 수동 트리거면 변경 계열 — 사용자 확인) → 프리뷰/프로덕션 환경 구분 확인 → 배포 검증(Phase 3) |
-| 앱 (Flutter 등) | 버전·빌드 넘버 범프 → 릴리스 빌드 → 스토어 제출(제출 자체가 외부 발행 — 사용자 확인) → 심사 추적은 work-tracker 이슈로 |
-| 기타 | 프로젝트 하네스의 배포 절차. 없으면 사용자 인터뷰로 확정하고 하위 AGENTS.md에 기록 제안 |
+| Web·backend — k8s GitOps | Pin image tag → update manifests (declarative-first — `kubectl edit/patch` forbidden) → GitOps sync → observe rollout. Every kubectl call states `--context`·`-n` explicitly |
+| Web — managed platform (Vercel etc.) | Check deploy trigger (if merge auto-deploys, observe the deploy in progress; if manually triggered, it is a mutating action — user confirmation) → confirm preview/production environment distinction → verify the deployment (Phase 3) |
+| App (Flutter etc.) | Bump version·build number → release build → store submission (the submission itself is an external publication — user confirmation) → track review via a work-tracker issue |
+| Other | The project harness's deploy procedure. If none, settle it via a user interview and propose recording it in the sub-project AGENTS.md |
 
-**DB 마이그레이션 동반 배포 (타입 무관 공통)**: 마이그레이션이 포함되면 런북에 마이그레이션 단계를 별도 항목으로 넣는다 — **실행 전 백업·PITR 가용성 확인 → 실행(변경 계열, 사용자 확인 — 3절) → 스키마·데이터 검증**, 롤백 절에는 코드 롤백만이 아니라 **데이터 복구 절차**를 명시한다. 이유: 코드는 되돌려도 스키마·데이터는 자동으로 안 돌아온다 — 마이그레이션 복구 없는 롤백 절은 롤백이 아니다.
+**Deploys that include DB migrations (common to all types)**: if a migration is included, add the migration step as its own runbook item — **confirm backup·PITR availability before execution → execute (mutating action, user confirmation — section 3) → verify schema·data**, and the rollback section must specify not just code rollback but **the data recovery procedure**. Reason: code can be reverted, but schema·data do not revert automatically — a rollback section without migration recovery is not a rollback.
 
-**롤백 절차 없는 계획은 계획이 아니다** — 런북 템플릿의 롤백 절이 비어 있으면 Phase 2로 넘어가지 않는다(불가하면 "롤백 불가 — 대안" 명시).
+**A plan without a rollback procedure is not a plan** — if the runbook template's rollback section is empty, do not proceed to Phase 2 (if rollback is impossible, state "rollback impossible — alternative").
 
-## Phase 2 — 실행 (⚠️ 단계별 사용자 확인)
+## Phase 2 — Execution (⚠️ user confirmation at every step)
 
-- **변경 계열 명령(`apply`·배포 트리거·스토어 제출·마이그레이션)은 실행 직전 단계마다 사용자 확인**을 받는다 — dev 환경 포함 예외 없음(3절, 2026-07-12 확정). 일괄 승인으로 묶지 않는다: 앞 단계의 결과가 뒤 단계의 전제를 바꿀 수 있다.
-- 각 단계의 실행 명령과 실제 출력을 기록한다(`_workspace/<작업명>/phase2_{실행 주체}_release-log.md` — 4절 네이밍 규약, 실행 주체는 leader 또는 infra-specialist) — 장애 시 troubleshooter의 입력이 된다.
-- 단계 실패 시 즉시 중단하고 런북의 롤백 절차를 **사용자 확인 후** 실행한다. 실패 상태에서 다음 단계를 강행하지 않는다.
+- **Mutating commands (`apply`·deploy triggers·store submission·migrations) require user confirmation at each step, immediately before execution** — no exceptions, dev environments included (section 3, confirmed 2026-07-12). Do not batch into one blanket approval: the result of an earlier step can change the premise of a later one.
+- Record each step's executed command and actual output (`_workspace/<task>/phase2_{executor}_release-log.md` — section 4 naming convention; the executor is the leader or infra-specialist) — this becomes the troubleshooter's input on failure.
+- On a step failure, stop immediately and execute the runbook's rollback procedure **after user confirmation**. Never push on to the next step in a failing state.
 
-## Phase 3 — 배포 후 검증
+## Phase 3 — Post-deploy verification
 
-- 런북의 검증 절을 실행한다: 헬스체크, 핵심 사용자 플로우, 로그의 신규 에러 유무.
-- 웹이면 외부 도구(gstack browse·canary)를 **이 단계의 보조 도구로** 활용할 수 있다 — 관할은 이 스킬, 도구는 수단(CLAUDE.md 스킬 우선순위 원칙).
-- 검증 실패 시 결과를 보고하고 롤백 여부를 사용자에게 묻는다 — 자동 롤백하지 않는다(롤백도 변경이다).
+- Execute the runbook's verification section: health checks, core user flows, presence of new errors in logs.
+- For web, external tools (gstack browse·canary) may be used **as aids in this phase only** — governance belongs to this skill, tools are the means (CLAUDE.md skill priority principle).
+- On verification failure, report the results and ask the user whether to roll back — never roll back automatically (a rollback is also a mutation).
 
-## Phase 4 — 마무리
+## Phase 4 — Wrap-up
 
-1. work-tracker 등록 작업이면 이슈에 배포 결과 코멘트 후 종료(또는 앱 심사 추적으로 전환).
-2. 릴리스 노트·태그·CHANGELOG는 프로젝트 규약을 따른다(없으면 생성을 제안만 — 무단 도입 금지).
-3. 배포 요약(무엇을·어디에·검증 결과·롤백 여부)을 사용자에게 보고한다.
+1. If the work is registered in work-tracker, comment the deploy result on the issue and close it (or convert it to app-review tracking).
+2. Release notes·tags·CHANGELOG follow the project's conventions (if none, only propose creating them — no unilateral introduction).
+3. Report a deploy summary (what·where·verification result·rollback or not) to the user.
 
 ## with / without
 
-| 지표 | 이 스킬 없이 | 이 스킬로 |
+| Metric | Without this skill | With this skill |
 |---|---|---|
-| 배포 절차 | 세션마다 즉흥 — 가장 위험한 단계가 무절차 | 런북 초안 → 단계별 확인 → 검증 고정 |
-| 가드레일 | 외부 스킬(land-and-deploy)로 새면 확인 규칙 무시 | 변경 단계마다 사용자 확인, dev 포함 예외 없음 |
-| 롤백 | 장애 후 즉석에서 궁리 | 배포 전에 롤백 절차 확정 (없으면 실행 불가) |
-| 추적 | 배포 기록이 어디에도 없음 | 실행 로그 + work-tracker 이슈로 영속 |
+| Deploy procedure | Ad hoc every session — the most dangerous stage has no procedure | Runbook draft → per-step confirmation → verification, fixed |
+| Guardrails | Leaking to external skills (land-and-deploy) ignores confirmation rules | User confirmation at every mutating step, no exceptions incl. dev |
+| Rollback | Improvised after an incident | Rollback procedure fixed before deploying (no procedure → no execution) |
+| Tracking | Deploy records exist nowhere | Persisted via execution log + work-tracker issue |

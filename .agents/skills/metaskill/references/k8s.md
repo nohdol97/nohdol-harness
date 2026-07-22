@@ -1,21 +1,21 @@
-# k8s / 인프라 프로젝트 하네스 특화 규칙
+# k8s / infra project harness specialization rules
 
-인프라 프로젝트의 하네스는 코드 프로젝트보다 가드레일이 무겁다. 이유: 실수의 반경이 저장소가 아니라 실행 중인 시스템이다.
+An infra project's harness carries heavier guardrails than a code project's. Reason: the blast radius of a mistake is not the repository but the running system.
 
-## 가드레일 강화 (루트 3절에 추가)
+## Guardrail reinforcement (added to root §3)
 
-- **읽기와 쓰기를 분리**: 조회(`kubectl get/describe`, `aws ... describe-*`, `terraform plan`)는 자유. 변경(`apply`, `delete`, `terraform apply`)은 전부 사용자 확인. 예외 없음(2026-07-12 확정).
-- **네임스페이스/컨텍스트 명시 의무**: 모든 kubectl 명령에 `--context`, `-n`을 명시한다. 현재 컨텍스트 암묵 의존은 프로덕션 오조작의 최다 원인이다.
-- **선언적 우선**: 명령형 패치(`kubectl edit/patch`)보다 매니페스트 수정 + GitOps 반영을 우선한다. 이유: 명령형 변경은 다음 sync에서 소리 없이 롤백된다.
-- 시크릿은 매니페스트·하네스·`_workspace/` 어디에도 평문 기록 금지. Sealed Secrets / External Secrets 등 프로젝트 표준을 따른다.
+- **Separate reads from writes**: Inspection (`kubectl get/describe`, `aws ... describe-*`, `terraform plan`) is free. Changes (`apply`, `delete`, `terraform apply`) all require user confirmation. No exceptions (confirmed 2026-07-12).
+- **Mandatory namespace/context specification**: Every kubectl command states `--context` and `-n` explicitly. Implicit reliance on the current context is the top cause of production mis-operation.
+- **Declarative first**: Prefer manifest edits + GitOps reconciliation over imperative patches (`kubectl edit/patch`). Reason: imperative changes get silently rolled back at the next sync.
+- Secrets must never be recorded in plaintext in manifests, the harness, or `_workspace/`. Follow the project standard such as Sealed Secrets / External Secrets.
 
-## 에이전트·스킬 구성 힌트
+## Agent/skill composition hints
 
-- 초기에는 **단일 에이전트 + 조회 전용 tools**로 시작한다.
-- 유용한 스킬 후보(하위 AGENTS.md에 기록, 생성은 지연 — ADR 007): 클러스터 상태 요약, 매니페스트 diff 리뷰(생성-검증 패턴), 배포 전 체크리스트.
-- 에이전트 tools 화이트리스트에서 변경 계열 명령은 기본 제외하고, 필요 시 개별 에이전트에만 부여한다 (tools가 가드레일 1순위).
+- Start with a **single agent + read-only tools** initially.
+- Useful skill candidates (record in the sub AGENTS.md; creation deferred — ADR 007): cluster status summary, manifest diff review (generate-verify pattern), pre-deployment checklist.
+- Exclude change-class commands from agent tools whitelists by default; grant them only to individual agents when needed (tools are the number-one guardrail).
 
-## 연관 프로젝트 라우팅
+## Related-project routing
 
-- 웹/앱 배포 요청은 대부분 크로스 프로젝트다 (예: web 빌드 → k8s 매니페스트 → gitops 반영). REGISTRY.md의 "연관 프로젝트" 컬럼에 반드시 상호 기재한다.
-- 크로스 배포 작업은 orchestrate의 파이프라인 패턴이 기본이다 (빌드 → 매니페스트 → 반영은 논리적으로 유일한 순서).
+- Web/app deployment requests are mostly cross-project (e.g. web build → k8s manifest → gitops reconciliation). Always cross-record them in REGISTRY.md's "related projects" column.
+- Cross-deployment work defaults to orchestrate's pipeline pattern (build → manifest → reconcile is the only logical order).

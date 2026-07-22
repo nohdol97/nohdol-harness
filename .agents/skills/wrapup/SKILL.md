@@ -3,96 +3,96 @@ name: wrapup
 description: "Wrap up a session before clearing context - enumerate this session's work and persist it by scope: work-tracker (cross-session epics) or carryover (local handoff note). ONLY when signals exist, capture harness/project improvement signals (repeated requests/failures, harness bypass, reusable lessons, subproject skill/agent candidates), log lessons to auto-memory, and PROPOSE metaskill follow-up - never applies harness changes itself. Slash-invoked only, NOT auto-routed; cannot run /clear (guides the user). Complements harness-review (end-of-session capture vs periodic scan). Do NOT use for mid-session logging without an impending clear (→ work-tracker), nor to auto-apply harness edits or auto-run /clear. Re-run keywords - wrapup, 마무리, 세션 마무리, clear 전 정리, 세션 회고."
 ---
 
-# wrapup — clear 전 세션 마무리
+# wrapup — Session Wrap-up Before clear
 
-## 왜 이 스킬인가
+## Why this skill
 
-`/clear`는 Claude Code **내장 CLI 명령**이라 실행 순간 컨텍스트가 즉시 비워지고, 그 시점에 모델이 끼어들 턴이 없다. 그래서 "clear 하기 직전에 이번 세션에서 남길 것을 챙기는" 일이 매번 누락된다 — 여러 세션에 걸칠 작업을 등록하지 못하거나, 다음 세션에 이어받고 싶던 메모가 사라지거나, **이번 세션에서 드러난 하네스·프로젝트 개선 신호가 컨텍스트와 함께 증발한다.**
+`/clear` is a Claude Code **built-in CLI command**, so the context is emptied the instant it runs, and the model has no turn to intervene at that moment. As a result, "gathering what this session should leave behind, right before clear" gets missed every time — work spanning multiple sessions goes unregistered, notes meant for the next session vanish, and **harness/project improvement signals surfaced in this session evaporate along with the context.**
 
-이 스킬은 그 간극을 메운다. `/clear`를 직접 고칠 수는 없으므로, **`/clear` 앞에 두는 마무리 관문**으로 동작한다 — 이번 세션 작업을 훑고, **범위를 보고 저장 대상을 판단해** 처리하고(로컬 저장은 무확인 자동, work-tracker 등록만 직전 확인), **개선 신호가 있으면 포착·제안**한 뒤, "이제 `/clear` 하세요"를 안내한다.
+This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as a **wrap-up gate placed in front of `/clear`** — it sweeps this session's work, **judges the save target by scope** and handles it (local saves are automatic without confirmation; only work-tracker registration gets a just-before confirmation), **captures and proposes improvement signals if any exist**, then guides the user to run `/clear`.
 
-**얇은 오케스트레이터다 — 저장·반영 로직을 새로 짜지 않는다.** 작업 저장은 `work-tracker`·`carryover`에, 하네스·프로젝트 개선의 실제 반영은 `metaskill`에 위임한다. 이 스킬이 하는 일은 ⓐ 세션 작업 수집·저장 갈래질 ⓑ 개선 신호 포착·제안 ⓒ clear 안내다. 이유: 저장·반영 로직을 복제하면 원본 스킬과 어긋나 부채가 된다 — 필요가 증명된 자산만 두고 나머지는 재사용한다(ADR 007 지연 생성).
+**It is a thin orchestrator — it does not re-implement save/apply logic.** Work saving is delegated to `work-tracker`·`carryover`, and actual application of harness/project improvements to `metaskill`. What this skill does is ⓐ collect session work and branch to the save target ⓑ capture and propose improvement signals ⓒ guide the clear. Reason: duplicating save/apply logic drifts from the source skills and becomes debt — keep only assets whose need is proven and reuse the rest (ADR 007 lazy creation).
 
-**이 스킬은 슬래시(`/wrapup`)로만 호출된다** — carryover와 같은 이유로 하네스 자동 라우팅(CLAUDE.md 앵커·§7)에 등록하지 않는다. 사용자가 "이제 세션을 마무리하고 컨텍스트를 비우겠다"고 명시적으로 결정하는 순간에만 동작해야 하는 도구이기 때문이다.
+**This skill is invoked only via slash (`/wrapup`)** — for the same reason as carryover, it is not registered in harness auto-routing (CLAUDE.md anchors·§7). It is a tool that should act only at the moment the user explicitly decides "I will now wrap up the session and empty the context."
 
-## 두 가지 핵심 제약
+## Two core constraints
 
-1. **자동 clear 불가**: 이 스킬은 `/clear`를 대신 실행할 수 없다(CLI 내장 명령). 처리가 끝나면 **사용자에게 직접 `/clear` 입력을 안내**하는 것으로 마친다. "자동으로 clear까지 해줄게" 같은 약속을 하지 않는다.
-2. **개선사항 자동 반영 불가**: 회고 단계는 신호를 **포착·기록·제안**까지만 한다. 하네스·프로젝트를 **직접 수정하지 않는다** — 무단 하네스·프로젝트 변경은 진화 게이트를 우회하는 것이고(루트 AGENTS.md 8절 제안→승인, 12절 지연 생성) metaskill은 무단 생성·폐기를 금지한다(하네스는 사용자의 운영 자산). 실제 반영은 **사용자 승인 후 metaskill 경로**로만 간다(기존 진화 게이트와 동일).
+1. **Cannot auto-clear**: this skill cannot run `/clear` on the user's behalf (a CLI built-in). When processing is done, it finishes by **guiding the user to type `/clear` themselves**. It never promises anything like "I'll do the clear for you automatically."
+2. **Cannot auto-apply improvements**: the retrospective step goes only as far as **capturing, recording, and proposing** signals. It does **not modify the harness or projects directly** — unauthorized harness/project changes bypass the evolution gate (root AGENTS.md §8 propose→approve, §12 lazy creation), and metaskill forbids unauthorized creation/retirement (the harness is the user's operating asset). Actual application goes only through **the metaskill path after user approval** (same as the existing evolution gate).
 
-## 절차
+## Procedure
 
-### 1. 이번 세션 작업 훑기
+### 1. Sweep this session's work
 
-이번 세션에서 무슨 일을 했는지 수집한다. 최소한:
-- **변경/추가된 파일** — `git status`·`git diff --stat`로 확인(커밋 여부 무관)
-- **내린 결정·합의** — 대화에서 확정된 방향·선택
-- **완료 항목 / 미완 항목 / 블로커** — 지금 끝난 것, 다음에 이어야 할 것, 막힌 것
+Collect what happened in this session. At minimum:
+- **Changed/added files** — check via `git status`·`git diff --stat` (regardless of commit status)
+- **Decisions/agreements made** — directions and choices settled in the conversation
+- **Done items / unfinished items / blockers** — what is finished now, what must continue next, what is stuck
 
-수집 결과를 사용자에게 **한국어로 짧게 요약**해 보여준다.
+Show the user a **short summary of the results, in Korean**.
 
-### 2. 이번 세션 회고 — 개선 신호 포착 (신호 있을 때만)
+### 2. Session retrospective — capture improvement signals (only when signals exist)
 
-이번 세션을 되돌아보며 **개선 신호가 있었는지만 가볍게 확인**한다. 대상:
-- **하네스 개선 신호** (루트 AGENTS.md 8절 확장 신호 ①~③): 같은 유형 요청 반복 / 같은 실패·같은 사용자 정정 반복 / **하네스를 우회해 처리한 사례**
-- **재발 방지 교훈** ("실수 즉시 기록" — 8절): 2회 반복을 기다릴 것 없이 1회 발생이라도 재발 방지 가치가 있는 실수·교훈
-- **프로젝트별 개선**: 하위 프로젝트 작업 중 드러난 스킬·에이전트 후보(§12 지연 생성 트리거), 하위 AGENTS.md의 미비점
+Look back over this session and **lightly check only whether improvement signals occurred**. Targets:
+- **Harness improvement signals** (root AGENTS.md §8 expansion signals ①–③): repetition of the same request type / repetition of the same failure or the same user correction / **cases handled by bypassing the harness**
+- **Recurrence-prevention lessons** ("record mistakes immediately" — §8): mistakes/lessons with recurrence-prevention value even on a first occurrence, without waiting for a second
+- **Per-project improvements**: skill/agent candidates surfaced during sub-project work (§12 lazy-creation trigger), gaps in the sub AGENTS.md
 
-**신호가 없으면 "이번 세션 개선 신호 없음" 한 줄로 넘어간다** — 회고를 무겁게 만들면 매번 우회된다(최소주의). 억지로 신호를 만들지 않는다.
+**If there are no signals, move on with the one line "이번 세션 개선 신호 없음" (no improvement signals this session)** — a heavy retrospective gets bypassed every time (minimalism). Do not fabricate signals.
 
-**신호가 있으면**:
-- **교훈은 지금 즉시 기록한다** (제안 대기 없이 — 8절 "실수 즉시 기록"): Claude 세션은 auto-memory(feedback 타입)에 기록하되 **인덱스 줄에는 교훈 요지가 아니라 발동 상황**(어떤 작업에서 이걸 확인해야 하는지)을 쓴다. Codex 세션은 같은 저장소의 교훈 파일과 MEMORY.md 인덱스를 직접 기록한다.
-- **하네스·프로젝트 반영이 필요한 것은 제안만 한다** — "이번 세션에서 〈신호〉를 관찰했습니다. metaskill로 반영할까요?"(하네스 자산) 또는 하위 AGENTS.md "스킬 후보" 섹션 기록 제안(프로젝트). **사용자가 승인하면 그때 metaskill로**, 승인 전에는 아무것도 고치지 않는다.
+**If there are signals**:
+- **Record lessons immediately, now** (no waiting for proposal — §8 "record mistakes immediately"): in Claude sessions, record to auto-memory (feedback type), but **the index line carries the triggering situation, not the lesson's gist** (in what kind of work this should be recalled). In Codex sessions, write the lesson file and the MEMORY.md index line in the same repository directly.
+- **For anything requiring harness/project application, only propose** — "이번 세션에서 〈신호〉를 관찰했습니다. metaskill로 반영할까요?" (harness assets), or propose recording in the sub AGENTS.md "스킬 후보" (skill candidates) section (projects). **Only after user approval does it go to metaskill**; before approval, fix nothing.
 
-**harness-review와의 경계 (중복 아님)**: 이 회고는 세션 **끝**에 맥락이 살아있을 때 신호를 **포착**하는 단계이고, `harness-review`는 세션 **시작** 시 마커로 주기(1일/7일)를 판정해 누적 흔적을 **스캔·제안**하는 단계다. wrapup의 포착은 harness-review를 대체하지 않고 **그 스캔의 입력을 정확하게** 만든다 — 둘은 상보다.
+**Boundary with harness-review (not a duplicate)**: this retrospective is the stage that **captures** signals at the session's **end** while context is alive, whereas `harness-review` is the stage that judges cadence (1-day/7-day) via markers at session **start** and **scans/proposes** from accumulated traces. wrapup's capture does not replace harness-review; it **makes the input to that scan accurate** — the two are complementary.
 
-### 3. 저장 대상을 범위로 자동 판단
+### 3. Auto-judge the save target by scope
 
-1단계에서 수집한 범위(변경 규모·커밋/푸시 상태·미완 항목·크로스 머신 여부)를 아래 경계 표에 대어 **저장 대상을 스스로 판단한다** — 매번 빈 메뉴로 묻지 않는다. 판정 규칙:
+Hold the scope collected in step 1 (change size, commit/push status, unfinished items, cross-machine needs) against the boundary table below and **judge the save target yourself** — do not present an empty menu every time. Judgment rules:
 
-- **남길 것 없음**: 모든 변경이 커밋·푸시됐고 세션을 넘길 미완·핸드오프가 없다 → 저장 없이 5단계로(무확인).
-- **carryover**: 다음 세션이 이어받을 **로컬 핸드오프**(진행 중 작업·미완 메모·이번 머신 한정 맥락)가 있다 → `carryover`(저장 모드) **자동 실행**(로컬·gitignore·저비용·되돌리기 쉬움 → 무확인).
-- **work-tracker**: 여러 PR·며칠 규모의 정형 에픽이거나 **크로스 머신 추적**이 필요하다 → **판단은 자동, 단 등록은 직전에 한 번 확인**한다("이 에픽을 work-tracker에 등록할까요?"). 등록처가 GitHub 이슈든 `docs/backlog.md`든 git 추적·외부 지향이고, 전수 등록은 이슈 무덤을 만들기 때문(§14) — 확인 없이 쓰지 않는다.
-- **둘 다**: 정형 추적과 로컬 핸드오프가 동시에 있으면 분담한다(정형은 work-tracker, 로컬 메모는 carryover — 같은 내용 중복 적재 금지). work-tracker 부분만 위 확인을 거친다.
+- **Nothing to leave**: all changes committed/pushed and no unfinished work/handoff crossing the session → go to step 5 without saving (no confirmation).
+- **carryover**: there is a **local handoff** the next session will pick up (in-progress work, unfinished memos, this-machine-only context) → **auto-run** `carryover` (save mode) (local, gitignored, low-cost, easy to undo → no confirmation).
+- **work-tracker**: a formal epic spanning multiple PRs/days, or **cross-machine tracking** is needed → **the judgment is automatic, but confirm once just before registering** ("이 에픽을 work-tracker에 등록할까요?"). Whether the store is a GitHub issue or `docs/backlog.md`, it is git-tracked and externally oriented, and registering everything creates an issue graveyard (§14) — never write without confirmation.
+- **Both**: if formal tracking and a local handoff coexist, split them (formal → work-tracker, local memo → carryover — no duplicate loading of the same content). Only the work-tracker part goes through the confirmation above.
 
-**판정 결과와 근거를 사용자에게 한 줄로 알린다**(예: "전부 커밋·푸시됨 + 미완 없음 → 남길 것 없음"). 사용자가 뒤집으면 그에 따른다. **범위 신호가 애매해 carryover냐 work-tracker냐 가릴 수 없을 때만 AskUserQuestion으로 되묻는다** — 자동 판단이 기본, 되물음은 예외다.
+**Tell the user the verdict and its basis in one line** (e.g. "전부 커밋·푸시됨 + 미완 없음 → 남길 것 없음"). If the user overrides, follow that. **Only when the scope signals are too ambiguous to tell carryover from work-tracker, ask back via AskUserQuestion** — auto-judgment is the default; asking back is the exception.
 
-### 4. 판정에 위임
+### 4. Delegate per the verdict
 
-판정된 대상의 스킬을 그대로 호출한다(중복 구현 금지): carryover → `carryover`(저장 모드), work-tracker → **사용자 확인을 받은 뒤** `work-tracker`(등록 모드), 둘 다 → 순차 호출하되 **같은 내용을 양쪽에 중복 적재하지 않는다**(정형 추적은 work-tracker, 로컬 메모는 carryover로 분담 — 아래 표). 각 스킬이 완료된 뒤에만 다음으로 간다.
+Invoke the judged target's skill as-is (no duplicate implementation): carryover → `carryover` (save mode); work-tracker → `work-tracker` (register mode) **after user confirmation**; both → invoke sequentially but **never load the same content into both** (formal tracking to work-tracker, local memos to carryover — table below). Move on only after each skill completes.
 
-### 5. `/clear` 안내 + 다음 세션 시작 프롬프트
+### 5. Guide `/clear` + next-session start prompt
 
-저장·제안이 끝나면 마무리 요약과 함께 **사용자에게 `/clear` 입력을 안내**한다(스킬이 clear를 대신 실행하지 않는다 — 위 핵심 제약 1). 이어서 **"다음 세션 시작 프롬프트"를 복사해 쓸 수 있는 코드블록으로 제시**한다 — 재개 경로(`/carryover 재개`·"이어서 하자")를 사용자가 기억에 의존해 재구성하지 않게, 새 세션에 그대로 붙여넣으면 재개가 시작되는 문장을 wrapup이 만들어 준다(2026-07-21 사용자 요청). 저장 대상별 생성 규칙:
+When saving/proposing is done, along with a wrap-up summary, **guide the user to type `/clear`** (the skill does not run clear on their behalf — core constraint 1 above). Then **present the "next-session start prompt" as a copyable code block** — so the user does not have to reconstruct the resume path (`/carryover 재개` · "이어서 하자") from memory, wrapup produces the sentence that, pasted into a new session, starts the resume (2026-07-21 user request). Generation rules per save target:
 
-- **carryover 저장 시**:
+- **When carryover was saved**:
   ```
-  /carryover 재개 — <주제슬러그> 노트. 첫 행동: <노트 "다음 할 일"의 첫 항목 한 줄>
+  /carryover 재개 — <주제슬러그> 노트. 첫 행동: <노트 "In progress · Next"의 첫 항목 한 줄>
   ```
-- **work-tracker 등록 시**:
+- **When work-tracker was registered**:
   ```
   이어서 하자 — #<이슈번호> <이슈 제목>. 첫 행동: <진행 로그 "다음" 항목 한 줄>
   ```
-- **둘 다**면 두 블록을 순서와 함께 제시한다(정형 에픽 먼저인지 로컬 메모 먼저인지는 미완 항목의 우선순위로 판단해 한 줄 덧붙인다).
-- **남길 것 없음**이면 프롬프트를 만들지 않는다(빈 재개 프롬프트는 노이즈).
+- **If both**, present the two blocks with an ordering (decide from the priority of the unfinished items whether the formal epic or the local memo comes first, and add one line saying so).
+- **If nothing to leave**, generate no prompt (an empty resume prompt is noise).
 
-프롬프트는 **한국어**(사용자가 입력하는 문장 — 루트 15절)로, 트리거 문구(`/carryover 재개`·"이어서 하자")는 각 스킬의 재실행 키워드와 일치시킨다 — 이 문구가 새 세션의 라우팅(§7)을 태우는 열쇠다. "첫 행동" 한 줄은 저장된 노트·이슈에서 그대로 가져온다(새로 지어내지 않는다 — 어긋나면 재개 지점이 두 개가 된다).
+The prompt is **in Korean** (a sentence the user types — root §15), and the trigger phrases (`/carryover 재개` · "이어서 하자") must match each skill's re-run keywords — these phrases are the key that puts the new session through routing (§7). Take the one-line "첫 행동" (first action) verbatim from the saved note/issue (do not invent it anew — divergence creates two resume points).
 
-## work-tracker vs carryover 경계 (판단 근거)
+## work-tracker vs carryover boundary (judgment basis)
 
 | | work-tracker | carryover |
 |---|---|---|
-| 저장처 | GitHub Issues / `docs/backlog.md` (git 추적, 크로스 머신) | `_workspace/carryover/*.md` (gitignore, **같은 머신 로컬**) |
-| 대상 | 여러 PR·며칠 규모 에픽, 정형 | 이번 세션→다음 세션 **가벼운 핸드오프 메모** |
-| 유실 위험 | 낮음(원격 백업) | 로컬만 — 머신 밖으로 못 넘김 |
+| Store | GitHub Issues / `docs/backlog.md` (git-tracked, cross-machine) | `_workspace/carryover/*.md` (gitignored, **local to the same machine**) |
+| Target | Multi-PR/multi-day epics, formal | **Light handoff memo** from this session to the next |
+| Loss risk | Low (remote backup) | Local only — cannot leave the machine |
 
-→ 정식·크로스 머신 추적이 필요하면 work-tracker, 로컬 스크래치 핸드오프면 carryover. 이 둘을 섞으면 이슈 무덤이 생기거나(모든 걸 GitHub에) 중요한 크로스 머신 작업이 로컬에만 남아 유실된다.
+→ If formal, cross-machine tracking is needed: work-tracker; if a local scratch handoff: carryover. Mixing the two either creates an issue graveyard (everything on GitHub) or leaves important cross-machine work local-only and lost.
 
 ## with / without
 
-| 지표 | 이 스킬 없이 | 이 스킬로 |
+| Metric | Without this skill | With this skill |
 |---|---|---|
-| clear 전 마무리 | 컨텍스트를 비우고 나서야 "등록할걸" 후회 | clear 직전 관문에서 저장 여부를 강제로 챙김 |
-| 개선 신호 | 세션 끝 생생한 신호가 증발, harness-review가 사후 재구성 | 맥락이 살아있을 때 포착 → 즉시 기록·제안 |
-| 저장 위치 판단 | 매번 work-tracker냐 carryover냐 헷갈림·매번 물음 | 범위로 자동 판단(로컬 저장은 무확인, work-tracker만 등록 직전 확인), 애매할 때만 되물음 |
-| 중복 구현 | 마무리·반영 로직을 매번 즉흥 처리 | 기존 스킬(work-tracker·carryover·metaskill) 재사용 |
+| Pre-clear wrap-up | Regret ("should have registered") only after the context is emptied | The gate right before clear forces the save decision |
+| Improvement signals | Fresh end-of-session signals evaporate; harness-review reconstructs after the fact | Captured while context is alive → recorded/proposed immediately |
+| Save-target judgment | Confusion between work-tracker and carryover, asked every time | Auto-judged by scope (local saves unconfirmed, only work-tracker confirmed just before), asking back only when ambiguous |
+| Duplicate implementation | Wrap-up/apply logic improvised every time | Reuses existing skills (work-tracker·carryover·metaskill) |

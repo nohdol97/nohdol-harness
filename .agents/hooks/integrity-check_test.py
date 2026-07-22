@@ -4,6 +4,7 @@
 실행: python3 .agents/hooks/integrity-check_test.py   (스크립트 수정 시 반드시 통과)
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다(git init 포함, 픽스처 내부에서만).
 """
+import hashlib
 import os
 import shutil
 import subprocess
@@ -39,6 +40,26 @@ def write_codex_adapter(root, name="foo", description="A test agent", contract="
           '"""\n%s' % (name, description, contract, extra))
 
 
+def write_korean_views(root):
+    """ADR 030 한글 뷰 3종을 현재 원본 상태에 맞게 생성한다(R16·R17 정합 픽스처).
+
+    AGENTS.md를 다시 쓴 테스트는 이 함수를 재호출해 source-hash를 신선하게 유지한다.
+    """
+    with open(os.path.join(root, "AGENTS.md"), "rb") as f:
+        h = hashlib.sha256(f.read()).hexdigest()[:12]
+    write(os.path.join(root, "AGENTS_KR.md"),
+          "> 생성된 뷰 — 편집 금지. source-hash: `%s`\n\n# AGENTS 한글 다이제스트\n" % h)
+    skills = os.path.join(root, ".agents/skills")
+    names = sorted(n for n in os.listdir(skills) if os.path.isdir(os.path.join(skills, n)))
+    write(os.path.join(skills, "README.ko.md"),
+          "# 스킬 한글 요약\n\n" + "".join("## %s\n요약.\n\n" % n for n in names))
+    agents = os.path.join(root, ".agents/agents")
+    stems = sorted(os.path.splitext(fn)[0] for fn in os.listdir(agents)
+                   if fn.endswith(".md") and fn != "README.ko.md")
+    write(os.path.join(agents, "README.ko.md"),
+          "# 에이전트 한글 요약\n\n" + "".join("## %s\n요약.\n\n" % n for n in stems))
+
+
 def make_good_fixture(root):
     """규약을 모두 지키는 최소 하네스 구조 + git init(.gitignore 판정용)."""
     # 원본 디렉토리
@@ -65,6 +86,8 @@ def make_good_fixture(root):
     write(os.path.join(root, "docs/specs/2026-07-19-thing.md"), "# spec\n")
     write(os.path.join(root, "docs/README.md"),
           "# MOC\n- [001](adr/001-initial.md)\n- [thing](specs/2026-07-19-thing.md)\n")
+    # 한글 뷰 3종 (ADR 030 — 원본과 정합 상태로 생성)
+    write_korean_views(root)
     # git init — check-ignore 판정에 필요(add·commit 불요)
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
 
@@ -328,6 +351,7 @@ class TestIntegrityCheck(unittest.TestCase):
     def test_adr_refs_all_exist_ok(self):
         """R15: 실재하는 ADR 참조만 있으면 통과."""
         write(os.path.join(self.root, "AGENTS.md"), "# AGENTS.md\n근거는 ADR 001.\n")
+        write_korean_views(self.root)  # AGENTS.md 변경 → 뷰 재생성(R16 오탐 방지)
         code, out = run_check(self.root)
         self.assertEqual(code, 0)
         self.assertNotIn("FAIL R15", out)
@@ -337,6 +361,88 @@ class TestIntegrityCheck(unittest.TestCase):
         write(os.path.join(self.root, "AGENTS.md"), "# AGENTS.md\n연도 표기 ADR 2026 텍스트.\n")
         code, out = run_check(self.root)
         self.assertNotIn("FAIL R15", out)
+
+    # --- R16 AGENTS_KR.md 한글 뷰 source-hash (ADR 030 ⓐ) ---
+    def test_agents_kr_stale_hash_fails(self):
+        """R16: AGENTS.md 변경 후 뷰 미재생성 → source-hash 불일치 FAIL + 재생성 안내."""
+        with open(os.path.join(self.root, "AGENTS.md"), "a", encoding="utf-8") as f:
+            f.write("새 규칙 추가.\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R16", out)
+        self.assertIn("regenerate", out)
+
+    def test_agents_kr_matching_hash_ok(self):
+        """R16: source-hash가 현재 AGENTS.md sha256[:12]과 일치하면 통과."""
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("FAIL R16", out)
+
+    def test_agents_kr_missing_fails(self):
+        """R16: 뷰 파일 부재는 FAIL — ADR 030 이후 뷰는 필수."""
+        os.remove(os.path.join(self.root, "AGENTS_KR.md"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R16", out)
+        self.assertIn("AGENTS_KR.md", out)
+
+    def test_agents_kr_no_hash_line_fails(self):
+        """R16: source-hash 줄이 없는 뷰는 대조 불가 → FAIL."""
+        write(os.path.join(self.root, "AGENTS_KR.md"), "# 한글 다이제스트 (배너 없음)\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R16", out)
+
+    def test_agents_kr_skip_when_no_agents_md(self):
+        """R16: AGENTS.md·AGENTS_KR.md 모두 부재 → SKIP (repo-shape 안전, 원본 부재는 R14 몫)."""
+        os.remove(os.path.join(self.root, "AGENTS.md"))
+        os.remove(os.path.join(self.root, "AGENTS_KR.md"))
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R16", out)
+        self.assertIn("SKIP R16", out)
+
+    # --- R17 README.ko.md 항목 집합 정합 (ADR 030 ⓑ) ---
+    def test_skills_readme_ko_heading_mismatch_fails(self):
+        """R17: 실존 스킬 누락 + 유령 항목 → 양방향 FAIL."""
+        write(os.path.join(self.root, ".agents/skills/README.ko.md"),
+              "# 스킬 한글 요약\n\n## ghost\n요약.\n")  # bar 누락 + ghost 유령
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R17", out)
+        self.assertIn("bar", out)
+        self.assertIn("ghost", out)
+
+    def test_agents_readme_ko_heading_mismatch_fails(self):
+        """R17: 에이전트 요약도 동일 — foo 누락 + ghost 유령 → FAIL."""
+        write(os.path.join(self.root, ".agents/agents/README.ko.md"),
+              "# 에이전트 한글 요약\n\n## ghost\n요약.\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R17", out)
+        self.assertIn("foo", out)
+        self.assertIn("ghost", out)
+
+    def test_readme_ko_exact_match_ok(self):
+        """R17: 항목 집합이 실제 집합과 1:1이면 통과(정상 픽스처)."""
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("FAIL R17", out)
+
+    def test_skills_readme_ko_missing_fails(self):
+        """R17: 스킬 요약 뷰 부재는 FAIL."""
+        os.remove(os.path.join(self.root, ".agents/skills/README.ko.md"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R17", out)
+        self.assertIn("skills", out)
+
+    def test_agents_readme_ko_missing_fails(self):
+        """R17: 에이전트 요약 뷰 부재는 FAIL."""
+        os.remove(os.path.join(self.root, ".agents/agents/README.ko.md"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R17", out)
+        self.assertIn("agents", out)
 
 
 if __name__ == "__main__":

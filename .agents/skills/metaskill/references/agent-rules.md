@@ -1,39 +1,39 @@
-# 에이전트 정의 규칙 — 10섹션 템플릿
+# Agent definition rules — 10-section template
 
-에이전트 정의 파일은 `.agents/agents/<이름>.md`에 둔다 (`.claude/agents`는 심링크). metaskill과 orchestrate가 팀원을 정의할 때 이 템플릿을 따른다.
+Agent definition files live at `.agents/agents/<name>.md` (`.claude/agents` is a symlink). metaskill and orchestrate follow this template when defining team members.
 
-## frontmatter (필수 4필드)
+## frontmatter (4 mandatory fields)
 
 ```yaml
 ---
-name: <이름>
-description: <Pushy 공식 — 동사 나열 + 트리거 상황 + 재실행 키워드 (+ 인접 역할과 경계가 겹치면 "Do NOT …"/"~는 제외" 부정 트리거 권장 — 오라우팅 능동 차단). 영문 기술 + 한국어 재실행 키워드 병기 권장>
-tools: <허용 도구 화이트리스트 — 최소 권한>
-tier: design | implement | explore   # 모델 매핑은 루트 AGENTS.md 9절 표가 유일 원본
+name: <name>
+description: <Pushy formula — verb enumeration + trigger situations + re-run keywords (+ when boundaries overlap with adjacent roles, negative triggers like "Do NOT …" / "excluding ~" recommended — actively blocks misrouting). Written in English; Korean re-run keywords (e.g. 하네스, 리뷰) recommended alongside>
+tools: <allowed tool whitelist — least privilege>
+tier: design | implement | explore   # model mapping: the table in root AGENTS.md §9 is the only source
 ---
 ```
 
-**tier는 CLI가 해석하지 않는다** — 실제 적용은 오케스트레이터가 팀원 생성(Agent 호출) 시 9절 표에 따라 `model` 파라미터를 지정하는 것으로 이루어진다(orchestrate "티어 적용" 규칙). 정의 파일에 구체 모델명을 고정하지 않는 이유: 모델명은 시점마다 바뀌지만 역할은 바뀌지 않는다(9절).
+**The CLI does not interpret `tier`** — actual application happens when the orchestrator specifies the `model` parameter per the §9 table at team-member creation (Agent call) time (orchestrate "tier application" rule). Why no concrete model name is pinned in the definition file: model names change over time, but roles do not (§9).
 
-## Codex custom-agent 어댑터 (루트 에이전트 필수)
+## Codex custom-agent adapter (mandatory for root agents)
 
-루트 에이전트는 원본 `.agents/agents/<이름>.md`와 함께 `.codex/agents/<이름>.toml`을 둔다(ADR 027). TOML에는 Codex 필수 필드 `name`·`description`·`developer_instructions`만 두고, `developer_instructions`가 현재 작업 디렉터리부터 상위로 대응 Markdown을 찾아 **작업 전 전문을 읽도록** 지시한다. `name`·`description`은 원본 frontmatter와 정확히 일치시킨다.
+Root agents pair the original `.agents/agents/<name>.md` with `.codex/agents/<name>.toml` (ADR 027). The TOML holds only Codex's mandatory fields `name`, `description`, `developer_instructions`, and `developer_instructions` instructs finding the corresponding Markdown from the current working directory upward and **reading the full text before working**. `name` and `description` must exactly match the original frontmatter.
 
-역할 본문·`tools`·`tier`를 TOML에 복사하지 않는다. 특히 `model`·`model_reasoning_effort`·`sandbox_mode`를 고정하면 9절 동적 티어와 부모 세션 권한을 별도 원본으로 갈라놓으므로 넣지 않는다. 생성 후 `python3 .agents/hooks/integrity-check.py`로 Markdown↔TOML 1:1·메타데이터·계약 참조를 검증한다.
+Do not copy the role body, `tools`, or `tier` into the TOML. In particular, do not set `model`, `model_reasoning_effort`, or `sandbox_mode` — pinning them would split the §9 dynamic tiers and the parent session's permissions into a separate source of truth. After creation, verify Markdown↔TOML 1:1, metadata, and contract references with `python3 .agents/hooks/integrity-check.py`.
 
-**tools 필드가 가드레일 1순위다.** 최소 권한, 도구 최소화, 명시적 제외. 이유: 프롬프트의 "하지 마라"는 어길 수 있지만 없는 도구는 쓸 수 없다. 단, **남겨둔 도구의 사용 범위 제한(예: "Write는 `_workspace/` 전용")은 프롬프트 제약이므로 완전 강제가 아니다** — 정의 문서에 보장 수준을 과대 기술하지 말 것.
+**The tools field is the number-one guardrail.** Least privilege, minimal tools, explicit exclusion. Reason: a prompt's "don't do it" can be violated, but an absent tool cannot be used. However, **usage-scope restrictions on retained tools (e.g. "Write only for `_workspace/`") are prompt-level constraints, not full enforcement** — do not overstate the guarantee level in the definition document.
 
-**⑨ 보칙 — 저장소 상태 불변 (인용 라벨: "agent-rules ⑨" — 이 단락이 단일 원본)**: 조회·검증 역할(Edit 미보유 — explorer·reviewer·troubleshooter 류)의 Bash는 저장소 상태(작업 트리·인덱스·HEAD) 불변이 규약이다: 비교 목적 `git stash`·`checkout/restore`·`reset`·`clean` 금지 — "stash pop으로 복구되니 무해"해 보여도, 같은 작업 트리에 오케스트레이터·병행 작업의 uncommitted 변경이 공존할 수 있다(2026-07-21 실측 2회 — 스택 브랜치 작업 중 리뷰어 stash 반복). before/after 비교는 `git diff <ref>..<ref>`·`git show <commit>:<path>`로, **HEAD 이동이 필요한 진단(`git bisect` 등)은 `git worktree add` 격리 사본에서** 수행하고 끝나면 제거한다(worktree 추가·제거는 메인 트리 불변). 구현 역할(Edit 보유)도 자기 산출물이 아닌 **비교 목적의 트리 조작(stash)은 동일 금지**다.
+**⑨ Supplementary — repository state invariance (citation label: "agent-rules ⑨" — this paragraph is the single source)**: For inspection/verification roles (no Edit — explorer, reviewer, troubleshooter, etc.), Bash must leave repository state (working tree, index, HEAD) unchanged: `git stash`, `checkout/restore`, `reset`, `clean` for comparison purposes are forbidden — even if "stash pop restores it, so it's harmless" seems true, the orchestrator's or parallel work's uncommitted changes may coexist in the same working tree (measured twice on 2026-07-21 — reviewer repeatedly stashing during stacked-branch work). Do before/after comparison with `git diff <ref>..<ref>` and `git show <commit>:<path>`; **diagnosis requiring HEAD movement (`git bisect` etc.) runs in a `git worktree add` isolated copy** and removes it afterward (worktree add/remove leaves the main tree unchanged). Implementation roles (with Edit) are equally forbidden from **comparison-purpose tree manipulation (stash) of anything other than their own deliverables**.
 
-## 본문 필수 섹션
+## Mandatory body sections
 
-1. **핵심 역할 — 범위 설정**: 하는 일과 함께 **하지 않는 일**의 경계를 명시. (예: "리뷰어는 코드를 수정하지 않는다")
-2. **작업 원칙 — 판단 기준**: 두 선택지가 충돌할 때 어느 쪽을 택할지. (예: 속도 vs 정확성 → 정확성) 이유: 판단 기준 없는 에이전트는 충돌 상황마다 다른 답을 낸다.
-3. **입출력 프로토콜**: 에이전트 간 API 계약. 입력 형식, 출력 형식, 중간 산출물은 `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md`. 파일 출력 언어뿐 아니라 **오케스트레이터에게 반환하는 최종 텍스트의 언어**도 명시한다 — 기본은 영어(루트 15절, 모델만 읽는 채널)이고, 그 에이전트의 산출물이 사용자에게 그대로 전달되는 문서라 **파일=반환 내용**일 때만 한국어 예외를 둔다(예: integrator 최종 통합 리포트. **architect는 예외가 아니다** — 스펙 파일만 한국어고 반환 텍스트는 영어 경로 안내다).
-4. **팀 통신 프로토콜**: 누구에게, 무엇을, 언제 보내는지. SendMessage에는 발견 사실 + 수신자가 취해야 할 행동을 명시. 메시지 형식 고정(JSON): `{type, severity, file, line, claim, request}`
-5. **에러 핸들링 — 종료 조건**: 구체적 실패 시나리오와 최대 재시도 횟수. 기본: 1회 재시도, 2회 실패 시 누락을 명시하고 진행, 팀원 2명 이상 실패 시 팀 해체 후 사용자 보고.
-6. **협업 — 팀 안에서의 위치**: 누구와 어떤 순서로 연결되는지 (의존성 그래프상 위치).
-7. **품질 자체 검증**: 출력 반환 전 자기 점검 체크리스트.
-8. **재호출 지침**: 새 세션에서도 하네스가 자동으로 다시 호출되도록 — 어떤 상황·키워드에서 이 에이전트를 다시 써야 하는지 명시.
-9. *(frontmatter의 tools로 충족)* — 본문에서 도구 사용 제약의 이유를 한 줄 보강.
-10. *(frontmatter의 tier로 충족)* — 티어 선택 근거를 한 줄 보강.
+1. **Core role — scoping**: State what it does together with the boundary of **what it does not do**. (e.g. "the reviewer does not modify code")
+2. **Working principles — decision criteria**: Which side to take when two options conflict. (e.g. speed vs accuracy → accuracy) Reason: an agent without decision criteria gives a different answer in every conflict.
+3. **I/O protocol**: The inter-agent API contract. Input format, output format, intermediate deliverables at `_workspace/<task>/phase{N}_{agent}_{content}.md`. Specify not only the file output language but also **the language of the final text returned to the orchestrator** — the default is English (root §15, a model-only channel); a Korean exception exists only when the agent's deliverable is a document delivered to the user as-is, i.e. **file = return content** (e.g. integrator final integration report. **architect is not an exception** — only the spec file is Korean; the return text is an English path notice).
+4. **Team communication protocol**: To whom, what, and when. SendMessage must state the finding plus the action the recipient should take. Fixed message format (JSON): `{type, severity, file, line, claim, request}`
+5. **Error handling — termination conditions**: Concrete failure scenarios and max retry counts. Default: 1 retry; on 2nd failure state the omission and proceed; if 2+ team members fail, disband the team and report to the user.
+6. **Collaboration — position in the team**: Who it connects to and in what order (position in the dependency graph).
+7. **Quality self-verification**: Self-check checklist before returning output.
+8. **Re-invocation guide**: So the harness auto-invokes it again in new sessions — state in which situations/keywords this agent must be used again.
+9. *(satisfied by the frontmatter tools)* — reinforce in the body with one line on why tool usage is constrained.
+10. *(satisfied by the frontmatter tier)* — reinforce with one line on the tier-choice rationale.

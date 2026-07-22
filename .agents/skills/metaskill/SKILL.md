@@ -3,116 +3,118 @@ name: metaskill
 description: Create, scaffold, audit, improve, and evolve project harnesses (AGENTS.md, CLAUDE.md pointer, agents, skills, ADRs). Use when the user says 하네스 만들어줘, 프로젝트 새로 만들어줘 (scaffold project WITH its harness), 하네스 개선, 하네스 구조 점검·개선, or when evolution triggers fire (3+ repeated requests, 2+ repeated failures, harness bypass observed). Handles both new-harness creation and existing-harness improvement. Do NOT use for the routine daily/weekly evolution-signal scan or proposal-only review (→ harness-review) - metaskill APPLIES changes (create/improve/retire) while harness-review OBSERVES signals and proposes. Re-run keywords - metaskill, harness, scaffold, audit, evolve, 하네스, 하네스 개선.
 ---
 
-# metaskill — 하네스를 만드는 스킬
+# metaskill — the skill that builds harnesses
 
-## 왜 이 스킬인가
+## Why this skill
 
-하네스를 즉흥적으로 만들면 프로젝트마다 구조가 달라져 라우팅·상속·심링크가 깨진다. 이 스킬은 모든 하네스가 같은 골격(AGENTS.md 단일 원본, 변경 이력, ADR — 루트는 CLAUDE.md `@AGENTS.md` 임포트+항상-온 앵커(ADR 021)+`.agents/` 심링크, 하위는 `.agents/projects/<이름>/` 중앙 관리)을 갖도록 강제한다. 이유: 하네스의 가치는 개별 파일이 아니라 **일관성**에서 나온다 — 에이전트가 어느 프로젝트에 들어가도 같은 위치에서 같은 규칙을 찾을 수 있어야 한다.
+Building harnesses ad hoc gives every project a different structure, breaking routing, inheritance, and symlinks. This skill enforces that every harness shares the same skeleton (AGENTS.md single source, change history, ADRs — root: CLAUDE.md `@AGENTS.md` import + always-on anchors (ADR 021) + `.agents/` symlinks; sub-projects: centrally managed under `.agents/projects/<name>/`). Reason: a harness's value comes not from individual files but from **consistency** — an agent entering any project must find the same rules in the same place.
 
-## 모드 분기 (첫 판단)
+## Mode fork (first decision)
 
-대상 경로에 `AGENTS.md`가 **이미 있으면 → 개선 모드**, **없으면 → 신규 생성 모드**.
+If the target path **already has an `AGENTS.md` → improvement mode**; **if not → new-creation mode**.
 
-- **개선 모드**: 기존 구조를 존중한다. 전면 재작성 대신 결함만 고치고, 모든 변경을 해당 AGENTS.md의 변경 이력 테이블에 기록한다. 구조적 변경(패턴 전환, 에이전트 8개 이상 등)이면 ADR도 남긴다. **검증 비례성**: 하네스 변경의 독립 검증(reviewer)은 위험도에 비례시킨다 — **규범 변경**(규칙·절차·게이트·트리거 경계·에이전트 권한·훅 코드)은 reviewer 독립 검증 필수, **비규범 diff**(문구 다듬기·포인터·오타·이력 행 — 판정·행동이 바뀌지 않는 것)는 자체 검증(참조·충돌 확인)+이력 기록으로 갈음한다. 이유: 검증 비용(회당 ~10만 토큰·수 분 — 실측: 2026-07-17 세션 reviewer 6회 평균)이 diff 위험과 무관하게 고정되면 산출 대비 과소모가 된다(루트 8절 ④). **판단이 애매하면 검증 쪽으로** — 거짓 통과가 거짓 차단보다 위험하다(reviewer 2절). 압박 테스트(공통 규칙 7)는 행동 규율 신설·개정에만 — 비례성의 알리바이로 검증·테스트를 건너뛰는 것은 16절이 금지하는 "빠뜨린 코드"다. **루트 하네스 개선을 완료하면** 무엇을 개선했는지 채팅으로 보고하고 `_workspace/harness-ops-log.md`에 `- YYYY-MM-DD [개선] 내용 (PR·커밋)` 한 줄을 append한다 — 세션이 지나도 "뭘 개선했는지"를 확인할 단일 지점.
-- **설치처 프로필 게이트 (추적 하네스 파일을 수정하기 전 필수 — 루트 AGENTS.md 5절)**: REGISTRY.md의 설치처 프로필을 확인한다. **사내**면 추적 파일을 일절 수정하지 않고, 하려던 변경을 `_workspace/harness-updates.md`에 `대기` 항목으로 기록한다(항목 형식: `## YYYY-MM-DD 제목` 아래 상태(대기/적용됨) / 대상 파일 / 변경 내용 / 사유·근거 — 변경 내용은 개인 머신에서 그대로 적용 가능한 수준으로, ADR 012). 프로필 미기록이면 사용자에게 확인 후 REGISTRY.md에 기록하고 진행한다(원격 PR 세션은 개인 간주). 미추적 영역(`.agents/projects/`, REGISTRY.md, `_workspace/`)의 수정은 프로필과 무관하게 가능하다 — git에 닿지 않기 때문이다.
-- **신규 생성 모드**: 아래 절차를 따른다.
+- **Improvement mode**: Respect the existing structure. Fix only the defects instead of rewriting wholesale, and record every change in that AGENTS.md's change-history table. For structural changes (pattern transition, 8+ agents, etc.) also leave an ADR. **Verification proportionality**: independent verification (reviewer) of harness changes scales with risk — **normative changes** (rules, procedures, gates, trigger boundaries, agent permissions, hook code) require independent reviewer verification; **non-normative diffs** (wording polish, pointers, typos, history rows — nothing that changes judgment or behavior) are covered by self-verification (reference/conflict check) + history record. Reason: if verification cost (~100k tokens and several minutes per run — measured: 2026-07-17 session, average of 6 reviewer runs) stays fixed regardless of diff risk, it becomes overconsumption relative to output (root §8 ④). **When judgment is ambiguous, lean toward verification** — a false pass is more dangerous than a false block (reviewer §2). Pressure testing (common rule 7) applies only to newly created or revised behavioral disciplines — skipping verification/tests with proportionality as an alibi is exactly the "omitted code" that §16 forbids. **After completing a root-harness improvement**, report in chat what was improved and append one line `- YYYY-MM-DD [개선] <content> (PR/commit)` to `_workspace/harness-ops-log.md` (the ops log is user-facing — written in Korean) — the single place to check "what was improved" across sessions.
+- **Install-site profile gate (mandatory before modifying any tracked harness file — root AGENTS.md §5)**: Check the install-site profile in REGISTRY.md. If **corporate**, do not modify tracked files at all; record the intended change in `_workspace/harness-updates.md` as a `대기` (pending) item (item format: under `## YYYY-MM-DD title`, status (대기/적용됨) / target files / change content / rationale — the change content must be detailed enough to apply as-is on the personal machine, ADR 012). If the profile is unrecorded, confirm with the user, record it in REGISTRY.md, then proceed (remote PR sessions are treated as personal). Untracked areas (`.agents/projects/`, REGISTRY.md, `_workspace/`) may be modified regardless of profile — they never touch git.
+- **New-creation mode**: follow the procedure below.
 
-## 구체화 인터뷰 (모호하면 진행 전 반드시)
+## Clarification interview (mandatory before proceeding when anything is ambiguous)
 
-프로젝트에 모호함이 있으면 진행하지 말고 사용자에게 적극적으로 질문한다: 스택, 배포 방식, 반복 작업(스킬 후보로 기록 — 생성은 지연). 이유: 인터뷰 없이 만든 하네스는 첫 실사용에서 우회되고, 우회된 하네스는 다시 읽히지 않는다. 단, **역할·목적은 묻기 전에 README 등 프로젝트 문서를 먼저 읽고**(관찰 우선), **연관 프로젝트는 묻지 않는다** — 실작업 관찰로 채워진다(루트 AGENTS.md 1절).
+If the project has any ambiguity, do not proceed — actively question the user: stack, deployment method, recurring tasks (record as skill candidates — creation is deferred). Reason: a harness built without an interview gets bypassed on first real use, and a bypassed harness never gets read again. However, **read project documents such as README before asking about role/purpose** (observation first), and **never ask about related projects** — they are filled in through real-work observation (root AGENTS.md §1).
 
-## 신규 프로젝트 생성 시나리오 ("프로젝트 새로 만들어줘")
+## New-project creation scenario ("프로젝트 새로 만들어줘")
 
-1. 구체화 인터뷰
-2. 디렉토리·기본 스캐폴딩 생성 → **`references/scaffold.md` 참조**
-3. 하네스 생성 (아래 "생성물 요건")
-4. **스킬·에이전트는 만들지 않는다 (지연 생성 — 루트 AGENTS.md 12절)**: 초기 생성물은 문서(AGENTS.md·adr/)뿐이다. 인터뷰의 "반복 작업 예상" 답변과 스택에서 나오는 반복 절차 후보(빌드·테스트·배포 등, `references/scaffold.md` 후보 참고표)는 **하위 AGENTS.md의 "스킬 후보" 섹션에 기록만** 한다. 실제 생성은 아래 "하위 스킬·에이전트 생성 시나리오"로만 한다. 이유: 미리 만든 스킬은 실사용과 어긋나 우회된다 — 필요가 증명된 것만 만든다.
-5. **루트 REGISTRY.md의 프로젝트 레지스트리에 새 행 추가** — 역할은 문서·인터뷰 관찰 기반, 연관 프로젝트는 초기값 "미기록"(실작업 관찰로 갱신, 루트 AGENTS.md 1절)
-6. REGISTRY.md 변경 이력 갱신
+1. Clarification interview
+2. Create directory & basic scaffolding → **see `references/scaffold.md`**
+3. Create the harness (see "Deliverable requirements" below)
+4. **Do not create skills/agents (deferred creation — root AGENTS.md §12)**: initial deliverables are documents only (AGENTS.md, adr/). Recurring-procedure candidates from the interview's "expected recurring tasks" answer and from the stack (build/test/deploy etc., see the candidate reference table in `references/scaffold.md`) are **only recorded in the sub AGENTS.md "skill candidates" section**. Actual creation happens solely via the "sub skill/agent creation scenario" below. Reason: skills made in advance diverge from real use and get bypassed — build only what proven need demands.
+5. **Add a new row to the project registry in root REGISTRY.md** — role based on document/interview observation; related projects start as "미기록" (unrecorded — updated through real-work observation, root AGENTS.md §1)
+6. Update the REGISTRY.md change history
 
-프로젝트 **삭제·이동** 시에도 레지스트리를 갱신한다. 레지스트리가 현실과 어긋나면 라우팅 전체가 어긋난다.
+Also update the registry on project **deletion/move**. A registry out of sync with reality skews all routing.
 
-## 하위 스킬·에이전트 생성 시나리오 (지연 생성 — 유일한 생성 경로)
+## Sub skill/agent creation scenario (deferred creation — the only creation path)
 
-트리거: **반복되는 작업이 관찰되거나, 작업 중 "스킬/에이전트로 등록하면 좋겠다" 싶은 절차·역할이 나타났을 때** (진화 트리거 4신호 포함). 절차:
+Trigger: **when a recurring task is observed, or a procedure/role appears mid-work that seems worth registering as a skill/agent** (including the 4 evolution-trigger signals). Procedure:
 
-1. 사용자에게 후보를 제안한다(무단 생성 금지). 하위 AGENTS.md의 "스킬 후보" 섹션에 기록된 항목이 우선 후보다.
-2. 승인 시 **`.agents/projects/<이름>/skills/<스킬>/SKILL.md`** 또는 **`.agents/projects/<이름>/agents/<에이전트>.md`**에 생성한다 — `.agents/projects/`는 미추적이므로 git에 들어가지 않는다. 형식은 루트와 동일(아래 "스킬 공통 규칙" 7가지 전부, agent-rules.md 10섹션).
-3. **하위 AGENTS.md에 스킬·에이전트 목록과 경로를 명시**한다 — 이 위치는 CLI가 자동 발견하지 못하므로, 라우팅으로 하위 AGENTS.md를 읽는 것이 스킬을 로드하는 유일한 경로다. 실제 명령어를 본문에 싣는다(명령 없는 스킬은 안 만드느니만 못하다).
-4. 여러 프로젝트·설치처에 일반화되는 스킬만 루트 `.agents/skills/`로 승격한다(추적됨 — 프로젝트 특화 내용 제거 후).
+1. Propose the candidate to the user (no unauthorized creation). Items recorded in the sub AGENTS.md "skill candidates" section are first-priority candidates.
+2. On approval, create at **`.agents/projects/<name>/skills/<skill>/SKILL.md`** or **`.agents/projects/<name>/agents/<agent>.md`** — `.agents/projects/` is untracked, so it never enters git. Format is identical to root (all 8 "skill common rules" below, agent-rules.md 10 sections).
+3. **List the skills/agents and their paths in the sub AGENTS.md** — this location is not auto-discovered by the CLI, so routing reading the sub AGENTS.md is the only path that loads them. Put the actual commands in the body (a skill without commands is worse than none).
+4. Promote to root `.agents/skills/` (tracked) only skills that generalize across projects/install sites (after removing project-specific content).
 
-## 대기 큐 적용 시나리오 (개인 설치처 — "하네스 업데이트 적용해줘")
+## Pending-queue application scenario (personal install site — "하네스 업데이트 적용해줘")
 
-사내 설치처에서 이월된 개선 항목을 개인 설치처에서 실제 반영하는 경로다. 트리거: 사용자가 큐 내용을 제공(붙여넣기·파일 복사)하거나, `_workspace/harness-updates.md`에 `대기` 항목이 발견될 때(harness-review 무결성 점검 포함).
+The path for actually applying improvement items carried over from a corporate install site on a personal install site. Trigger: the user supplies queue content (paste/file copy), or `대기` (pending) items are found in `_workspace/harness-updates.md` (including via harness-review integrity checks).
 
-1. 프로필이 **개인**인지 확인한다(사내면 이 시나리오 불가 — 큐에 머문다).
-2. 항목별로 대상 파일·변경 내용을 검토해 적용한다 — 기록 시점과 현재 파일이 어긋나면(이미 반영됨, 대상 절 변경됨) 그대로 적용하지 말고 의도를 현재 구조에 맞게 번역하고, 판단이 갈리면 사용자에게 확인한다.
-3. 통상 규칙대로 마무리한다: 해당 파일 변경 이력 갱신, 구조적 결정이면 ADR, 커밋·푸시(5절), 운영 로그(`harness-ops-log.md`)에 `[개선]` 항목 append.
-4. 적용한 항목의 상태를 `적용됨`(+적용 날짜)으로 갱신한다 — 큐가 이력이 되어 중복 적용을 막는다.
+1. Confirm the profile is **personal** (corporate cannot run this scenario — items stay in the queue).
+2. Review each item's target files/change content and apply — if the file has diverged since recording (already applied, target section changed), do not apply verbatim; translate the intent to the current structure, and confirm with the user when judgment forks.
+3. Finish per the usual rules: update the file's change history, ADR for structural decisions, commit & push (§5), append an `[개선]` item to the ops log (`harness-ops-log.md`).
+4. Update applied items' status to `적용됨` (applied, + application date) — the queue becomes history and prevents double application.
 
-## 생성물 요건 (신규 하네스에 반드시 포함)
+## Deliverable requirements (must be included in a new harness)
 
-- **루트 하네스 한정**: `CLAUDE.md`는 첫 줄 **`@AGENTS.md`** 임포트(단일 원본 전문을 세션 시작 시 항상-온 주입 — ADR 021) + Claude 전용 **항상-온 앵커**(`## 하네스: {도메인}` 섹션 + **출력 언어** + **라우팅 요약**(orchestrate 등 스킬명) + **스킬 우선순위**). **변경 이력 테이블은 CLAUDE.md에 두지 않는다**(루트 변경 이력은 `docs/harness-changelog.md`). CLAUDE.md엔 전문 규칙을 복사하지 말고 매 턴 최우선 앵커만 한 줄씩 둔다(재비대 방지 — 루트 AGENTS.md 11절). **하위 프로젝트에는 CLAUDE.md를 만들지 않는다** — 그 경로에서 세션을 시작할 일이 없어 로더가 없는 죽은 파일이다(루트 AGENTS.md 12절).
-- **루트 하네스를 새 워크스페이스에 설치하는 경우**: `REGISTRY.md`(설치 환경별 프로젝트 레지스트리 — git 미추적)를 반드시 생성한다. 절차는 `harness-install` 스킬을 따른다. 하위 프로젝트 하네스에는 만들지 않는다.
-- `AGENTS.md` 첫 줄에 루트 AGENTS.md 상속 명시(하위). **하위 프로젝트 AGENTS.md**는 하단에 변경 이력 테이블(초기 1행). **루트 AGENTS.md는 변경 이력을 `docs/harness-changelog.md`로 분리**한다(ADR 021 — `@AGENTS.md`로 항상-온 주입되므로 감사 로그를 임포트 footprint에서 뺀다).
-- **루트 하네스 한정**: 공용 디렉토리 `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` 심링크. 심링크 불가 환경이면 sync 스크립트로 대체하고 ADR에 기록.
-- **하위 프로젝트 하네스는 중앙 관리 방식(루트 AGENTS.md 12절, ADR 006·007)**: 원본이자 유일본을 루트 `.agents/projects/<이름>/`에 생성한다 — 구성: `AGENTS.md`(스킬 후보 섹션 포함), `adr/`, 그리고 지연 생성되는 `skills/`·`agents/`. `<이름>`은 REGISTRY.md 행과 일치시킨다. **`project/<이름>/`와 그 git 저장소에는 하네스 파일을 일절 두지 않는다**(심링크·복사본 포함) — 라우팅(REGISTRY.md → 원본 읽기)이 연결하므로 배포 장치가 불필요하다. `.agents/projects/`는 설치처별 데이터라 git 미추적이다.
-- **하위 전용 스킬·에이전트는 지연 생성** — 위 "하위 스킬·에이전트 생성 시나리오"가 유일한 생성 경로다. 초기 생성 금지. 훅이 필요하면 루트 `.claude/settings.json`에 경로 분기형으로만 둔다.
-- **에이전트·스킬 파일은 반드시 `.agents/` 원본에 생성 — `.claude/`는 심링크이므로 그 아래 직접 생성 금지.** 루트 에이전트를 신설·개명·폐기하면 `.codex/agents/<이름>.toml` 얇은 어댑터도 같은 변경에서 동기화한다(역할 본문은 복제하지 않고 Markdown 전문 선로드만, ADR 027). 심링크가 실파일로 대체되거나 Codex 어댑터가 드리프트하면 두 CLI가 다른 역할을 보게 된다(루트 AGENTS.md 11절).
-- orchestrate 연동: 구현·다단계 작업은 루트 orchestrate의 팀 필요성 판정(Phase 0-1)을 거치고, 다중 프로젝트·팀 작업은 orchestrate로 팀을 구성함을 명시(ADR 010).
-- ADR 디렉토리 (구조적 결정 시 NNN-제목.md): 루트 하네스는 `docs/adr/`, 하위 프로젝트는 `.agents/projects/<이름>/adr/`.
-- **문서 지도(MOC) 동기화 (루트 하네스 한정)**: 루트에서 ADR·스펙(`docs/specs/`)·제안(`docs/proposals/`)을 새로 만들거나 상태를 바꾸면(대체·구현·기각) **같은 커밋에서 `docs/README.md` 인덱스의 해당 행을 갱신**한다(루트 AGENTS.md 6절). REGISTRY.md 갱신 의무와 같은 이유 — 인덱스가 현실과 어긋나면 탐색 근거로서 신뢰를 잃는다.
-- **루트 README.md 자산 목록 동기화 (루트 하네스 한정 — 반복 누락 지점)**: 루트 `.agents/skills/`·`.agents/agents/`에 스킬·에이전트를 **신설·개명·폐기**하면 **같은 커밋에서 루트 `README.md`의 디렉토리 트리(스킬·에이전트 한 줄 설명 목록)를 갱신**한다 — 새 스킬 추가 시 이 목록 갱신이 반복 누락됐다(신호 ②, changelog 2026-07-16·07-18 "README 스테일 동기화"가 사후 재동기화의 흔적). 위 MOC(`docs/README.md`)는 ADR·스펙·제안 인덱스이고 **이 트리는 스킬·에이전트 목록이라 별개 파일**이다 — 둘을 혼동해 하나만 갱신하면 다른 하나가 스테일해진다. 하위 프로젝트 스킬·에이전트는 루트 README가 아니라 **하위 AGENTS.md의 목록**을 갱신한다(§12).
-- 에이전트를 만들 때는 **`references/agent-rules.md`의 10섹션 템플릿**을 따른다.
-- 스킬을 만들 때는 아래 "스킬 공통 규칙"을 따른다.
-- 패턴 선택이 필요하면 **`references/patterns.md`의 플로우차트** 참조.
+- **Root harness only**: `CLAUDE.md` has first-line **`@AGENTS.md`** import (always-on injection of the full single source at session start — ADR 021) + Claude-only **always-on anchors** (`## Harness: {domain}` section + **output language** + **routing summary** (skill names such as orchestrate) + **skill priority**). **No change-history table in CLAUDE.md** (root change history lives in `docs/harness-changelog.md`). Do not copy full rules into CLAUDE.md — only one-line top-priority anchors per turn (re-bloat prevention — root AGENTS.md §11). **Do not create CLAUDE.md for sub-projects** — no session ever starts at that path, so it is a dead file with no loader (root AGENTS.md §12).
+- **When installing the root harness on a new workspace**: always create `REGISTRY.md` (install-site-specific project registry — untracked by git). Follow the `harness-install` skill. Never create one for sub-project harnesses.
+- First line of `AGENTS.md` states inheritance from the root AGENTS.md (sub-projects). **Sub-project AGENTS.md** has a change-history table at the bottom (initial 1 row). **Root AGENTS.md separates change history into `docs/harness-changelog.md`** (ADR 021 — it is always-on injected via `@AGENTS.md`, so the audit log is removed from the import footprint).
+- **Root harness only**: shared directories `.agents/agents/`, `.agents/skills/` + `.claude/agents`, `.claude/skills` symlinks. If symlinks are impossible in the environment, substitute a sync script and record it in an ADR.
+- **Sub-project harnesses use central management (root AGENTS.md §12, ADR 006/007)**: create the original and only copy at root `.agents/projects/<name>/` — composition: `AGENTS.md` (including a "skill candidates" section), `adr/`, and lazily created `skills/`/`agents/`. `<name>` must match the REGISTRY.md registry row. **Never place harness files in `project/<name>/` or its git repository** (including symlinks/copies) — routing (REGISTRY.md → read the original) makes the connection, so no distribution mechanism is needed. `.agents/projects/` is install-site data and untracked.
+- **Sub-project skills/agents are lazily created** — the "sub skill/agent creation scenario" above is the only creation path. No initial creation. If a hook is needed, put it only in root `.claude/settings.json` as a path-branching hook.
+- **Agent/skill files must be created in the `.agents/` originals — `.claude/` is a symlink, so never create directly under it.** When a root agent is created/renamed/retired, synchronize the thin `.codex/agents/<name>.toml` adapter in the same change (do not duplicate the role body — only preload the full Markdown, ADR 027). If a symlink is replaced by a real file or a Codex adapter drifts, the two CLIs see different roles (root AGENTS.md §11).
+- orchestrate integration: state that implementation/multi-step work passes root orchestrate's team-necessity judgment (Phase 0-1), and multi-project/team work forms teams via orchestrate (ADR 010).
+- ADR directory (NNN-title.md on structural decisions): root harness → `docs/adr/`, sub-projects → `.agents/projects/<name>/adr/`.
+- **Document map (MOC) sync (root harness only)**: when an ADR, spec (`docs/specs/`), or proposal (`docs/proposals/`) is created at root or changes state (superseded/implemented/rejected), **update the corresponding row in the `docs/README.md` index in the same commit** (root AGENTS.md §6). Same reason as the REGISTRY.md update obligation — an index out of sync with reality loses trust as a navigation basis.
+- **Root README.md asset-list sync (root harness only — repeated-omission spot)**: when a skill/agent is **created, renamed, or retired** under root `.agents/skills/`/`.agents/agents/`, **update the root `README.md` directory tree (one-line skill/agent description list) in the same commit** — this list update was repeatedly missed when adding new skills (signal ②; changelog 2026-07-16 and 07-18 "README stale sync" are traces of after-the-fact resyncs). The MOC above (`docs/README.md`) is the ADR/spec/proposal index while **this tree is the skill/agent list — separate files**; confusing them and updating only one leaves the other stale. Sub-project skills/agents update **the list in the sub AGENTS.md** (§12), not the root README.
+- When creating an agent, follow **the 10-section template in `references/agent-rules.md`**.
+- When creating a skill, follow the "Skill common rules" below.
+- When pattern selection is needed, see **the flowchart in `references/patterns.md`**.
 
-## 조건부 상세 (필요할 때만 읽기)
+## Conditional details (read only when needed)
 
-- **k8s/인프라 프로젝트면** → `references/k8s.md` 참조
-- **신규 프로젝트 스캐폴딩이면** → `references/scaffold.md` 참조
-- **에이전트 정의를 만들면** → `references/agent-rules.md` 참조
-- **오케스트레이션 패턴을 고르면** → `references/patterns.md` 참조
+- **k8s/infra project** → see `references/k8s.md`
+- **New-project scaffolding** → see `references/scaffold.md`
+- **Creating an agent definition** → see `references/agent-rules.md`
+- **Choosing an orchestration pattern** → see `references/patterns.md`
 
-## 스킬 공통 규칙 (이 워크스페이스의 모든 스킬에 적용)
+## Skill common rules (apply to every skill in this workspace)
 
-1. **frontmatter 필수 (규격 위반 시 스킬이 무설명으로 뜬다)**: SKILL.md는 **첫 줄부터** `---`로 시작하는 YAML frontmatter에 `name`(디렉토리명과 일치)과 `description`을 담아야 한다. CLI는 **frontmatter의 description만** 읽어 목록 표시와 자동 트리거 매칭에 쓴다 — 본문에만 설명을 쓰면 이름만 뜨고 사용자 입력을 포착하지 못한다. description은 한 줄로 쓰고, 값에 콜론(`: `)·따옴표 등 YAML 특수문자가 들어가면 **전체를 큰따옴표로 감싼다**(안 감싸면 frontmatter 전체가 파싱 실패한다). **생성 직후 검증**: `head -6`으로 첫 줄 `---`·닫는 `---`·description 존재를 확인한다.
-2. **description(영문 기술, 800자 이내 권장 — CLI 하드캡 ~1024자 안에 반드시, Pushy 공식 — 3요소 + 부정 트리거)**: ① 동사 나열("PDF 관련 작업" ✗ → "pdf 읽기, 추출, 병합, OCR 처리" ✓) ② 트리거 상황 명시("사용자가 ~을 언급하면 이 스킬을 사용할 것") ③ **재실행 키워드 포함** — 새 세션에서도 자동으로 다시 호출되게 한다. 재실행 키워드에는 **한국어 트리거 병기를 권장**한다(사용자 요청 문구와 매칭되어야 하므로). ④ **부정 트리거(인접 스킬·도구와 경계가 겹치면 권장)**: 헷갈리기 쉬운 인접 상황을 `Do NOT use for …`로 명시해 오라우팅을 능동 차단한다 — 예: defuddle의 `Do NOT use for URLs ending in .md (→ WebFetch)`. 이유: 긍정 트리거만 있으면 경계가 겹치는 요청이 두 스킬 모두에 매칭돼 라우팅이 흔들린다 — 부정 경계가 있으면 매칭이 한쪽으로 확정된다(반복 관찰된 오라우팅 실패에 대한 저비용 처방, kepano/obsidian-skills 관례 이식 2026-07-16). **길이 목표보다 부정 트리거가 우선**: 경계가 겹치는 스킬은 부정 트리거를 넣느라 길어져도 800자 안에서 유지하고, 정 넘치면 긍정 트리거의 동사 나열을 줄여 확보하되 부정 경계는 지우지 않는다 — 오라우팅 차단이 몇 토큰보다 값지다(500자 고정이 부정 트리거 규약과 충돌해 다수 스킬이 초과하던 실측을 반영해 상향, 2026-07-16 자산 검토).
-3. **Progressive Disclosure**: SKILL.md 본문 500줄 이내. metadata → 본문 → `references/` 세 층으로 나누고, 조건부 상세는 `references/`로 분리한다. 이유: 항상 읽히는 본문이 길수록 매 호출의 비용이 늘고 핵심 규칙이 묻힌다.
-4. **Why-First**: 규칙만 나열하지 말고 이유를 함께 싣는다. 규칙에 이유를 붙이는 것이 규칙의 적용 범위를 넓힌다 — LLM이 엣지 케이스에서도 판단을 이어갈 수 있다.
-5. **with/without**: 이 스킬을 뒀을 때/안 뒀을 때의 차이(지표 평가)를 스킬 하단에 명시한다.
-6. **반영 시점**: 스킬 추가·수정은 **다음 세션부터** 적용된다(CLI가 세션 시작 시 로드). 방금 만든 스킬을 바로 쓰려면 새 세션을 열거나 `/스킬명`으로 명시 호출한다 — 이 사실을 생성 완료 보고에 포함한다.
-7. **압박 테스트 (행동 규율 한정 — superpowers writing-skills 이식, ADR 022)**: 모델의 기본 행동을 바꾸려는 규율 스킬·규칙(게이트·금지·강제 절차)은 아래 정적 체크리스트만으로 완료 판정하지 않는다 — **스킬 없이 서브에이전트가 실제로 위반하는 압박 시나리오(baseline)를 먼저 관찰**하고, 거기서 나온 합리화 문구를 겨냥해 작성한 뒤, 같은 시나리오에서 준수로 바뀌는지 확인한다(실패 관찰 → 작성 → 준수 확인 — 루트 AGENTS.md 13절 TDD의 문서 적용). 확인 중 새 합리화가 보이면 그 구멍을 막고 재확인한다. 이유: baseline 실패를 본 적 없는 규칙은 실제 위반 지점이 아니라 상상한 위반 지점을 막는다. **참조·절차형 스킬(명령 모음·템플릿)은 대상이 아니다** — 압박에 저항할 '행동'이 없는 문서에 이 절차는 비용만 든다(루트 AGENTS.md 16절 최소주의).
+1. **frontmatter is mandatory (spec violation makes the skill appear with no description)**: SKILL.md must start **from line 1** with `---` YAML frontmatter containing `name` (matching the directory name) and `description`. The CLI reads **only the frontmatter description** for listing and automatic trigger matching — a description written only in the body shows the bare name and fails to catch user input. Write the description as a single line; if the value contains YAML special characters such as colons (`: `) or quotes, **wrap the whole value in double quotes** (otherwise the entire frontmatter fails to parse). **Verify right after creation**: check line-1 `---`, the closing `---`, and description presence with `head -6`.
+2. **description (written in English, ≤800 chars recommended — must stay within the CLI hardcap of ~1024 chars; Pushy formula — 3 elements + negative triggers)**: ① verb enumeration ("PDF-related work" ✗ → "read, extract, merge, OCR PDFs" ✓) ② explicit trigger situations ("use this skill when the user mentions ~") ③ **re-run keywords included** — so it is auto-invoked again in new sessions. **Korean trigger keywords are recommended alongside** the re-run keywords (they must match the user's request phrasing). ④ **negative triggers (recommended when boundaries overlap with adjacent skills/tools)**: state easily confused adjacent situations as `Do NOT use for …` to actively block misrouting — e.g. defuddle's `Do NOT use for URLs ending in .md (→ WebFetch)`. Reason: with positive triggers only, boundary-overlapping requests match both skills and routing wobbles — a negative boundary settles the match to one side (a low-cost remedy for repeatedly observed misrouting failures; kepano/obsidian-skills convention ported 2026-07-16). **Negative triggers outrank the length target**: skills with overlapping boundaries may run long to fit negative triggers but stay within 800 chars; if truly over, trim the positive verb enumeration but never delete the negative boundary — blocking misrouting is worth more than a few tokens (raised from a fixed 500 after measurement showed many skills exceeding it due to the negative-trigger convention, 2026-07-16 asset review).
+3. **Progressive Disclosure**: SKILL.md body within 500 lines. Split into three layers — metadata → body → `references/` — and move conditional detail into `references/`. Reason: the longer the always-read body, the higher every invocation's cost and the more the core rules get buried.
+4. **Why-First**: Do not list rules alone; include the reasons. Attaching a reason widens a rule's applicable range — the LLM can keep judging in edge cases.
+5. **with/without**: State the difference with/without this skill (metric evaluation) at the bottom of the skill.
+6. **Effective timing**: Skill additions/edits take effect **from the next session** (the CLI loads at session start). To use a just-created skill immediately, open a new session or invoke it explicitly with `/skill-name` — include this fact in the creation completion report.
+7. **Pressure testing (behavioral disciplines only — ported from superpowers writing-skills, ADR 022)**: For discipline skills/rules that aim to change the model's default behavior (gates, prohibitions, forced procedures), do not declare completion from the static checklist alone — **first observe a pressure scenario (baseline) where a subagent actually violates without the skill**, write the skill targeting the rationalization phrases observed there, then confirm the same scenario turns into compliance (observe failure → write → confirm compliance — the documentation application of root AGENTS.md §13 TDD). If new rationalizations appear during confirmation, plug those holes and re-confirm. Reason: a rule that has never seen baseline failure blocks imagined violation points, not real ones. **Reference/procedural skills (command collections, templates) are out of scope** — for documents with no 'behavior' to resist pressure, this procedure is pure cost (root AGENTS.md §16 minimalism).
+8. **English-first authoring (ADR 030)**: New harness assets (AGENTS.md files, agent definitions, SKILL.md, references) are **authored in English by default** — they are model-loaded assets, and English cuts input tokens on every load (root §15 rationale applied to load frequency). The Korean summary views (`.agents/agents/README.ko.md`, `.agents/skills/README.ko.md`, `AGENTS_KR.md`) **must be updated in the same commit** whenever their source assets are created, renamed, or retired — a stale summary view misleads the user the way a stale REGISTRY.md misleads routing. This is part of the completion checklist below.
 
-## 진화 트리거 (이 스킬이 호출되는 자동 조건)
+## Evolution triggers (automatic conditions that invoke this skill)
 
-루트 AGENTS.md 8절의 4신호 — ① 같은 유형 요청 3회 이상 ② 같은 실패 2회 이상(같은 정정 2회 포함) ③ 하네스 우회 관찰 ④ 수축·효율(3주+ 무호출 스킬·에이전트, 토큰 과소모 패턴 2회+ — 주간 점검 한정) — 이 감지되면 신설/개선/**폐기·통합**을 **사용자에게 제안**하고, 승인 시 이 스킬로 실행한다. 무단 생성·폐기 금지: 하네스는 사용자의 운영 자산이다.
+The 4 signals of root AGENTS.md §8 — ① same request type 3+ times ② same failure 2+ times (including same correction 2+) ③ observed harness bypass ④ shrink/efficiency (skills/agents unused 3+ weeks, token-overconsumption pattern 2+ times — weekly check only) — when detected, **propose** creation/improvement/**retirement/consolidation to the user**, and execute with this skill on approval. No unauthorized creation or retirement: the harness is the user's operating asset.
 
-## 완료 판정 체크리스트 (생성·개선 후 자체 검증)
+## Completion checklist (self-verification after create/improve)
 
-- [ ] **루트 하네스 한정**: CLAUDE.md 첫 줄에 **`@AGENTS.md`** 임포트 존재 + `## 하네스: {도메인}` 섹션 + 항상-온 앵커(출력 언어·라우팅 스킬명·우선순위) (하위 프로젝트에는 CLAUDE.md 없음)
-- [ ] **변경 이력:** 하위 프로젝트 AGENTS.md는 하단 테이블 존재(초기 1행); **루트는 `docs/harness-changelog.md`에 표 존재**(ADR 021 — CLAUDE.md·루트 AGENTS.md 하단엔 테이블 없음, 포인터만)
-- [ ] 오케스트레이터 description에 재실행 키워드 포함
-- [ ] 오케스트레이터 초기 Phase에 `_workspace/` 감지 로직 존재
-- [ ] 각 에이전트 정의에 "재호출 지침" 섹션 존재
-- [ ] **루트 에이전트:** `.agents/agents/*.md`와 `.codex/agents/*.toml` stem 집합·`name`·`description`이 1:1로 일치하고, TOML이 대응 Markdown 전문을 선로드하며 모델·sandbox를 고정하지 않음(ADR 027)
-- [ ] 진화 트리거 4신호를 관찰하는 운영 습관 명시(확장 ①~③ 일일, 수축·효율 ④ 주간)
-- [ ] **루트 하네스 한정**: `.claude/agents`, `.claude/skills`가 공용 디렉토리를 바라봄(심링크 검증)
-- [ ] **하위 프로젝트 한정**: 하네스 원본이 루트 `.agents/projects/<이름>/`에 있고, `project/<이름>/`와 그 git 저장소에는 하네스 파일이 없음. REGISTRY.md에 같은 이름의 행 존재
-- [ ] **하위 프로젝트 한정**: 초기 스킬·에이전트 미생성(지연 생성 원칙), 하위 AGENTS.md에 "스킬 후보" 섹션 존재. 지연 생성된 스킬·에이전트가 있다면 `.agents/projects/<이름>/skills/`·`agents/`에 위치하고 하위 AGENTS.md에 목록·경로가 명시됨
-- [ ] **루트 하네스 한정**: REGISTRY.md에 프로젝트 레지스트리 표 존재(신규 프로젝트면 행 추가됨). 하위 프로젝트 하네스에는 레지스트리를 두지 않는다(루트 단일 원칙)
-- [ ] **루트 하네스 한정**: 루트 스킬·에이전트를 신설·개명·폐기했다면 루트 `README.md` 디렉토리 트리의 해당 목록 행을 같은 커밋에서 갱신함(반복 누락 지점 — `docs/README.md` MOC와 별개 파일)
-- [ ] 파괴적 작업 사용자 확인 가드레일이 루트 AGENTS.md에 존재
-- [ ] 각 SKILL.md가 500줄 이내이고 with/without 지표가 하단에 존재
-- [ ] 각 SKILL.md의 frontmatter가 첫 줄 `---`로 시작하고 `name`(디렉토리명 일치)·`description` 존재, YAML 유효(특수문자 포함 시 큰따옴표) — `head -6`으로 확인
-- [ ] ADR 존재(초기 구성이면 001)
-- [ ] `_workspace/`가 gitignore에 있고, 하네스 파일들은 gitignore에 없음
+- [ ] **Root harness only**: CLAUDE.md has the first-line **`@AGENTS.md`** import + `## Harness: {domain}` section + always-on anchors (output language, routing skill names, priority) (sub-projects have no CLAUDE.md)
+- [ ] **Change history:** sub-project AGENTS.md has the bottom table (initial 1 row); **root has the table in `docs/harness-changelog.md`** (ADR 021 — no table at the bottom of CLAUDE.md/root AGENTS.md, pointer only)
+- [ ] Orchestrator description includes re-run keywords
+- [ ] Orchestrator's initial Phase has `_workspace/` detection logic
+- [ ] Every agent definition has a "re-invocation guide" section
+- [ ] **Root agents:** `.agents/agents/*.md` and `.codex/agents/*.toml` stem sets, `name`, `description` match 1:1; TOML preloads the corresponding full Markdown and pins no model/sandbox (ADR 027)
+- [ ] Operating habit of observing the 4 evolution-trigger signals is stated (expansion ①–③ daily, shrink/efficiency ④ weekly)
+- [ ] **Root harness only**: `.claude/agents`, `.claude/skills` point at the shared directories (symlink verification)
+- [ ] **Sub-project only**: the harness original lives at root `.agents/projects/<name>/`, and `project/<name>/` and its git repository contain no harness files. REGISTRY.md has a row with the same name
+- [ ] **Sub-project only**: no initial skills/agents created (deferred-creation principle); sub AGENTS.md has a "skill candidates" section. Any lazily created skills/agents live in `.agents/projects/<name>/skills/`/`agents/` and are listed with paths in the sub AGENTS.md
+- [ ] **Root harness only**: REGISTRY.md has the project registry table (row added for a new project). Sub-project harnesses hold no registry (root-single principle)
+- [ ] **Root harness only**: if root skills/agents were created/renamed/retired, the corresponding list rows in the root `README.md` directory tree were updated in the same commit (repeated-omission spot — a separate file from the `docs/README.md` MOC)
+- [ ] **English-first (ADR 030)**: new/renamed/retired harness assets are authored in English, and the affected Korean summary views (`.agents/agents/README.ko.md`, `.agents/skills/README.ko.md`, `AGENTS_KR.md`) were updated in the same commit
+- [ ] Destructive-work user-confirmation guardrail exists in root AGENTS.md
+- [ ] Every SKILL.md is within 500 lines and has with/without metrics at the bottom
+- [ ] Every SKILL.md frontmatter starts at line 1 with `---`, has `name` (matching directory) and `description`, valid YAML (double-quoted if special characters) — verified with `head -6`
+- [ ] ADR exists (001 for initial setup)
+- [ ] `_workspace/` is in gitignore, and harness files are not
 
 ## with / without
 
-| 지표 | 이 스킬 없이 | 이 스킬로 |
+| Metric | Without this skill | With this skill |
 |---|---|---|
-| 구조 일관성 | 프로젝트마다 다른 하네스 구조, 라우팅 깨짐 | 모든 프로젝트가 같은 골격 |
-| 레지스트리 | 프로젝트 생성 후 등록 누락 → 라우팅 불가 | 생성 절차에 레지스트리 갱신 내장 |
-| 진화 | 반복 실패를 매번 수동 대응 | 4신호 감지 → 제안 → 승인 → 생성·폐기 |
-| 검증 | 만들고 끝 | 15항목 체크리스트로 완료 판정 |
+| Structural consistency | Different harness structure per project, broken routing | Every project shares the same skeleton |
+| Registry | Registration missed after project creation → routing impossible | Registry update built into the creation procedure |
+| Evolution | Manual response to every repeated failure | 4-signal detection → proposal → approval → create/retire |
+| Verification | Build and done | Completion judged by the 18-item checklist |

@@ -39,6 +39,7 @@
 | [027](adr/027-codex-agent-adapters.md) | 2026-07-19 | 활성 | Codex custom-agent 얇은 어댑터 (`.agents/agents` 원본 → `.codex/agents` 로더 계층) |
 | [028](adr/028-gate-reminder-hook.md) | 2026-07-22 | 활성 | gate-reminder 훅 — 진단→구현 전환점 orchestrate 게이트 상기의 실행 계층 승격 (세션당 1회 차단) |
 | [029](adr/029-codex-hook-parity-default.md) | 2026-07-22 | 활성 | 세션 훅 Codex 파리티 기본값 — 미검증 이벤트도 `.codex/hooks.json` 선제 등록 (fail-open 전제, agentsview-daemon 편입 — 019 부분 대체) |
+| [030](adr/030-english-harness-assets.md) | 2026-07-22 | 활성 | 모델-로드 하네스 자산 영어 단일 원본 전환 (§15 개정, 한글 뷰 3종 + 드리프트 가드, ADR·스펙·changelog는 한글 유지) |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
