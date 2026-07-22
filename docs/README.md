@@ -73,3 +73,4 @@
 | [2026-07-19-oh-my-openagent-adoption](proposals/2026-07-19-oh-my-openagent-adoption.md) | → ADR 026 | oh-my-openagent 검증·운영 착안 5건(증거 4필드·무결성 기계 점검·untrusted 봉투·팀 런 교훈 노트·위임 발행 형식 강화) — 오케스트레이션·루프 층은 기수렴 판정, 실행 계층 기능·자동 머지 기각 |
 | [2026-07-22-karpathy-guidelines-adoption](proposals/2026-07-22-karpathy-guidelines-adoption.md) | 부분 채택(§16·team-review — ADR 017 연장) | karpathy-guidelines 4원칙 중 Surgical Changes만 이식(변경 줄 요청 소급성) — 3원칙은 기수렴 기각, 플러그인 설치 기각 |
 | [2026-07-22-rtk-adoption](proposals/2026-07-22-rtk-adoption.md) | 조건부 채택(harness-install 3e·§13-2) | rtk 명령 출력 압축 프록시 — 훅 모드 설치 단계(선택·텔레메트리 명시 차단) + 증거 원문 규칙 보강. Codex 모드·수치 신뢰는 보류(실측 후 tool-audit) |
+| [2026-07-22-caveman-internal-comms](proposals/2026-07-22-caveman-internal-comms.md) | 기각 | 내부 통신 전보체(케이브어) 전환 — 손실 압축 실효 10~15% vs 지시 정밀도 손실 재작업 비대칭으로 기각, §15 영어 유지(적재 구조 절감 축이 대체) |
