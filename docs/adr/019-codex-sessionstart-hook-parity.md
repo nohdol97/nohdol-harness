@@ -1,5 +1,7 @@
 # ADR 019 — Codex SessionStart 훅 병행 (리마인더 2종)
 
+> **부분 대체(→029, 2026-07-22)**: "확인된 이벤트만 등록" 자세와 agentsview-daemon 제외 결정은 ADR 029(파리티 기본값 — 미검증 이벤트·데몬 포함 선제 등록)로 대체됐다. 등록 형식·`$PWD` 경로·활성화 방식·#17532 폴백·macOS/Linux 한정 등 나머지 결정은 유효하다.
+
 - **날짜**: 2026-07-16
 - **변경 내용**: `.claude/settings.json`에만 등록돼 있던 SessionStart 세션 훅 중 **리마인더 2종**(`harness-review-reminder`·`worklog-reminder`)을 **`.codex/hooks.json`(추적)** 에도 등록해 Claude Code·Codex 두 CLI에서 같은 리마인더가 뜨게 한다. 훅 스크립트는 **무변경**(이미 도구 무관). 활성화(`[features] codex_hooks = true`)는 **`.codex/config.toml`(추적)로 저장소에 커밋해 클론 즉시 항상 켜지게** 한다(2026-07-16 사용자 지시).
 - **대상**: `.codex/hooks.json`·`.codex/config.toml`(신설), `.gitignore`(`.codex/*` 추적 예외 2개), AGENTS.md 5·11절, `.agents/skills/harness-install/SKILL.md`, docs/specs/2026-07-14-harness-review-reminder-hook.md·2026-07-16-worklog-reminder-hook.md(Codex 노트)

@@ -28,6 +28,10 @@
         "hooks": [
           {
             "type": "command",
+            "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/agentsview-daemon.py\"; done; exit 0"
+          },
+          {
+            "type": "command",
             "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/harness-review-reminder.py\"; done; exit 0"
           },
           {

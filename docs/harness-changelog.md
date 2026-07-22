@@ -101,6 +101,7 @@
 | 2026-07-22 | gate-reminder 리뷰 반영(Low F1·F3) — R5 정리 테스트 추가(13항목), 4절 `_workspace/` 예외 목록에 `.gate-reminder/` 추가 + 예외 목록 압축(40KB 예산 39,959B, 여유 5→41B) | 4절, .agents/hooks/gate-reminder_test.py, docs/specs/ | reviewer 독립 검증 PASS(Critical~Med 0·Low 5) — F1 테스트 공백, F3 workspace 정리가 활성 세션 상태를 지울 수 있는 틈, F2 예산 여유 5B(트림 동봉). 원본: _workspace/gate-reminder-2026-07-22/ |
 | 2026-07-22 | gate-reminder Codex 서술 정직화 — "PreToolUse 상당 이벤트 없음" 단정을 "미확인(검증된 이벤트는 SessionStart뿐 — ADR 019, 확인 시 파리티 검토)"으로 정정 | docs/adr/028, docs/specs/2026-07-22, .agents/hooks/gate-reminder.py(주석) | 사용자 질문("codex에도 적용되게 못해?")으로 재검토 — 07-16 조사가 검증한 것은 SessionStart뿐인데 부재를 사실로 기술했음. 도구 제약 서술 정직화 원칙(changelog 2026-07-12 F1~F11 전례) |
 | 2026-07-22 | 세션 훅 Codex 파리티 기본값(ADR 029) — 11절 병행 규칙을 "신설 훅은 대칭 등록 기본값, 미검증 이벤트도 선제 등록(fail-open 전제)"으로 확장, gate-reminder를 .codex/hooks.json에 등록($PWD 경로, matcher 양 CLI 도구명 알터네이션) | 11절, .codex/hooks.json, docs/adr/(028·029), docs/specs/2026-07-22, .agents/hooks/gate-reminder.py(주석), docs/README.md | 사용자 지시(2026-07-22 — "앞으로 훅도 일단 Codex에서도") — 등록해 두고 확인하는 쪽이 방어 공백이 짧고, fail-open이라 미지원 시 무해. 동작 실검증은 Codex 설치 머신 몫. 2차 reviewer PASS(Low 2) |
+| 2026-07-22 | 훅 전수 파리티 점검 — agentsview-daemon을 .codex/hooks.json에 편입(ADR 019 제외 결정 부분 대체 → 029 결정 5), 11절 "daemon 제외" 문구 삭제, ADR 019 부분 대체 배너·MOC 상태 갱신. git 훅(tdd-gate·secret-gate)은 git 계층이라 이미 도구 무관 확인 | 11절, .codex/hooks.json, docs/adr/(019·029), docs/README.md | 사용자 질문("나머지 훅들도 검토했어?") — 파리티 기본값 신설 후 기존 훅 잔여 공백 1건(데몬). 이중 기동 가드·미설치 fail-open 확인으로 선제 등록 안전 조건 충족, 기동은 관측 여부와 무관하게 무해·잠재 유익 |
 
 ## CLAUDE.md
 

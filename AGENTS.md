@@ -117,7 +117,7 @@ Codex 네이티브 custom agent로도 노출하려면 같은 이름의 **얇은 
 - **새 에이전트·스킬은 반드시 `.agents/` 원본 디렉토리에 생성한다. `.claude/` 경로에 직접 파일을 만들지 않는다.** 새 루트 에이전트는 원본과 함께 `.codex/agents/` 얇은 어댑터도 생성한다. 이유: `.claude/`는 심링크일 뿐이라 원본처럼 보이지만, 심링크가 실파일로 대체되는 순간 두 CLI가 서로 다른 파일을 보게 되고 동기화가 조용히 깨진다. `.claude/` 아래 실파일 발견과 Markdown↔TOML 어댑터 드리프트는 하네스 우회 신호로 취급한다(8절).
 - 심링크가 불가한 환경이면 sync 스크립트로 대체하고 그 사실을 ADR에 기록한다.
 - **외부 도구가 스킬을 설치할 때는 전역 경로(홈 디렉토리)로** 설치한다 — 예: `agentsview skills install` → `~/.claude/skills/`·`~/.agents/skills/`. 이 워크스페이스에 프로젝트 모드(`--project` 등)로 설치하지 않는다. 이유: 워크스페이스의 `.claude/`는 심링크라 설치물이 공용 `.agents/skills/`에 떨어져 **설치처별 도구 산출물이 공용 저장소의 커밋 대상**이 된다.
-- **세션 훅의 Codex 병행 — 파리티 기본값 (ADR 019·029)**: 세션 훅 신설 시 `.claude/settings.json`과 **`.codex/hooks.json`**(추적)에 대칭 등록한다. Codex 미검증 이벤트도 선제 등록한다(fail-open이라 미지원이면 무해 — 동작 확인은 설치 머신에서). 활성화(`.codex/config.toml`)는 커밋되어 클론 즉시 켜진다. macOS·Linux 한정, `agentsview-daemon` 제외. 상세: ADR 019·029·harness-install.
+- **세션 훅의 Codex 병행 — 파리티 기본값 (ADR 019·029)**: 세션 훅 신설 시 `.claude/settings.json`과 **`.codex/hooks.json`**(추적)에 대칭 등록한다. Codex 미검증 이벤트도 선제 등록한다(fail-open이라 미지원이면 무해 — 동작 확인은 설치 머신에서). 활성화(`.codex/config.toml`)는 커밋되어 클론 즉시 켜진다. macOS·Linux 한정. 상세: ADR 019·029·harness-install.
 
 ## 12. 하위 프로젝트 하네스 중앙 관리 (ADR 006)
 
