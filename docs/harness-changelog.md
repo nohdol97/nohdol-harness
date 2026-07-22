@@ -112,6 +112,7 @@
 | 2026-07-23 | 한글 다이제스트 파일명 개명 AGENTS_KR.md → AGENTS.ko.md — 전 참조(§15·R16·테스트·ADR 030·README·changelog) 일괄 치환, 배너 source-hash 재생성 | AGENTS.ko.md, AGENTS.md 15절, .agents/hooks/integrity-check.py(+테스트), docs/adr/030, README.md | 사용자 요청 — README.ko.md와 .ko.md 접미 형태 통일 |
 | 2026-07-23 | autoloop description 압축 1,023→729자 — 메커니즘 서술(3동사·게이트 상세) 제거, 트리거·한국어 키워드·부정 경계 15항목 바이트 유지(기계 검증) | .agents/skills/autoloop/SKILL.md | R13 하드캡(1024자) 여유 1자 → 295자 확보 — 07-20 wrapup 실파손 유형의 잠복 재현 해소(주간 점검 P1 축소판, 앵커링 우려로 절감 목적 전면 압축은 미실행) |
 | 2026-07-23 | metaskill 스킬 공통 규칙 1(생성 직후 검증)에 description 바이트 길이 확인 추가 — `grep -m1 '^description:' \| wc -c`로 하드캡 ~1024B 이내 확인(한글 3바이트 주석 병기) | .agents/skills/metaskill/SKILL.md | 규칙 2에 길이 기준은 있으나 검증 절차에 없어 사후에 걸림 — wrapup description 1410B로 생성 후 2회 왕복 실사례(07-19 이월 노트 승인 반영) |
+| 2026-07-23 | harness-install 3절 보조 도구를 전부-선택에서 기본-설치로 전환 — 미설치 항목은 항목별 재질문 없이 설치 진행(agentsview·defuddle·context7·전역 설정·rtk), 실패·오프라인·사용자 거절만 사유와 함께 스킵, 3d 전역 설정은 미설정 키만 기본 적용(기설정 값 보존, cleanupPeriodDays 기본 90), 7절 완료 기준에서 (Optional) 표기 제거 + rtk 항목 신설, defuddle 스킬의 "선택 도구 절차" 스테일 참조 동조 수정(reviewer L2) | .agents/skills/(harness-install·defuddle)/SKILL.md, .agents/skills/README.ko.md | 사용자 지시(2026-07-23 — "선택사항이 아니라 미설치되어 있으면 설치하게 해") — 선택 처리로 설치가 누락되면 폴백 경로로만 돌아 도구 절감 효과가 죽은 채 유지됨 |
 
 ## CLAUDE.md
 
