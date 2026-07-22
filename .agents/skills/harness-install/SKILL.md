@@ -71,6 +71,16 @@ description: Bootstrap this harness on a new machine after cloning. Verifies .cl
 **② transcript 보존 연장 (cleanupPeriodDays)** — 세션 기록 자동 삭제 주기. 기본 **30일**이 짧다고 느끼면 연장을 제안한다(감사·과거 세션 추적에 유리, 디스크만 조금 더 씀). `settings.json`에 `"cleanupPeriodDays": <일>`(예: 90~365). 사용자에게 기간을 확인해 적용한다.
 - **Codex**: 세션·히스토리를 **기본 무기한 전부 보존**한다 — 연장 설정 자체가 없다(`[history] persistence`는 save-all/none 뿐). 오히려 `~/.codex/sessions`·`~/.codex/log/codex-tui.log` **비대**에 주의(정리는 상시 설정이 아닌 일회성 청소). 보존은 손댈 것 없음으로 안내한다.
 
+#### 3e. rtk (선택 — 명령 출력 토큰 압축 프록시)
+
+`rtk <cmd>`가 명령을 대신 실행하고 출력을 압축해(git status ~3,000→~600토큰 등) 컨텍스트 소모를 줄이는 Rust CLI다(Apache-2.0, 채택 설계: docs/proposals/2026-07-22-rtk-adoption.md). kubectl·로그·git·테스트 출력이 무거운 이 워크스페이스와 표면이 겹친다. **필수가 아니다** — 미설치여도 아무것도 죽지 않는다.
+
+1. 설치(전역 — 워크스페이스에 아무것도 커밋하지 않는다): macOS `brew install rtk-ai/tap/rtk`, Linux는 GitHub Releases 바이너리 또는 `cargo install --git https://github.com/rtk-ai/rtk`(crates.io의 동명 타 패키지 주의 — README 경고 실재). 사용자 확인 후 진행, **무단 설치 금지**.
+2. **텔레메트리 명시 비활성**: `RTK_TELEMETRY_DISABLED=1`을 셸 프로필에 추가한다 — 공식 문서 간 기본값 서술이 모순(README opt-in vs DISCLAIMER 기본 수집)이라 명시 차단이 3절 정합이다(agentsview와 동일 처방).
+3. 훅 모드 등록: `rtk init -g` — 전역 `~/.claude/settings.json`에 PreToolUse(Bash) 재작성 훅 + `~/.claude/CLAUDE.md`에 `@RTK.md` 임포트가 추가된다(전역 대상이라 하네스 추적 파일과 무관). `rtk verify`로 훅 무결성 확인. **Codex 모드는 보류** — 훅이 아닌 전역 AGENTS.md 행동 지시 패치라 효과·정합이 약하다(제안 문서 판정 표).
+4. **증거 규칙 안내**(루트 §13-2): 완료 증거의 검증 명령은 압축 출력이 아니라 원문으로 남긴다 — `rtk proxy <cmd>`(패스스루) 또는 실패 시 자동 저장되는 tee 원문(`~/.local/share/rtk/tee/`) 확인.
+5. 설치 3주 후 `rtk gain` 실측으로 tool-audit를 돌려 keep/remove를 판정한다(§8 ④). 실패·오프라인·거부 시 건너뛰고 완료 보고에 남긴다.
+
 ### 4. 기존 프로젝트 스캔
 
 `project/` 하위 디렉토리를 나열하고, 각각에 대해 관찰 가능한 사실(하위 구성, git 저장소 여부, 하네스 유무 — `.agents/projects/<이름>/` 존재 기준(루트 AGENTS.md 12절), 스택 단서)을 수집한다. **역할·목적은 각 프로젝트의 README·문서를 직접 읽어 요약해 채운다** — 문서가 없으면 "미확인". **추측으로 채우지 않는다** — 관찰과 추측이 섞이면 레지스트리 전체를 믿을 수 없게 된다.

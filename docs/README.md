@@ -71,3 +71,5 @@
 | [2026-07-18-loop-engineering-adoption](proposals/2026-07-18-loop-engineering-adoption.md) | → ADR 023 | loop-engineering 시크릿 게이트 1건 이식(unattended 루프·npm 도구군·L1-L3 기각 — 원칙 층은 기수렴) |
 | [2026-07-18-graphify-review](proposals/2026-07-18-graphify-review.md) | 기각(파일럿 미달) | graphify 코드 지식 그래프 — sona_app 실측: Dart 줄번호 0%·역추적 빈결과·범위 grep보다 ~17배 토큰. TS 등 타 스택 재검토 여지 |
 | [2026-07-19-oh-my-openagent-adoption](proposals/2026-07-19-oh-my-openagent-adoption.md) | → ADR 026 | oh-my-openagent 검증·운영 착안 5건(증거 4필드·무결성 기계 점검·untrusted 봉투·팀 런 교훈 노트·위임 발행 형식 강화) — 오케스트레이션·루프 층은 기수렴 판정, 실행 계층 기능·자동 머지 기각 |
+| [2026-07-22-karpathy-guidelines-adoption](proposals/2026-07-22-karpathy-guidelines-adoption.md) | 부분 채택(§16·team-review — ADR 017 연장) | karpathy-guidelines 4원칙 중 Surgical Changes만 이식(변경 줄 요청 소급성) — 3원칙은 기수렴 기각, 플러그인 설치 기각 |
+| [2026-07-22-rtk-adoption](proposals/2026-07-22-rtk-adoption.md) | 조건부 채택(harness-install 3e·§13-2) | rtk 명령 출력 압축 프록시 — 훅 모드 설치 단계(선택·텔레메트리 명시 차단) + 증거 원문 규칙 보강. Codex 모드·수치 신뢰는 보류(실측 후 tool-audit) |
