@@ -88,6 +88,19 @@ class RecordTest(unittest.TestCase):
             r = run_hook("--record", payload, self.dir)
             self.assertEqual(r.returncode, 0, repr(payload))
 
+    def test_stale_state_cleaned_on_record(self):
+        """R5: 7일 초과 상태 파일은 record 시 정리되고, 신선한 파일은 남는다."""
+        stale, fresh = state_path(self.dir, "old-session"), state_path(self.dir, "fresh-session")
+        os.makedirs(os.path.dirname(stale), exist_ok=True)
+        for p in (stale, fresh):
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("diag")
+        eight_days_ago = __import__("time").time() - 8 * 24 * 3600
+        os.utime(stale, (eight_days_ago, eight_days_ago))
+        run_hook("--record", bash_event("kubectl get pods"), self.dir)
+        self.assertFalse(os.path.exists(stale))
+        self.assertEqual(read_state(self.dir, "fresh-session"), "diag")
+
 
 class CheckTest(unittest.TestCase):
     def setUp(self):

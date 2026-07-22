@@ -38,4 +38,5 @@
 - [x] `_workspace/`·`/tmp/` 경로 check → exit 0, 상태 `diag` 유지 (R3)
 - [x] reminded 상태에서 추가 진단 record → 재무장 안 됨 (R1)
 - [x] 비정상 stdin(빈 입력·깨진 JSON·session_id 부재) → record/check 모두 exit 0 (R4)
+- [x] 7일 초과 상태 파일은 record 시 정리되고 신선한 파일은 유지 (R5)
 - [x] 회귀 테스트: `.agents/hooks/gate-reminder_test.py` 전체 통과 (수정 시 필수)
