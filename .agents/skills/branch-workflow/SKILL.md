@@ -15,7 +15,7 @@ description: Start and finish subproject work on clean feature branches to preve
 
 > **순서**: 구현·다단계 작업이면 **orchestrate Phase 0-1 게이트 판정이 먼저**다(루트 AGENTS.md 7절 3항) — 이 시작 절차는 판정으로 실행이 확정된 뒤, 파일을 건드리기 전의 첫 단계다. 게이트 전에 브랜치부터 만들면 '직접 수행 아님' 판정 시 빈 브랜치가 남는다.
 
-1. **현재 상태 확인**: `git status` — 미커밋 변경이 있으면 진행하지 않고 처리 방법(커밋/stash/폐기)을 사용자에게 묻는다. 이유: 남의 작업일 수 있는 변경을 자동 처리하면 유실 사고가 된다.
+1. **현재 상태 확인**: `git status` — 미커밋 변경이 있으면 진행하지 않고 처리 방법(커밋/stash/폐기)을 사용자에게 묻는다. 이유: 남의 작업일 수 있는 변경을 자동 처리하면 유실 사고가 된다. **세션 resume·`/model` 전환 직후에는 파일 편집 전에 `git branch --show-current`로 현재 브랜치를 재확인한다** — 조용히 main으로 돌아가 있을 수 있다(실사례 2026-07-22: 재개 직후 main 직커밋 직전에 발견 — 시작 시점만이 아니라 작업 도중의 재개에도 적용).
 2. **main 최신화**: `git fetch origin` → `git checkout main` → `git pull --ff-only`. fast-forward 불가면(로컬 main 오염) 중단하고 상태를 보고한다 — 오염된 main에서 분기하면 문제가 브랜치로 전파된다.
 3. **새 브랜치 생성**: `git checkout -b <type>/<간결한-설명>` — type은 커밋 컨벤션과 동일(feat|fix|refactor|chore 등), 설명은 kebab-case (예: `feat/login-oauth`, `fix/schedule-overlap`).
 4. 작업 진행 (커밋은 Conventional Commits + 프로젝트 스코프). **기능 추가·동작 변경이면 구현 전에 스펙 → 실패 테스트 순서를 지킨다**(루트 AGENTS.md 13절 SDD+TDD, 스펙은 doc-writer 템플릿).
