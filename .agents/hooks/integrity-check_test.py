@@ -295,6 +295,49 @@ class TestIntegrityCheck(unittest.TestCase):
         code, out = run_check(self.root)
         self.assertRegex(out, r"integrity:.*(pass|PASS)")
 
+    def test_agents_budget_over_fails(self):
+        """R14: AGENTS.md가 40,000바이트를 넘으면 FAIL."""
+        write(os.path.join(self.root, "AGENTS.md"), "x" * 40_001)
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("R14", out)
+        self.assertIn("40001", out.replace(",", ""))
+
+    def test_agents_budget_at_limit_ok(self):
+        """R14: 정확히 40,000바이트는 예산 내 — FAIL 없음."""
+        write(os.path.join(self.root, "AGENTS.md"), "x" * 40_000)
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R14", out)
+
+    def test_adr_ref_missing_fails(self):
+        """R15: 항상-온 문서가 존재하지 않는 ADR을 참조하면 FAIL."""
+        write(os.path.join(self.root, "CLAUDE.md"), "@AGENTS.md\n\n규칙 근거는 ADR 099 참조.\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("R15", out)
+        self.assertIn("099", out)
+
+    def test_adr_ref_enumeration_partial_missing_fails(self):
+        """R15: 'ADR 001·098' 열거에서 098만 없으면 098만 FAIL(001은 통과)."""
+        write(os.path.join(self.root, "AGENTS.md"), "# AGENTS.md\n근거(ADR 001·098).\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1)
+        self.assertIn("098", out)
+        self.assertNotIn("referenced ADR 001", out)
+
+    def test_adr_refs_all_exist_ok(self):
+        """R15: 실재하는 ADR 참조만 있으면 통과."""
+        write(os.path.join(self.root, "AGENTS.md"), "# AGENTS.md\n근거는 ADR 001.\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0)
+        self.assertNotIn("FAIL R15", out)
+
+    def test_adr_ref_four_digit_number_not_matched(self):
+        """R15: 'ADR 2026' 같은 4자리+ 숫자는 참조로 추출하지 않는다(F2 경계)."""
+        write(os.path.join(self.root, "AGENTS.md"), "# AGENTS.md\n연도 표기 ADR 2026 텍스트.\n")
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R15", out)
+
 
 if __name__ == "__main__":
     utf8_stdio()

@@ -4,8 +4,9 @@
 harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립트 1개로 결정론화한다
 (루트 AGENTS.md 8절 승격 원칙 — tdd-gate·secret-gate 계보). 검사: 심링크(R1)·
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
-첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12). 심링크 불가 설치처는
-R1·R2를 SKIP한다(R11).
+첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 40KB
+예산(R14)·항상-온 문서의 ADR 참조 실재(R15). 심링크 불가 설치처는 R1·R2를
+SKIP한다(R11).
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
       (미지정 시 CLAUDE_PROJECT_DIR → 스크립트 위치 기준 루트 순으로 해석)
@@ -319,9 +320,56 @@ def check_gitignore(root):
     return out or [("R7 gitignore", PASS, "")]
 
 
+AGENTS_BUDGET = 40_000  # 항상-온 임포트 로딩 예산(루트 AGENTS.md 8절 ④ — harness-review 수동 wc -c를 기계화)
+
+
+def check_agents_budget(root):
+    """R14: AGENTS.md 40KB 예산 — 초과는 매 세션 고정 토큰 비용이라 커밋 전에 잡는다."""
+    path = os.path.join(root, "AGENTS.md")
+    if not os.path.isfile(path):
+        return [("R14 AGENTS.md budget", FAIL, "AGENTS.md missing")]
+    size = os.path.getsize(path)
+    if size > AGENTS_BUDGET:
+        return [("R14 AGENTS.md budget", FAIL,
+                 "%d bytes exceeds %d budget — trim before commit (AGENTS.md 8절 ④)" % (size, AGENTS_BUDGET))]
+    return [("R14 AGENTS.md budget", PASS, "")]
+
+
+# R15 대상은 항상-온 문서만 — 스테일 포인터의 피해가 매 세션 곱으로 붙는 곳.
+# 전 문서 스캔은 비목표(오탐 표면·유지비 대비 이득 없음 — 스펙 3절).
+ADR_REF_DOCS = ("CLAUDE.md", "AGENTS.md")
+
+
+def check_adr_refs(root):
+    """R15: 항상-온 문서(CLAUDE.md·AGENTS.md)가 참조하는 ADR 번호의 파일 실재 검사."""
+    adr_dir = os.path.join(root, "docs", "adr")
+    existing = set()
+    if os.path.isdir(adr_dir):
+        for fn in os.listdir(adr_dir):
+            m = re.match(r"^(\d{3})-.+\.md$", fn)
+            if m:
+                existing.add(m.group(1))
+    out = []
+    for rel in ADR_REF_DOCS:
+        path = os.path.join(root, rel)
+        if not os.path.isfile(path):
+            continue  # 파일 부재는 R6 등 별도 검사의 몫
+        with open(path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+        refs = set()
+        # "ADR 021", "ADR 019·029", "ADR 002·005·006·027" 같은 열거를 전부 편다.
+        # (?!\d): "ADR 2026" 같은 4자리+ 숫자에서 앞 3자리를 오탐 추출하지 않는다(리뷰 F2).
+        for m in re.finditer(r"ADR\s*((?:\d{3})(?:\s*[·,]\s*\d{3})*)(?!\d)", text):
+            refs.update(re.findall(r"\d{3}", m.group(1)))
+        for missing in sorted(refs - existing):
+            out.append(("R15 ADR ref %s" % rel, FAIL,
+                        "referenced ADR %s has no file in docs/adr/" % missing))
+    return out or [("R15 ADR refs", PASS, "")]
+
+
 CHECKS = [check_symlinks, check_claude_intrusion, check_skill_frontmatter,
           check_agent_frontmatter, check_codex_agent_adapters, check_moc,
-          check_claude_md, check_gitignore]
+          check_claude_md, check_gitignore, check_agents_budget, check_adr_refs]
 
 
 def run(root):
