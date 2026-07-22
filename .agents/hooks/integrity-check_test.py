@@ -47,7 +47,7 @@ def write_korean_views(root):
     """
     with open(os.path.join(root, "AGENTS.md"), "rb") as f:
         h = hashlib.sha256(f.read()).hexdigest()[:12]
-    write(os.path.join(root, "AGENTS_KR.md"),
+    write(os.path.join(root, "AGENTS.ko.md"),
           "> 생성된 뷰 — 편집 금지. source-hash: `%s`\n\n# AGENTS 한글 다이제스트\n" % h)
     skills = os.path.join(root, ".agents/skills")
     names = sorted(n for n in os.listdir(skills) if os.path.isdir(os.path.join(skills, n)))
@@ -362,7 +362,7 @@ class TestIntegrityCheck(unittest.TestCase):
         code, out = run_check(self.root)
         self.assertNotIn("FAIL R15", out)
 
-    # --- R16 AGENTS_KR.md 한글 뷰 source-hash (ADR 030 ⓐ) ---
+    # --- R16 AGENTS.ko.md 한글 뷰 source-hash (ADR 030 ⓐ) ---
     def test_agents_kr_stale_hash_fails(self):
         """R16: AGENTS.md 변경 후 뷰 미재생성 → source-hash 불일치 FAIL + 재생성 안내."""
         with open(os.path.join(self.root, "AGENTS.md"), "a", encoding="utf-8") as f:
@@ -380,23 +380,23 @@ class TestIntegrityCheck(unittest.TestCase):
 
     def test_agents_kr_missing_fails(self):
         """R16: 뷰 파일 부재는 FAIL — ADR 030 이후 뷰는 필수."""
-        os.remove(os.path.join(self.root, "AGENTS_KR.md"))
+        os.remove(os.path.join(self.root, "AGENTS.ko.md"))
         code, out = run_check(self.root)
         self.assertEqual(code, 1, out)
         self.assertIn("FAIL R16", out)
-        self.assertIn("AGENTS_KR.md", out)
+        self.assertIn("AGENTS.ko.md", out)
 
     def test_agents_kr_no_hash_line_fails(self):
         """R16: source-hash 줄이 없는 뷰는 대조 불가 → FAIL."""
-        write(os.path.join(self.root, "AGENTS_KR.md"), "# 한글 다이제스트 (배너 없음)\n")
+        write(os.path.join(self.root, "AGENTS.ko.md"), "# 한글 다이제스트 (배너 없음)\n")
         code, out = run_check(self.root)
         self.assertEqual(code, 1, out)
         self.assertIn("FAIL R16", out)
 
     def test_agents_kr_skip_when_no_agents_md(self):
-        """R16: AGENTS.md·AGENTS_KR.md 모두 부재 → SKIP (repo-shape 안전, 원본 부재는 R14 몫)."""
+        """R16: AGENTS.md·AGENTS.ko.md 모두 부재 → SKIP (repo-shape 안전, 원본 부재는 R14 몫)."""
         os.remove(os.path.join(self.root, "AGENTS.md"))
-        os.remove(os.path.join(self.root, "AGENTS_KR.md"))
+        os.remove(os.path.join(self.root, "AGENTS.ko.md"))
         code, out = run_check(self.root)
         self.assertNotIn("FAIL R16", out)
         self.assertIn("SKIP R16", out)

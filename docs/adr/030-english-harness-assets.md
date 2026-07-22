@@ -7,9 +7,9 @@
 ## 변경 내용
 
 1. **영어 단일 원본**: 모델이 세션·발행마다 로드하는 하네스 자산 — AGENTS.md, CLAUDE.md, 에이전트 정의 전부, 스킬 전부(SKILL.md·references) — 를 영어로 전환한다. 이후 metaskill이 생성하는 하네스 자산도 기본 영어로 작성한다.
-2. **한글 뷰(사용자 이해도 계층)**: ① 루트 `AGENTS_KR.md` — AGENTS.md 규칙의 한글 다이제스트(생성된 뷰, 편집 금지 배너 + source-hash), ② `.agents/agents/README.ko.md` — 에이전트 전체 한글 요약, ③ `.agents/skills/README.ko.md` — 스킬 전체 한글 요약. 원본 변경 시 같은 커밋에서 재생성한다.
+2. **한글 뷰(사용자 이해도 계층)**: ① 루트 `AGENTS.ko.md` — AGENTS.md 규칙의 한글 다이제스트(생성된 뷰, 편집 금지 배너 + source-hash), ② `.agents/agents/README.ko.md` — 에이전트 전체 한글 요약, ③ `.agents/skills/README.ko.md` — 스킬 전체 한글 요약. 원본 변경 시 같은 커밋에서 재생성한다.
 3. **한글 유지**: 사용자 대면 출력 전부(채팅·PR·커밋·이슈 — §15 불변), ADR·스펙·changelog·루트 README(사용자 이력 자산), 스킬 description 내 한국어 재실행 키워드(사용자 입력 매칭 기능), 사용자 대면 문서 템플릿(doc-writer 스펙·PR 본문·런북 등).
-4. **드리프트 가드(기계 점검)**: `integrity-check.py`에 신규 규칙 — ⓐ AGENTS_KR.md 배너의 source-hash가 현재 AGENTS.md 해시와 일치, ⓑ 한글 요약 2종의 항목 집합이 실제 `.agents/agents/`·`.agents/skills/` 집합과 1:1. 뷰 재생성 누락을 커밋 전에 잡는다.
+4. **드리프트 가드(기계 점검)**: `integrity-check.py`에 신규 규칙 — ⓐ AGENTS.ko.md 배너의 source-hash가 현재 AGENTS.md 해시와 일치, ⓑ 한글 요약 2종의 항목 집합이 실제 `.agents/agents/`·`.agents/skills/` 집합과 1:1. 뷰 재생성 누락을 커밋 전에 잡는다.
 5. **§15 개정**: 판단 기준 "읽는 주체"는 유지하되, 하네스 운영 자산을 모델-read로 재분류한다(아래 근거).
 
 ## 사유

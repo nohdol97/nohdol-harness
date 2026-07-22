@@ -9,7 +9,7 @@ Claude Code / Codex를 **이 디렉토리에서 열고** 프로젝트 작업을 
 ```
 nohdol-harness/
 ├── AGENTS.md              # 단일 원본(공용 규칙, 영어 — ADR 030) — 가드레일·라우팅·진화 트리거·티어 매핑
-├── AGENTS_KR.md           # AGENTS.md 한글 다이제스트 — 생성된 뷰(편집 금지, source-hash 드리프트 가드) (ADR 030)
+├── AGENTS.ko.md           # AGENTS.md 한글 다이제스트 — 생성된 뷰(편집 금지, source-hash 드리프트 가드) (ADR 030)
 ├── REGISTRY.md            # 프로젝트 레지스트리 — 설치처별 데이터 (미추적, harness-install로 생성)
 ├── CLAUDE.md              # `@AGENTS.md` 임포트(단일 원본 항상-온 주입) + Claude 전용 항상-온 앵커 (ADR 021, 영어 — ADR 030)
 ├── .agents/               # 에이전트·스킬 정의 원본 (공용, 영어 — ADR 030)
@@ -57,7 +57,7 @@ nohdol-harness/
 4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절). TDD는 전역 `core.hooksPath`의 git commit-msg 훅(`tdd-gate`)이 강제한다 — 코드 변경에 테스트가 없으면 커밋이 차단되며, Claude Code·Codex·수동 커밋 등 **도구와 무관**하게 걸린다(ADR 014·015).
 5. **작업 추적**: 세션을 넘는 작업은 `work-tracker`가 프로젝트 저장소의 GitHub Issues에 상태(태스크·진행 로그)를 영속화한다 — "이어서 하자"로 재개한다 (AGENTS.md 14절). 세션이 미커밋 작업을 남긴 채 닫히면 다음 세션 시작 시 `worklog-reminder` 훅이 진행 로그·재개를 환기한다(claude-mem 착안, ADR 018).
 6. **진화**: 같은 요청 3회 / 같은 실패·정정 2회 / 하네스 우회 / 수축·효율(3주+ 무호출 스킬, 토큰 과소모 패턴 — 주간 점검 한정) 관찰 시 metaskill이 에이전트·스킬 신설·개선·폐기를 제안한다.
-7. **내부 통신 언어**: 모델이 읽는 것(하네스 운영 자산 전부 — AGENTS.md·CLAUDE.md·에이전트·스킬 — 와 발행 프롬프트·`_workspace/` 팀 중간 리포트·P2P 메시지)은 영어, 사용자가 읽는 것(채팅 보고·PR·이슈·ADR·스펙·changelog·이 README·한글 뷰 3종(AGENTS_KR.md, skills/agents README.ko.md)·트리거 키워드)은 한국어 — 한국어가 같은 내용에 ~1.5-2배 토큰이라 모델-read 표면을 영어화해 절감한다 (AGENTS.md 15절, ADR 016·030).
+7. **내부 통신 언어**: 모델이 읽는 것(하네스 운영 자산 전부 — AGENTS.md·CLAUDE.md·에이전트·스킬 — 와 발행 프롬프트·`_workspace/` 팀 중간 리포트·P2P 메시지)은 영어, 사용자가 읽는 것(채팅 보고·PR·이슈·ADR·스펙·changelog·이 README·한글 뷰 3종(AGENTS.ko.md, skills/agents README.ko.md)·트리거 키워드)은 한국어 — 한국어가 같은 내용에 ~1.5-2배 토큰이라 모델-read 표면을 영어화해 절감한다 (AGENTS.md 15절, ADR 016·030).
 8. **코드 최소주의**: 하위 프로젝트 제품 코드는 쓰기 전에 결정 사다리(필요성→재사용→표준 라이브러리→네이티브→기존 의존성→한 줄→최소 구현)를 밟는다 — 단 문제 이해·검증·에러 처리·보안·명시 요청 기능은 최소화 예외(전면 엄밀성 유지). 판정은 `team-review`의 "단순성/과설계" 관점이 담당한다 (AGENTS.md 16절, ADR 017 — ponytail 착안).
 
 ## 안전 가드레일

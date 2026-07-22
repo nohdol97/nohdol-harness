@@ -374,27 +374,27 @@ SOURCE_HASH_RE = re.compile(r"source-hash: `?([0-9a-f]{12})`?")
 
 
 def check_agents_kr_view(root):
-    """R16: AGENTS_KR.md 한글 뷰의 source-hash ↔ 현재 AGENTS.md sha256[:12] 대조(ADR 030 ⓐ)."""
+    """R16: AGENTS.ko.md 한글 뷰의 source-hash ↔ 현재 AGENTS.md sha256[:12] 대조(ADR 030 ⓐ)."""
     src = os.path.join(root, "AGENTS.md")
-    view = os.path.join(root, "AGENTS_KR.md")
+    view = os.path.join(root, "AGENTS.ko.md")
     if not os.path.isfile(src):
         # 원본 부재는 R14의 몫 — 원본 없는 해시 대조는 불가하므로 SKIP(repo-shape 안전)
-        return [("R16 AGENTS_KR.md view", SKIP, "AGENTS.md missing — covered by R14")]
+        return [("R16 AGENTS.ko.md view", SKIP, "AGENTS.md missing — covered by R14")]
     if not os.path.isfile(view):
-        return [("R16 AGENTS_KR.md view", FAIL,
-                 "AGENTS_KR.md missing — Korean view is mandatory; regenerate AGENTS_KR.md in the same commit (ADR 030)")]
+        return [("R16 AGENTS.ko.md view", FAIL,
+                 "AGENTS.ko.md missing — Korean view is mandatory; regenerate AGENTS.ko.md in the same commit (ADR 030)")]
     with open(view, encoding="utf-8", errors="replace") as f:
         m = SOURCE_HASH_RE.search(f.read())
     if not m:
-        return [("R16 AGENTS_KR.md view", FAIL,
-                 "no 'source-hash: <12 hex>' banner line — regenerate AGENTS_KR.md in the same commit (ADR 030)")]
+        return [("R16 AGENTS.ko.md view", FAIL,
+                 "no 'source-hash: <12 hex>' banner line — regenerate AGENTS.ko.md in the same commit (ADR 030)")]
     with open(src, "rb") as f:
         expected = hashlib.sha256(f.read()).hexdigest()[:12]
     if m.group(1) != expected:
-        return [("R16 AGENTS_KR.md view", FAIL,
-                 "source-hash %s != AGENTS.md sha256[:12] %s — Korean view stale; regenerate AGENTS_KR.md in the same commit (ADR 030)"
+        return [("R16 AGENTS.ko.md view", FAIL,
+                 "source-hash %s != AGENTS.md sha256[:12] %s — Korean view stale; regenerate AGENTS.ko.md in the same commit (ADR 030)"
                  % (m.group(1), expected))]
-    return [("R16 AGENTS_KR.md view", PASS, "")]
+    return [("R16 AGENTS.ko.md view", PASS, "")]
 
 
 def _heading_set(path):

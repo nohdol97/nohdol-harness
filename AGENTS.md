@@ -164,7 +164,7 @@ The criterion is **who reads it**: **model-read → English; user-read → Korea
 **Kept in Korean (user-read — user-facing output is fixed to Korean)**. Doubly guaranteed by the CLAUDE.md always-on anchor (ADR 021 — prevents language slippage after long English context). Targets:
 - User chat reports/questions, PR bodies, commit messages, issues/comments (work-tracker included)
 - **User-read history assets**: ADRs, specs, `docs/harness-changelog.md`, root README
-- **The Korean-readable layer for English assets**: `AGENTS_KR.md` (digest of this file), `.agents/agents/README.ko.md`, `.agents/skills/README.ko.md` — **regenerated whenever their sources change**; the integrity check's drift guard enforces source↔digest consistency
+- **The Korean-readable layer for English assets**: `AGENTS.ko.md` (digest of this file), `.agents/agents/README.ko.md`, `.agents/skills/README.ko.md` — **regenerated whenever their sources change**; the integrity check's drift guard enforces source↔digest consistency
 - **Documents whose paths are handed to the user to read directly**: integrator final reports, deploy runbooks/plans, harness-review proposals, ops log (harness-ops-log.md), update queue (harness-updates.md)
 - Korean skill trigger/re-invocation keywords kept alongside English (they match actual user input)
 
