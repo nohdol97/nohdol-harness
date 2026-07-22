@@ -12,9 +12,10 @@
 재시도는 통과 — 차단은 세션당 최대 1회다. 판정 내용의 품질은 검증하지
 않는다(orchestrate·리뷰 몫). 모든 오류는 통과(fail-open).
 
-Codex 미등록: 검증된 Codex 훅 이벤트는 SessionStart뿐, PreToolUse 상당
-이벤트·차단 시맨틱스는 미확인(확인 시 파리티 검토 — ADR 028 결정 2).
-그 전까지 Codex 세션은 AGENTS.md 7절 3항 문구가 담당한다(이 훅은 커밋
+Codex: .codex/hooks.json에도 선제 등록한다(ADR 029 파리티 기본값). 단
+검증된 Codex 훅 이벤트는 SessionStart뿐이라 PreToolUse 상당 이벤트·차단
+시맨틱스·stdin 계약은 미확인 — fail-open이라 미지원이면 무해하게 무시되고,
+실검증 전 Codex의 확실한 방어선은 AGENTS.md 7절 3항 문구다(이 훅은 커밋
 산출물이 아닌 세션 중 라우팅 행동 교정이라 git 계층으로도 못 옮긴다).
 
 스펙: docs/specs/2026-07-22-gate-reminder-hook.md

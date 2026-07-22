@@ -18,7 +18,7 @@
 ## 비목표
 
 - 게이트 판정의 **내용** 검증(직접 수행/쌍/팀 판정이 맞는지) — 판정 품질은 orchestrate 스킬과 리뷰의 몫이고, 이 훅은 "판정 없이 미끄러지는 것"만 막는다.
-- Codex 세션 커버 — 검증된 Codex 훅 이벤트는 SessionStart뿐이고 PreToolUse 상당 이벤트·차단 시맨틱스는 미확인이라 등록하지 않는다(확인 시 파리티 검토 — ADR 028 결정 2). Codex 세션은 AGENTS.md §7-3 문구(네이티브 로드)가 담당한다. tdd-gate가 git 계층으로 이동한 것(ADR 014·015)과 달리 이 훅은 **커밋 산출물이 아니라 세션 중 라우팅 행동**을 교정하므로 git 훅으로 옮길 수 없다 — 도구 한정 계층이 정당한 경우다.
+- Codex에서의 **동작 보장** — `.codex/hooks.json`에 선제 등록은 하지만(ADR 029 파리티 기본값), 검증된 Codex 훅 이벤트는 SessionStart뿐이고 PreToolUse 상당 이벤트·차단 시맨틱스·stdin 계약은 미확인이다. fail-open이라 미지원이면 무해하게 무시되며, 실검증 전 Codex 세션의 확실한 방어선은 AGENTS.md §7-3 문구다. 스키마 차이 확인 시 필드 매핑을 추가한다(추측 매핑 선반영 금지 — 16절). tdd-gate가 git 계층으로 이동한 것(ADR 014·015)과 달리 이 훅은 **커밋 산출물이 아니라 세션 중 라우팅 행동**을 교정하므로 git 훅으로 옮길 수 없다 — 도구 한정 계층이 정당한 경우다.
 - 진단 패턴의 완전 열거 — 실측된 우회(kubectl·ArgoCD·로그)를 중심으로 보수적 목록에서 시작하고, 재발 관찰 시 확장한다(과잉 매칭은 오탐 차단으로 규율을 노이즈화한다 — 루트 16절).
 
 ## 요구사항
@@ -28,7 +28,7 @@
 - R3 (check-통과): 상태 파일이 없거나 `reminded`면 exit 0. 대상 파일 경로에 `_workspace`가 포함되거나 시스템 임시 경로(`/tmp/` 등)면 상태를 소모하지 않고 exit 0 — 리포트·스크래치 쓰기는 제품 코드 수정이 아니다.
 - R4 (fail-open): stdin JSON 파싱 실패, session_id 부재, 상태 디렉토리 쓰기 실패 등 모든 예외에서 exit 0. stdio는 `_common.utf8_stdio()`로 재구성(유실 시 no-op 폴백).
 - R5 (정리): record 시 7일 초과 상태 파일을 기회적으로 삭제한다(mtime 기준, 실패 무시) — 세션 잔재가 누적되지 않게.
-- R6 (등록): `.claude/settings.json`에 PostToolUse(matcher `Bash`, `--record`)·PreToolUse(matcher `Edit|Write|MultiEdit|NotebookEdit`, `--check`)로 등록하고, 기존 훅과 같은 python 탐색 래퍼(`for p in python3 python py; ... exec`)를 쓴다 — python 부재 시 exit 0(fail-open).
+- R6 (등록): `.claude/settings.json`에 PostToolUse(matcher `Bash`, `--record`)·PreToolUse(matcher `Edit|Write|MultiEdit|NotebookEdit`, `--check`)로 등록하고, 기존 훅과 같은 python 탐색 래퍼(`for p in python3 python py; ... exec`)를 쓴다 — python 부재 시 exit 0(fail-open). `.codex/hooks.json`에도 같은 2이벤트를 선제 등록한다(`$PWD` 경로, matcher는 양 CLI 도구명 알터네이션 — ADR 029, 동작은 위 비목표대로 미보증).
 
 ## 완료 기준
 
