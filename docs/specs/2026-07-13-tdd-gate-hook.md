@@ -56,6 +56,7 @@
 - [x] C13b (R4·R6): shim — 게이트 스크립트 **손상**(SyntaxError → 인터프리터 rc 1) 시 커밋 통과. 모든 비0 rc를 차단으로 전파하면 손상 시 머신 전역 커밋(게이트 수정 커밋 포함)이 막힌다(2026-07-16 감사 HOOK-F1 재현 → exit 65 전용 코드로 수정).
 - [x] C14 (R4): 알 수 없는 진입 — 구버전 PreToolUse 방식(무인자 + stdin JSON)·인자 누락 호출 → exit 0(혼합 상태 호환 — ADR 015).
 - [x] C15 (R2·R4): 비UTF-8 로케일(한글 Windows cp949·C 로케일) + 한글 파일명 스테이징 → 차단 유지(exit 65). 2중 방어: git 경로 출력을 `core.quotepath=false`(8진수 이스케이프가 확장자 판정을 깨는 것 방지) + `encoding="utf-8"` 명시(로케일 의존 디코딩 제거 — UnicodeDecodeError를 fail-open이 삼켜 게이트 무력화 방지)로 받는다. 파일시스템이 한글 파일명을 못 담는 환경에서는 SKIP을 명시 출력한다.
+- [x] C16 (테스트 하니스 견고성): subprocess 타임아웃 발생 시 스위트가 크래시하지 않고 해당 케이스만 FAIL로 집계하며 끝까지 완주한다. 센티널 rc는 `==`·`!=` 모두 False라 부정형 판정(`!= 0`)의 거짓 PASS도 없다. 타임아웃 기본 30초는 `TDD_GATE_TEST_TIMEOUT` 환경변수로 조정(느린 사내 Windows 머신 — AV/EDR 프로세스 생성 지연).
 
 ## 미해결 질문
 
@@ -76,3 +77,4 @@
 | 2026-07-15 | utf8_stdio를 `.agents/hooks/_common.py` import로 전환 — 교차 디렉토리라 파일 위치 기준 sys.path 삽입, 유실 시 no-op 폴백 | tdd-gate.py | 일일 점검 신호 ②(공통 로직 복제로 fix 3연쇄) — 스펙 2026-07-15-hooks-common-bootstrap |
 | 2026-07-15 | 서브프로세스 출력 로케일 비의존화 + C15 신설 — git() 호출에 `core.quotepath=false`·`encoding="utf-8"` 명시, 테스트 하니스 subprocess.run 5곳 encoding 명시·스위트 stdio UTF-8 재구성(_common 공유) | git(), C15, tdd-gate_test.py | 대기 큐 보고(2026-07-15, 한글 Windows harness-install 재점검) — 미지정 text=True가 cp949 로케일에서 자식 출력 디코딩 크래시(스위트 C1 이후 진행 불가). 조사 중 추가 발견: quotepath 기본값이 한글 파일명 확장자 판정을 깨 로케일 무관하게 게이트 통과(실버그) — 크로스 플랫폼 체크리스트(스펙 템플릿) ③ 실측 검증의 적용 사례 |
 | 2026-07-16 | 차단 exit 코드 2→65 전용화 + shim은 65만 차단 전파(C13b 신설), R3에 정확 파일명 allowlist(`tests.py`·`conftest.py`, C9 확장), 알려진 한계 ③rename-only·④rebase-edit 기재 | R1·R3·R6, C1·C9·C10·C13b·C15, tdd-gate.py, commit-msg shim, tdd-gate_test.py | 하네스 전체 감사(2026-07-16) — HOOK-F1(게이트 손상 시 머신 전역 커밋 차단, 재현) High, HOOK-F2(Django/pytest 관례 false block, 재현) Med, HOOK-F9 문서 갭. 사용자 승인 |
+| 2026-07-23 | 테스트 하니스 타임아웃 견고화 + C16 신설 — subprocess 공통 헬퍼 `run()`이 TimeoutExpired를 잡아 센티널(`==`·`!=` 모두 False)로 치환, 크래시 대신 해당 케이스만 FAIL 집계 후 완주. 타임아웃 30초를 `TDD_GATE_TEST_TIMEOUT` 환경변수로 조정 가능 | tdd-gate_test.py, C16 | 대기 큐 보고(2026-07-23, 사내 Windows) — AV/EDR 프로세스 생성 지연으로 C11b에서 TimeoutExpired 미포착 크래시, 이후 케이스 집계 전부 유실. 게이트 로직 자체는 재실행 시 28/28 통과(콜드스타트성 환경 지연 추정) |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tdd-gate 회귀 테스트 — 스펙 docs/specs/2026-07-13-tdd-gate-hook.md 완료 기준(C1~C15).
+"""tdd-gate 회귀 테스트 — 스펙 docs/specs/2026-07-13-tdd-gate-hook.md 완료 기준(C1~C16).
 
 실행: python3 .agents/githooks/tdd-gate_test.py   (훅 수정 시 반드시 통과 — R7)
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다.
@@ -26,6 +26,43 @@ except Exception:
 
 results = []
 
+# 사내 Windows 머신에서 보안 에이전트(AV/EDR)가 프로세스 생성마다 지연을 더해
+# 30초를 초과한 실측(2026-07-23 큐 보고) — 느린 머신은 환경변수로 상향한다.
+TIMEOUT = int(os.environ.get("TDD_GATE_TEST_TIMEOUT", "30"))
+
+
+class _TimeoutRC:
+    """어느 기대값과도 일치하지 않는 rc — ==·!= 모두 False라서 양성형(== 65)·
+    부정형(!= 0) 판정이 전부 FAIL로 남는다(타임아웃의 거짓 PASS 방지)."""
+    def __eq__(self, other):
+        return False
+
+    def __ne__(self, other):
+        return False
+
+    def __repr__(self):
+        return "timeout(%ds)" % TIMEOUT
+
+
+class _Timeout:
+    """TimeoutExpired 대체 결과 — 스위트를 죽이지 않고 해당 케이스만 FAIL로 남긴다.
+    크래시는 이후 케이스의 PASS/FAIL 집계 전부를 잃는다(2026-07-23 큐 보고 ①)."""
+    returncode = _TimeoutRC()
+    stderr = ""
+
+
+def run(cmd, timeout=None, **kw):
+    """공통 subprocess 실행 — 타임아웃을 잡아 _Timeout으로 치환한다.
+    encoding 명시 — 자식(훅)의 한글 안내는 UTF-8 바이트인데, 미지정 text=True는
+    로케일 기본 인코딩(cp949 등)으로 디코딩해 리더 스레드가 죽고 stderr가 None이
+    된다(2026-07-15 큐 보고 — 한글 Windows에서 스위트가 C1 이후 진행 불가)."""
+    try:
+        return subprocess.run(cmd, capture_output=True,
+                              timeout=TIMEOUT if timeout is None else timeout,
+                              encoding="utf-8", errors="replace", **kw)
+    except subprocess.TimeoutExpired:
+        return _Timeout()
+
 
 def run_git_hook(repo, message, msg_path=None, env=None):
     """git commit-msg 모드 실행 — cwd를 저장소 루트로 두고 메시지 파일 경로를 넘긴다."""
@@ -36,13 +73,8 @@ def run_git_hook(repo, message, msg_path=None, env=None):
             f.write(message)
         msg_path = made
     try:
-        # encoding 명시 — 자식(훅)의 한글 안내는 UTF-8 바이트인데, 미지정 text=True는
-        # 로케일 기본 인코딩(cp949 등)으로 디코딩해 리더 스레드가 죽고 stderr가 None이
-        # 된다(2026-07-15 큐 보고 — 한글 Windows에서 스위트가 C1 이후 진행 불가).
-        p = subprocess.run([sys.executable, HOOK, "--commit-msg", msg_path],
-                           cwd=repo, capture_output=True, timeout=30,
-                           encoding="utf-8", errors="replace",
-                           env={**os.environ, **env} if env else None)
+        p = run([sys.executable, HOOK, "--commit-msg", msg_path],
+                cwd=repo, env={**os.environ, **env} if env else None)
         return p.returncode, p.stderr
     finally:
         if made:
@@ -51,11 +83,7 @@ def run_git_hook(repo, message, msg_path=None, env=None):
 
 def git_with_hooks(repo, *args):
     """전역 core.hooksPath 등록을 흉내 내 .agents/githooks/ 경유로 git을 실행한다."""
-    return subprocess.run(
-        ["git", "-c", "core.hooksPath=%s" % GITHOOKS, *args],
-        cwd=repo, capture_output=True, timeout=30,
-        encoding="utf-8", errors="replace",
-    )
+    return run(["git", "-c", "core.hooksPath=%s" % GITHOOKS, *args], cwd=repo)
 
 
 def sh(cwd, *args):
@@ -201,11 +229,9 @@ def main():
                         ignore=shutil.ignore_patterns("tdd-gate*"))
         g13 = make_repo(os.path.join(tmp, "g13"))
         put(g13, "app.py"); sh(g13, "add", "app.py")
-        p13 = subprocess.run(
+        p13 = run(
             ["git", "-c", "core.hooksPath=%s" % orphan, "commit", "-q", "-m", "feat: x"],
-            cwd=g13, capture_output=True, timeout=30,
-            encoding="utf-8", errors="replace",
-        )
+            cwd=g13)
         check("C13", "게이트 스크립트 부재 → 커밋 통과", p13.returncode, 0)
 
         # C13b: 게이트 스크립트 손상(SyntaxError → 인터프리터 rc 1) → 커밋 통과.
@@ -218,26 +244,19 @@ def main():
             f.write("\ndef broken(:\n")
         g13b = make_repo(os.path.join(tmp, "g13b"))
         put(g13b, "note.md", "hi\n"); sh(g13b, "add", "note.md")
-        p13b = subprocess.run(
+        p13b = run(
             ["git", "-c", "core.hooksPath=%s" % broken, "commit", "-q", "-m", "docs: note"],
-            cwd=g13b, capture_output=True, timeout=30,
-            encoding="utf-8", errors="replace",
-        )
+            cwd=g13b)
         check("C13b", "게이트 스크립트 손상 → 커밋 통과(fail-open)", p13b.returncode, 0)
 
         # C14: 알 수 없는 진입(구버전 PreToolUse 등록: 무인자 + stdin JSON) → fail-open
         # 혼합 상태(구 settings.json + 신 스크립트)에서 세션·커밋이 깨지면 안 된다 (ADR 015)
-        p14 = subprocess.run(
-            [sys.executable, HOOK], cwd=g1, capture_output=True, timeout=30,
-            encoding="utf-8", errors="replace",
+        p14 = run(
+            [sys.executable, HOOK], cwd=g1,
             input='{"tool_name": "Bash", "tool_input": {"command": "git commit"}}',
         )
         check("C14a", "구버전 stdin 진입 → 통과", p14.returncode, 0)
-        p14b = subprocess.run(
-            [sys.executable, HOOK, "--commit-msg"],
-            cwd=g1, capture_output=True, timeout=30,
-            encoding="utf-8", errors="replace",
-        )
+        p14b = run([sys.executable, HOOK, "--commit-msg"], cwd=g1)
         check("C14b", "인자 누락 진입 → 통과", p14b.returncode, 0)
 
         # C15: 비UTF-8 로케일(한글 Windows cp949, C 로케일)에서 한글 파일명 → 차단 유지.
@@ -257,6 +276,15 @@ def main():
                 "LC_ALL": "C", "LANG": "C",
                 "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0"})
             check("C15", "비UTF-8 로케일 + 한글 파일명 → 차단 유지", code15, 65)
+
+        # C16: subprocess 타임아웃 → 크래시 대신 해당 케이스만 FAIL 가능한 센티널
+        # 반환(2026-07-23 큐 보고 ① — 크래시는 이후 케이스 집계 전부를 잃는다)
+        p16 = run([sys.executable, "-c", "import time; time.sleep(60)"],
+                  cwd=tmp, timeout=1)
+        check("C16", "타임아웃 → 스위트 크래시 없이 센티널 반환",
+              type(p16).__name__, "_Timeout")
+        check("C16b", "센티널 rc는 어떤 기대값과도 불일치(거짓 PASS 방지)",
+              p16.returncode == 0 or p16.returncode != 0, False)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
