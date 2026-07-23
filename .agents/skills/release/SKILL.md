@@ -28,6 +28,8 @@ Write this deployment's plan using the **doc-writer runbook template** (precondi
 
 **Deploys that include DB migrations (common to all types)**: if a migration is included, add the migration step as its own runbook item — **confirm backup·PITR availability before execution → execute (mutating action, user confirmation — section 3) → verify schema·data**, and the rollback section must specify not just code rollback but **the data recovery procedure**. Reason: code can be reverted, but schema·data do not revert automatically — a rollback section without migration recovery is not a rollback.
 
+**Behavior-changing/heuristic features (common to all types — root AGENTS.md §13-5)**: if the deploy contains a speculative feature — a behavior-changing heuristic such as a threshold trigger, model routing, or auto-escalation — on a hot path (production or shared), verify in the runbook that it ships **feature-flagged, default OFF**. Turning it ON is **its own runbook step**, gated on real-environment measurement of the spec's performance/trigger-frequency assumptions — an unmeasured assumption listed in evidence field ④ blocks the flag-on step, not the deploy itself. Reason: unit tests and review PASS prove logic correctness only; a wrong trigger-frequency assumption regresses every user turn (2026-07-23 real case — SSE timeout).
+
 **A plan without a rollback procedure is not a plan** — if the runbook template's rollback section is empty, do not proceed to Phase 2 (if rollback is impossible, state "rollback impossible — alternative").
 
 ## Phase 2 — Execution (⚠️ user confirmation at every step)
