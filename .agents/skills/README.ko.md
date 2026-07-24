@@ -49,7 +49,7 @@
 - **한 줄 역할**: 새 컴퓨터에 클론한 하네스를 부팅한다 — 심링크·git 훅·줄바꿈 검증, 미추적 디렉토리 생성, 프로젝트 스캔·인터뷰로 설치처별 REGISTRY.md 생성.
 - **언제 쓰나**: "하네스 설치", "초기 설정", "새 컴퓨터 세팅", "REGISTRY.md 만들어줘", 세션 시작 시 REGISTRY.md가 없을 때(설치 미완료 상태 — 다른 작업보다 먼저 안내).
 - **언제 안 쓰나**: 이미 설치된 워크스페이스의 하네스 개선(→ metaskill)·점검(→ harness-review).
-- **핵심 절차**: ① 심링크(`.claude/agents`·`skills`)·전역 `core.hooksPath`(tdd-gate·secret-gate 유일 강제 계층)·Codex 훅·CRLF 검증 ② `_workspace/`·`project/` 등 미추적 디렉토리 생성 ③ 보조 도구 설치(미설치면 기본 설치 — agentsview·defuddle·context7 MCP·전역 설정·rtk, 항목별 재질문 없이 진행하되 실패·오프라인·사용자 거절만 스킵으로 처리하고 사유를 완료 보고에 기록, 실패해도 계속 진행) ④ 프로젝트 스캔·인터뷰로 REGISTRY.md 생성(역할은 문서를 직접 읽어 채움, 연관 프로젝트는 "미기록").
+- **핵심 절차**: ① 심링크(`.claude/agents`·`skills`)·전역 `core.hooksPath`(tdd-gate·secret-gate 유일 강제 계층)·Codex 훅·CRLF 검증 ② `_workspace/`·`project/` 등 미추적 디렉토리 생성 ③ 보조 도구 설치(미설치면 기본 설치 — agentsview·defuddle·context7 MCP·전역 설정·rtk·gh CLI, 항목별 재질문 없이 진행하되 실패·오프라인·사용자 거절만 스킵으로 처리하고 사유를 완료 보고에 기록, 실패해도 계속 진행. gh 인증은 사용자가 직접 `gh auth login` — 토큰 대리 추출 금지) ④ 프로젝트 스캔·인터뷰로 REGISTRY.md 생성(역할은 문서를 직접 읽어 채움, 연관 프로젝트는 "미기록").
 
 ## harness-review
 

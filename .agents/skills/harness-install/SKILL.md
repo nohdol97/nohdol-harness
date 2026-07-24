@@ -82,6 +82,14 @@ A Rust CLI where `rtk <cmd>` runs the command on your behalf and compresses the 
 4. **Explain the evidence rule** (root §13-2): verification commands for completion evidence must be left as raw output, not compressed output — `rtk proxy <cmd>` (passthrough), or check the tee raw output auto-saved on failure (`~/.local/share/rtk/tee/`).
 5. Three weeks after install, run tool-audit on `rtk gain` measurements to judge keep/remove (§8 ④). On failure/offline/refusal, skip and note it in the completion report.
 
+#### 3f. GitHub CLI — gh (default)
+
+**Harness procedures presume gh**: branch-workflow (`gh pr create`), work-tracker (GitHub Issues epic/progress), and the doc-writer PR flow all call it — a machine without gh forces fragile workarounds (e.g. extracting tokens from `~/.git-credentials` for raw curl, observed 2026-07-23, corporate machine — credential handling to avoid, §3-adjacent).
+
+1. Check with `command -v gh`; **if missing, install**: macOS `brew install gh`; Linux via the official apt/dnf repo (docs: https://github.com/cli/cli#installation); Windows `winget install GitHub.cli`.
+2. **Auth check**: `gh auth status`. If unauthenticated, **the user runs `gh auth login` themselves** (interactive browser/token flow — in a Claude session, suggest typing `! gh auth login`). Never extract or copy tokens from `~/.git-credentials` or elsewhere on gh's behalf (§3 — secrets are never recorded or moved by the harness); if `GH_TOKEN` is already exported, gh uses it as-is.
+3. On failure, offline, network policy block, or user refusal: skip and note it in the completion report — PR steps then degrade to `git push` + manual PR creation guidance (branch-workflow's documented fallback), and work-tracker falls back to the repo's `docs/backlog.md` store (state this degradation in the report).
+
 ### 4. Scan existing projects
 
 List the subdirectories under `project/`, and for each collect observable facts (substructure, whether it is a git repository, harness presence — judged by existence of `.agents/projects/<name>/` (root AGENTS.md §12), stack clues). **Fill role/purpose by directly reading each project's README/docs and summarizing** — if there are no docs, write "미확인" (unconfirmed). **Do not fill by guessing** — mixing observation with guesswork makes the entire registry untrustworthy.
@@ -105,6 +113,7 @@ Generate with this structure: untracked-warning header → **installation profil
 - [ ] context7 MCP present in `claude mcp list` (user scope, default-install; if skipped, the reason is in the completion report — absence is harmless, the `context7` skill falls back to WebFetch/WebSearch). If SuperClaude leftovers magic·sequential-thinking exist, removal was offered
 - [ ] Claude Code global recommended settings (3d) applied by default — ① always-on context display (`statusLine` in `~/.claude/settings.json` + `~/.claude/statusline.py`), ② transcript retention extension (`cleanupPeriodDays`, default 90). Already-set keys were kept; any user refusal/skip reason is in the completion report. For Codex, it was explained that context display is on by default and retention is indefinite by default (neither needs configuring)
 - [ ] rtk installed (default-install) + telemetry disabled (`RTK_TELEMETRY_DISABLED=1`) + hook mode registered (`rtk init -g`, `rtk verify` passing) + evidence rule explained; if skipped, the reason is in the completion report — absence is harmless
+- [ ] gh CLI installed (default-install) + `gh auth status` authenticated (auth is run by the user, never token-extracted on their behalf); if skipped, the reason and the PR/issue degradation note are in the completion report
 - [ ] REGISTRY.md exists + **installation profile (개인/사내)** + path convention + table + change history (if corporate profile, the no-modify/no-push meaning was explained)
 - [ ] REGISTRY.md·project/ do not appear in `git status` (ignore confirmed)
 - [ ] Unconfirmed items are honestly marked "미확인"
