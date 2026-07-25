@@ -75,3 +75,4 @@
 | [2026-07-22-karpathy-guidelines-adoption](proposals/2026-07-22-karpathy-guidelines-adoption.md) | 부분 채택(§16·team-review — ADR 017 연장) | karpathy-guidelines 4원칙 중 Surgical Changes만 이식(변경 줄 요청 소급성) — 3원칙은 기수렴 기각, 플러그인 설치 기각 |
 | [2026-07-22-rtk-adoption](proposals/2026-07-22-rtk-adoption.md) | 조건부 채택(harness-install 3e·§13-2) | rtk 명령 출력 압축 프록시 — 훅 모드 설치 단계(선택·텔레메트리 명시 차단) + 증거 원문 규칙 보강. Codex 모드·수치 신뢰는 보류(실측 후 tool-audit) |
 | [2026-07-22-caveman-internal-comms](proposals/2026-07-22-caveman-internal-comms.md) | 기각 | 내부 통신 전보체(케이브어) 전환 — 손실 압축 실효 10~15% vs 지시 정밀도 손실 재작업 비대칭으로 기각, §15 영어 유지(적재 구조 절감 축이 대체) |
+| [2026-07-25-agentmemory-review](proposals/2026-07-25-agentmemory-review.md) | 기각 | agentmemory 상시 메모리 서버(훅 전량 캡처+벡터·그래프 검색) — ADR 018 정면 충돌·니치 기충족(agentsview·auto-memory·문서 4계층)·상시 비용 역행·외부 임베딩 §3 우려. 마이크로 포팅 후보 6건 전부 기수렴/충돌 판정 |
