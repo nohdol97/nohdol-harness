@@ -2,7 +2,7 @@
 
 - 날짜: 2026-07-25 / 상태: **채택** (사용자 결정 2026-07-25)
 - 대상: https://github.com/bradautomates/claude-video (MIT, Claude Code 플러그인 + 다중 CLI, npm agentskills)
-- 관련: 루트 AGENTS.md §3·§7·§11, harness-install 3h, docs/proposals/2026-07-25-understand-anything-adoption.md(같은 직접 호출 전용 패턴)
+- 관련: 루트 AGENTS.md §3·§7·§11, harness-install 3g, docs/proposals/2026-07-25-understand-anything-adoption.md(같은 직접 호출 전용 패턴)
 
 ## 대상 요약
 
@@ -17,13 +17,13 @@
 ## 채택 범위·경계
 
 - **채택**: 영상 이해가 필요할 때의 직접 호출(`/watch …`) 역량.
-- **직접 호출 전용(사용자 결정)**: `understand-*`와 동일하게 자동 라우팅하지 않는다 — 영상 URL을 붙여 요약을 요청해도 `/watch`가 자동 발동하지 않고, 사용자의 명시적 `/watch`에만 돈다. 강제는 문서화된 라우팅 정책(CLAUDE.md 스킬맵 + §7 + harness-install 3h)이며 외부 플러그인 프론트매터는 고치지 않는다(§11). 이유: 프레임=이미지 토큰이 커질 수 있어 깜짝 소비를 막는다.
+- **직접 호출 전용(사용자 결정)**: 자동 라우팅하지 않는다(직접 호출 전용) — 영상 URL을 붙여 요약을 요청해도 `/watch`가 자동 발동하지 않고, 사용자의 명시적 `/watch`에만 돈다. 강제는 문서화된 라우팅 정책(CLAUDE.md 스킬맵 + §7 + harness-install 3g)이며 외부 플러그인 프론트매터는 고치지 않는다(§11). 이유: 프레임=이미지 토큰이 커질 수 있어 깜짝 소비를 막는다.
 - **사내 마켓플레이스 차단 대체 경로**: 사내는 `/plugin marketplace`가 흔히 막히나, claude-video는 우회 경로가 있다 — `npx skills add bradautomates/claude-video -g`(agentskills CLI, Claude Code의 `~/.claude/skills`도 대상) 또는 수동 clone+심링크(`ln -s <repo>/skills/watch ~/.claude/skills/watch`). npm·GitHub까지 막히면 사유와 함께 스킵. 사용자 결정: 사내도 강제 유지·차단은 자연 스킵.
 
 ## §3 유출 처리
 
 - **핵심 유출 지점 = Whisper 폴백**: 자막이 없는 영상(로컬 파일·TikTok 등)은 **오디오를 제3자(Groq/OpenAI)로 전송**해 받아쓴다. 사내 내부 앱 화면 녹화에 음성이 있으면 그 내용이 나간다.
-- **완화(실행 문서 3h에 실림)**: 사내 프로필·민감/내부 녹화는 `--no-whisper`(프레임만) 또는 자막 있는 공개 영상만. 개인 프로필의 공개·본인 콘텐츠는 Whisper 허용.
+- **완화(실행 문서 3g에 실림)**: 사내 프로필·민감/내부 녹화는 `--no-whisper`(프레임만) 또는 자막 있는 공개 영상만. 개인 프로필의 공개·본인 콘텐츠는 Whisper 허용.
 - **프레임→Claude는 기본 동작**(스크린샷 보여주는 것과 동일)이라 §3 추가 유출이 아니다. API 키는 `~/.config/watch/.env`(0600) — 대리 복사 금지(§3).
 
 ## 재검토 조건
@@ -35,4 +35,4 @@
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
-| 2026-07-25 | 채택 설계 기록(직접 호출 전용·Whisper §3 완화) + harness-install 3h·CLAUDE.md 라우팅 반영 | 신규, harness-install, CLAUDE.md | 사용자 검토 요청 → 채택+직접 호출 전용 결정. 순수 신규 역량이라 중복 우려 없고, 유일 유출 지점(Whisper 오디오)은 사내 `--no-whisper` 전제로 차단 |
+| 2026-07-25 | 채택 설계 기록(직접 호출 전용·Whisper §3 완화) + harness-install 3g·CLAUDE.md 라우팅 반영 | 신규, harness-install, CLAUDE.md | 사용자 검토 요청 → 채택+직접 호출 전용 결정. 순수 신규 역량이라 중복 우려 없고, 유일 유출 지점(Whisper 오디오)은 사내 `--no-whisper` 전제로 차단 |
