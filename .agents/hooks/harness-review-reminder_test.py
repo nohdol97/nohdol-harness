@@ -183,7 +183,7 @@ class MainFlow(unittest.TestCase):
             self.assertIn("리마인더".encode("utf-8"), buf.getvalue())
 
     def test_c6_exception_fail_open(self):
-        with mock.patch.object(hook.os.path, "isfile", side_effect=RuntimeError), \
+        with mock.patch.object(hook, "build_message", side_effect=RuntimeError), \
              contextlib.redirect_stdout(io.StringIO()) as out:
             self.assertEqual(hook.main(), 0)
             self.assertEqual(out.getvalue(), "")
