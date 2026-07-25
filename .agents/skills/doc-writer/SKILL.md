@@ -24,7 +24,7 @@ When every document has a different format, the reading cost is paid anew each t
 | **Work report** | Team/phase deliverables | `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md` |
 | **README** | Project/directory introduction | Root of the target directory |
 | **Runbook (operational procedure)** | Recurring ops procedures (deploy, recovery, inspection) | Target project repo `docs/runbooks/` |
-| **PR body** | On PR creation (branch-workflow finish procedure, step 4) | `gh pr create --body` input |
+| **PR body** | On PR creation (branch-workflow finish procedure, step 5) | `gh pr create --body` input |
 
 ADRs and change-history tables are not this skill's target — the single source of their format is root AGENTS.md section 6 (keeping it in two places makes them drift).
 
