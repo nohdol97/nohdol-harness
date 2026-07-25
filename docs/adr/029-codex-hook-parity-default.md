@@ -1,5 +1,7 @@
 # ADR 029: 세션 훅 Codex 파리티 기본값 — 미검증 이벤트도 선제 등록
 
+> **부분 대체(→031, 2026-07-25)**: `.codex/hooks.json` 등록 위치와 미검증 상태는 ADR 031의 `.codex/config.toml` 인라인 실측 계약으로 대체됐다. 파리티 기본값과 fail-open 원칙은 유효하다.
+
 - **날짜**: 2026-07-22
 - **변경 내용**: 세션 훅 등록 정책을 "확인된 이벤트만 Codex 등록"(ADR 019 — SessionStart 2종)에서 **"세션 훅 신설 시 `.claude/settings.json`과 `.codex/hooks.json`에 대칭 등록이 기본값"**으로 확장한다. Codex에서 지원이 미확인인 이벤트(PostToolUse/PreToolUse 등)도 **선제 등록**한다. 첫 적용: gate-reminder(ADR 028)를 `.codex/hooks.json`에 등록.
 - **대상**: `.codex/hooks.json`, AGENTS.md 11절, docs/adr/028(결정 2 갱신), docs/specs/2026-07-22-gate-reminder-hook.md

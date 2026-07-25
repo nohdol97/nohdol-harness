@@ -16,7 +16,7 @@
 ## 비목표
 
 - 무인(헤드리스) 자동 실행 — 제안 승인에 사람이 필요하다. 훅은 트리거만 하고 실행은 세션의 모델이 한다.
-- ~~Codex 세션 트리거(훅은 Claude Code 계층)~~ — **2026-07-16 목표로 승격(ADR 019)**: Codex v0.114+ SessionStart 훅으로 `.codex/hooks.json`에 병행 등록됨(미해결 질문 참조). tdd-gate도 git 계층 단일화(ADR 015)로 이미 도구 무관이라 "동일 제약" 전제 자체가 소멸.
+- ~~Codex 세션 트리거(훅은 Claude Code 계층)~~ — **Codex 범위로 승격(ADR 019·031)**: `.codex/config.toml` 인라인 SessionStart로 등록되고, trust된 CLI 0.145.0 macOS 세션에서 stdout의 developer context 주입을 실측했다.
 - 점검 자체의 수행(harness-review 스킬의 몫).
 
 ## 요구사항
@@ -31,7 +31,7 @@
 
 ## 인터페이스 / 설계 개요
 
-- 등록: 루트 `.claude/settings.json` → SessionStart(**matcher `startup|resume|clear`** — compact에는 재실행하지 않는다. `.codex/hooks.json`의 matcher와 정렬, 2026-07-16), command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py"; done; exit 0` (agentsview-daemon과 병렬 등록) — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 인터프리터 부재 시 exit 0(fail-open).
+- 등록: 루트 `.claude/settings.json` → SessionStart(**matcher `startup|resume|clear`** — compact에는 재실행하지 않는다), Codex → `.codex/config.toml` 인라인 SessionStart. command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/harness-review-reminder.py"; done; exit 0` (Codex는 `$PWD` 경로) — 실행 확인(`-c ""`)으로 Windows Store 스텁을 거르고 인터프리터 부재 시 exit 0(fail-open).
 - 입력: 없음(stdin 무시). 출력: 경과 시 stdout 한 줄(세션 컨텍스트로 주입됨), 아니면 무출력. 항상 exit 0.
 - 부수 효과 없음 — 파일 읽기뿐(R5: 쓰기는 스킬이 담당).
 
@@ -50,7 +50,7 @@
 
 ## 미해결 질문
 
-- **Codex 훅 계층 — 리마인더 부분 채택됨(2026-07-16, ADR 019)**: Codex CLI v0.114+가 동일 포맷(`hooks.EventName[].hooks[].command`)의 SessionStart 훅과 **stdout → developer context 주입**을 지원함을 확인해, 이 리마인더와 `worklog-reminder`를 `.codex/hooks.json`(추적)에 등록했다. 훅 스크립트는 이미 도구 무관(fail-open·stdout·`os.getcwd()` 폴백)이라 무변경. 활성화는 **저장소 커밋(`.codex/config.toml`의 `[features] codex_hooks = true`)으로 항상 켜짐**(2026-07-16 사용자 지시)이고 **실험 기능·Windows 미지원**이라 macOS·Linux 한정이다(안 뜨면 `~/.codex/config.toml` 전역 폴백 — #17532). **남은 대기 관찰**: ① macOS Codex 세션에서 실제 주입되는지 실측 검증(원격 컨테이너엔 Codex 미설치 — harness-updates.md 대기 항목). ② `agentsview-daemon`은 agentsview가 Codex 세션을 관측하는지 미확인이라 Codex 병행에서 제외 — 확인 시 편입. tdd-gate는 git commit-msg 계층 단일화(ADR 014·015)로 이미 도구 무관.
+없음. Codex CLI 0.145.0 macOS의 trust된 프로젝트에서 인라인 SessionStart stdout이 developer context에 들어오는 것을 실측했다. clone 직후 trust 이전과 Windows는 보장 범위 밖이다(ADR 031).
 
 ## 변경 이력
 
@@ -70,3 +70,4 @@
 | 2026-07-16 | 기한 전 상태 한 줄을 무출력(침묵)으로 재개정(C4 2026-07-14 결정 되돌림) + 경과 판정 KST(UTC+9) 기준 신설(R7·C9) | 목표, R3·R5·R7, C4·C9, 훅·테스트 | 사용자 요청 — "이미 했다" 채팅이 세션마다 노이즈, 날짜 기준이 KST가 아님(컨테이너 UTC). 가시성 가치 < 매 세션 노이즈 비용 |
 | 2026-07-16 | 감사 반영 — R2에 읽기 실패=기록 없음(실패 방향 고정, C10 신설), C9에 UTC/KST 경계 결정성 테스트 요건, 비목표의 Codex 트리거 항목을 승격 취소선으로 정정(ADR 019 모순 해소), Claude 등록에 matcher(startup·resume·clear) 추가로 compact 재실행 억제(.claude/settings.json — Codex 등록과 정렬) | 비목표, R2, C9·C10, .claude/settings.json, 훅·테스트 | 하네스 전체 감사(2026-07-16) HOOK-F3(회귀 창)·F6(영구 침묵)·F8(matcher 비대칭)·DOC-03(비목표 모순). 사용자 승인 |
 | 2026-07-17 | 지시 메시지에 발행 타입(explorer) 명시 — C1·C2 단언 추가 | R3, C1·C2, 훅·테스트 | explorer 사용 실태 실측 — 스킬 명문화 후에도 리마인더 경로 발행 3회 중 2회 general-purpose 유출(신호 ③). 훅 문구가 "서브에이전트"로만 지시해 타입이 전달 안 됨. 사용자 승인 |
+| 2026-07-25 | Codex 인라인 SessionStart 등록·trust 계약·developer context 실측 반영 | 비목표·인터페이스·미해결 질문 | ADR 031, CLI 0.145.0 macOS 검증 |

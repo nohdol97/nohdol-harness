@@ -1,6 +1,6 @@
 # 스펙: 하네스 무결성 기계 점검 스크립트 (integrity-check)
 
-- **상태**: 구현됨 (2026-07-19 — Codex agent 어댑터 정합 R12 포함)
+- **상태**: 구현됨 (2026-07-25 — Codex 런타임 계약 R18 포함)
 - **날짜**: 2026-07-19
 - **대상 코드**: `.agents/hooks/integrity-check.py` (+ 회귀 테스트 `.agents/hooks/integrity-check_test.py`)
 - **관련**: docs/proposals/2026-07-19-oh-my-openagent-adoption.md (채택 ②), AGENTS.md 8절 승격 원칙, harness-review 주간 무결성 점검
@@ -40,9 +40,10 @@ harness-review 주간 점검의 "구조 무결성" 단계(심링크·frontmatter
 
 ### 4a. 확장 검사 (2026-07-22 — 리뷰어 고정비의 기계 이관)
 
-- **R14 (AGENTS.md 예산)**: `AGENTS.md`가 40,000바이트를 넘으면 FAIL — 항상-온 임포트 로딩 예산(8절 ④)의 수동 `wc -c` 확인을 기계화한다. 파일 부재도 FAIL.
+- **R14 (AGENTS.md Codex 로딩 예산)**: `AGENTS.md`가 32,000바이트를 넘으면 FAIL — Codex 기본 프로젝트 문서 한도 32,768바이트보다 안전 여유를 둔다. 파일 부재도 FAIL.
 - **R15 (ADR 참조 실재)**: 항상-온 문서(`CLAUDE.md`·`AGENTS.md`)가 참조하는 ADR 번호("ADR 021", "ADR 019·029" 열거 포함)마다 `docs/adr/<번호>-*.md` 실재를 검사한다 — 스테일 포인터의 피해가 매 세션 곱으로 붙는 두 문서만 대상으로 한정한다(전 문서 스캔은 비목표 — 오탐 표면·유지비 대비 이득 없음).
-- 완료 기준: 예산 초과 FAIL(경계 40,000 정확히는 통과), 부재 ADR 참조 FAIL(열거 부분 부재는 그 번호만), 실재 참조·예산 내는 통과 — 회귀 테스트 5항목 추가(총 32).
+- **R18 (Codex 프로젝트 설정 계약)**: `.codex/config.toml`이 파싱되고 정식 `[features].hooks = true`, `project_doc_max_bytes = 65536`, 인라인 SessionStart·PreToolUse·PostToolUse를 포함해야 한다. 각 이벤트는 Codex matcher와 `type=command` handler를 가지며 SessionStart 3스크립트, Pre/Post의 gate-reminder `--check`/`--record` 계약을 참조해야 한다. 폐기 예정 `codex_hooks` 키 또는 병렬 `.codex/hooks.json`이 있으면 FAIL한다(ADR 031).
+- 완료 기준: R14 경계 32,000은 통과·32,001은 FAIL, R18의 정식 계약은 통과하고 이벤트·matcher·handler·command 드리프트는 FAIL, 부재 ADR 참조는 FAIL한다. 전체 회귀 51개.
 
 ## 5. 완료 기준
 
@@ -57,3 +58,5 @@ harness-review 주간 점검의 "구조 무결성" 단계(심링크·frontmatter
 |---|---|---|---|
 | 2026-07-19 | R12 Codex custom-agent 어댑터 정합 검사와 회귀 케이스 5종, R7 TOML 추적 예외 검사 1종 추가 | 요구사항·완료 기준 | `.agents/agents/` 원본과 `.codex/agents/` 로더 어댑터의 조용한 드리프트·미추적 방지(ADR 027) |
 | 2026-07-20 | R13 스킬 description 1024자 하드캡 검사 + 회귀 케이스 2종(초과 FAIL·경계값 통과) 추가 | 요구사항·완료 기준, `check_skill_frontmatter` | wrapup(1041자)이 Codex에서 로드 실패한 실장애 — 기계로 막을 수 있는 규격 위반이라 8절 승격 원칙 적용(재발 시 주간 점검이 자동 포착) |
+| 2026-07-25 | R14를 32,000바이트로 강화하고 R18 Codex 인라인 훅·정식 키·64KiB 설정 계약 검사 5종 추가 | 요구사항·완료 기준 | Codex 0.145.0 실측에서 기본 32KiB 절단과 `.codex/hooks.json` 미로딩을 확인해 재발을 기계 차단 |
+| 2026-07-25 | R18을 matcher·handler·실제 script/mode 계약까지 강화하고 mutation 회귀 3종 추가 | R18·완료 기준 | 독립 reviewer F3 — 이벤트 이름만 남은 빈/오배선 설정이 PASS하던 공백 차단 |

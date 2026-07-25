@@ -28,7 +28,7 @@
 | [016](adr/016-internal-communication-language.md) | 2026-07-15 | 활성 | 내부 통신 언어 정책 (모델만 읽으면 영어, 사용자면 한국어) |
 | [017](adr/017-code-minimalism-product-code.md) | 2026-07-16 | 활성 | 코드 최소주의 — 제품 코드 (ponytail 이식) |
 | [018](adr/018-claude-mem-adoption.md) | 2026-07-16 | 활성 | claude-mem 최소 채택 (세션 경계 리마인더·점진적 공개·private 마커) |
-| [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 부분 대체(→029) | Codex SessionStart 훅 병행 (리마인더 2종 — 등록 형식·활성화·플랫폼 제약은 유효, 제외 결정만 대체) |
+| [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 부분 대체(→029·031) | Codex SessionStart 훅 병행 (파리티·공용 스크립트는 유효, 등록 위치·키·활성화 주장은 대체) |
 | [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
 | [021](adr/021-claude-md-agents-import.md) | 2026-07-16 | 활성 | CLAUDE.md `@AGENTS.md` 임포트 (단일 원본 항상-온) + 변경 이력 분리 |
 | [022](adr/022-superpowers-adoption.md) | 2026-07-17 | 활성 | superpowers 규율 착안 3건 이식 (압박 테스트·신선한 증거·리뷰 수신 규율) |
@@ -38,10 +38,11 @@
 | [026](adr/026-oh-my-openagent-adoption.md) | 2026-07-19 | 활성 | oh-my-openagent 검증·운영 착안 5건 이식 + integrity-check 무결성 점검 훅 |
 | [027](adr/027-codex-agent-adapters.md) | 2026-07-19 | 활성 | Codex custom-agent 얇은 어댑터 (`.agents/agents` 원본 → `.codex/agents` 로더 계층) |
 | [028](adr/028-gate-reminder-hook.md) | 2026-07-22 | 활성 | gate-reminder 훅 — 진단→구현 전환점 orchestrate 게이트 상기의 실행 계층 승격 (세션당 1회 차단) |
-| [029](adr/029-codex-hook-parity-default.md) | 2026-07-22 | 활성 | 세션 훅 Codex 파리티 기본값 — 미검증 이벤트도 `.codex/hooks.json` 선제 등록 (fail-open 전제, agentsview-daemon 편입 — 019 부분 대체) |
+| [029](adr/029-codex-hook-parity-default.md) | 2026-07-22 | 부분 대체(→031) | 세션 훅 Codex 파리티 기본값 (인라인 등록·실측 계약은 031, 파리티와 fail-open은 유효) |
 | [030](adr/030-english-harness-assets.md) | 2026-07-22 | 활성 | 모델-로드 하네스 자산 영어 단일 원본 전환 (§15 개정, 한글 뷰 3종 + 드리프트 가드, ADR·스펙·changelog는 한글 유지) |
+| [031](adr/031-codex-runtime-contract.md) | 2026-07-25 | 활성 | Codex 런타임 계약 실측 정렬 (32KiB 방어, 인라인 훅, trust, custom-agent 발행 확인) |
 
-**대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
+**대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
 ## 스펙 (SDD — 루트 자체 코드) — `docs/specs/`
 
@@ -57,8 +58,9 @@
 | [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
 | [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 구현됨 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 | [2026-07-19-integrity-check-script](specs/2026-07-19-integrity-check-script.md) | 구현됨 | `.agents/hooks/integrity-check.py` | — (제안: 2026-07-19-oh-my-openagent-adoption) |
-| [2026-07-19-codex-agent-adapters](specs/2026-07-19-codex-agent-adapters.md) | 구현됨 (인증 후 C5 실발행 확인 대기) | `.codex/agents/*.toml` | 027 |
+| [2026-07-19-codex-agent-adapters](specs/2026-07-19-codex-agent-adapters.md) | 구현·실발행 확인 | `.codex/agents/*.toml` | 027·031 |
 | [2026-07-22-gate-reminder-hook](specs/2026-07-22-gate-reminder-hook.md) | 구현됨 | `.agents/hooks/gate-reminder.py` | 028 |
+| [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

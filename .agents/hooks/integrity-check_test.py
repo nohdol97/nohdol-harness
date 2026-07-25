@@ -68,6 +68,26 @@ def make_good_fixture(root):
     write(os.path.join(root, ".agents/skills/bar/SKILL.md"),
           "---\nname: bar\ndescription: A test skill\n---\n# bar\n")
     write_codex_adapter(root)
+    write(os.path.join(root, ".codex/config.toml"),
+          "project_doc_max_bytes = 65536\n\n"
+          "[features]\n"
+          "hooks = true\n\n"
+          "[[hooks.SessionStart]]\n"
+          'matcher = "startup|resume|clear"\n'
+          "[[hooks.SessionStart.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/agentsview-daemon.py"\n'
+          "[[hooks.SessionStart.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/harness-review-reminder.py"\n'
+          "[[hooks.SessionStart.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/worklog-reminder.py"\n\n'
+          "[[hooks.PreToolUse]]\n"
+          'matcher = "apply_patch"\n'
+          "[[hooks.PreToolUse.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/gate-reminder.py --check"\n\n'
+          "[[hooks.PostToolUse]]\n"
+          'matcher = "Bash|shell|local_shell"\n'
+          "[[hooks.PostToolUse.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/gate-reminder.py --record"\n')
     # .claude 심링크
     claude = os.path.join(root, ".claude")
     os.makedirs(claude, exist_ok=True)
@@ -319,18 +339,99 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertRegex(out, r"integrity:.*(pass|PASS)")
 
     def test_agents_budget_over_fails(self):
-        """R14: AGENTS.md가 40,000바이트를 넘으면 FAIL."""
-        write(os.path.join(self.root, "AGENTS.md"), "x" * 40_001)
+        """R14: AGENTS.md가 32,000바이트를 넘으면 FAIL."""
+        write(os.path.join(self.root, "AGENTS.md"), "x" * 32_001)
         code, out = run_check(self.root)
         self.assertEqual(code, 1)
         self.assertIn("R14", out)
-        self.assertIn("40001", out.replace(",", ""))
+        self.assertIn("32001", out.replace(",", ""))
 
     def test_agents_budget_at_limit_ok(self):
-        """R14: 정확히 40,000바이트는 예산 내 — FAIL 없음."""
-        write(os.path.join(self.root, "AGENTS.md"), "x" * 40_000)
+        """R14: 정확히 32,000바이트는 Codex 기본 한도 안전 여유 내 — FAIL 없음."""
+        write(os.path.join(self.root, "AGENTS.md"), "x" * 32_000)
         code, out = run_check(self.root)
         self.assertNotIn("FAIL R14", out)
+
+    # --- R18 Codex 프로젝트 설정 계약 ---
+    def test_codex_config_legacy_hooks_key_fails(self):
+        """R18: 폐기 예정 codex_hooks 별칭은 정식 hooks 키로 교체해야 한다."""
+        write(os.path.join(self.root, ".codex/config.toml"),
+              "project_doc_max_bytes = 65536\n\n"
+              "[features]\n"
+              "codex_hooks = true\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("codex_hooks", out)
+
+    def test_codex_config_doc_headroom_fails(self):
+        """R18: 신뢰 저장소의 전역 지침 결합 여유는 64KiB로 고정한다."""
+        write(os.path.join(self.root, ".codex/config.toml"),
+              "project_doc_max_bytes = 32768\n\n"
+              "[features]\n"
+              "hooks = true\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("65536", out)
+
+    def test_codex_config_canonical_contract_ok(self):
+        """R18: 정식 hooks 키와 64KiB 보조 한도 조합은 통과한다."""
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("FAIL R18", out)
+
+    def test_codex_config_missing_inline_hook_event_fails(self):
+        """R18: 실제 로딩되는 inline TOML에 필수 이벤트 3종이 모두 있어야 한다."""
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace("SessionStart", "Stop"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("SessionStart", out)
+
+    def test_codex_config_missing_handler_fails(self):
+        """R18: 이벤트 이름만 있고 command handler가 없으면 FAIL한다."""
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace("[[hooks.PreToolUse.hooks]]", "[[hooks.Stop.hooks]]"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("PreToolUse", out)
+
+    def test_codex_config_wrong_matcher_fails(self):
+        """R18: Codex 도구명을 놓치는 matcher 드리프트는 FAIL한다."""
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace('matcher = "apply_patch"', 'matcher = "Edit"'))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("matcher", out)
+
+    def test_codex_config_wrong_command_fails(self):
+        """R18: handler가 실제 스크립트·mode를 잃으면 FAIL한다."""
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace("gate-reminder.py --check", "gate-reminder.py --record"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("PreToolUse", out)
+
+    def test_codex_hooks_json_parallel_source_fails(self):
+        """R18: 로딩이 확인되지 않은 병렬 hooks.json 원본을 다시 만들면 FAIL한다."""
+        write(os.path.join(self.root, ".codex/hooks.json"), '{"hooks": {}}\n')
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("hooks.json", out)
 
     def test_adr_ref_missing_fails(self):
         """R15: 항상-온 문서가 존재하지 않는 ADR을 참조하면 FAIL."""

@@ -36,7 +36,7 @@ nohdol-harness/
 │   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + secret-gate.py (형식 확정 자격증명 패턴 커밋 차단, 도구 무관 — ADR 023) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # Claude Code 호환 계층 — .agents/ 에이전트·스킬 심링크 + settings.json 세션 훅 등록
-├── .codex/                # Codex 병행 계층 — agents/*.toml은 .agents/agents/*.md를 선로드하는 custom-agent 어댑터(ADR 027), hooks.json·config.toml은 세션 훅 등록·활성화(ADR 019)
+├── .codex/                # Codex 병행 계층 — agents/*.toml custom-agent 어댑터(ADR 027), config.toml 인라인 세션 훅·문서 한도(ADR 031; trust 필요)
 ├── docs/
 │   ├── README.md          # 문서 지도(MOC) — ADR·스펙·제안 탐색 인덱스 (상태·대체 관계·대상 코드)
 │   ├── adr/               # 구조적 결정 기록 (ADR)

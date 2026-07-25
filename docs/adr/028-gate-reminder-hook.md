@@ -8,7 +8,7 @@
 ## 설계 결정
 
 1. **차단은 세션당 최대 1회, fail-open**: 목적은 판정 강제가 아니라 "판정 없이 미끄러지는 것"의 차단이다. 첫 수정 호출을 1회 막고 판정 선언을 지시한 뒤 재시도는 통과시킨다 — 오탐(이미 판정된 세션·발행된 implementer)의 비용이 재시도 1회로 상한된다. 훅의 모든 오류는 통과(exit 0).
-2. **Claude 세션 계층이 정당하다 (tdd-gate의 git 계층 이동과 다른 이유)**: tdd-gate는 커밋 산출물 검사라 도구 무관 git 계층(ADR 014·015)이 맞았지만, 이 훅은 **세션 중 라우팅 행동**(수정 도구 첫 호출 시점)의 교정이라 git 훅으로는 개입 시점이 존재하지 않는다. Codex는 `.codex/hooks.json`에 **선제 등록**한다(ADR 029 파리티 기본값, 사용자 지시 2026-07-22) — 검증된 Codex 훅 이벤트는 SessionStart뿐이고(ADR 019) PreToolUse 상당 이벤트·차단 시맨틱스(exit 코드 차단+stderr 전달)·stdin 입력 계약은 **미확인**이지만, 훅이 전면 fail-open이라 미지원·스키마 상이 시 무해하게 무시된다. matcher는 양 CLI 도구명 알터네이션(shell/apply_patch 병기). 동작 실검증 전까지 Codex 세션의 확실한 방어선은 AGENTS.md 7절 3항 문구(네이티브 로드)다.
+2. **세션 계층이 정당하다 (tdd-gate의 git 계층 이동과 다른 이유)**: tdd-gate는 커밋 산출물 검사라 도구 무관 git 계층(ADR 014·015)이 맞았지만, 이 훅은 **세션 중 라우팅 행동**(수정 도구 첫 호출 시점)의 교정이라 git 훅으로는 개입 시점이 존재하지 않는다. Codex는 `.codex/config.toml` 인라인 PostToolUse·PreToolUse로 등록하며, CLI 0.145.0 macOS에서 stdin 계약과 exit 2 차단을 실측했다(ADR 031). trust 이전과 Windows는 보장하지 않고 fail-open을 유지한다.
 3. **진단 패턴은 보수 목록**: 실측된 우회(kubectl·ArgoCD·로그) 중심 — kubectl / argocd / stern / journalctl / docker logs / helm status·get / aws logs. 과잉 매칭은 오탐 차단으로 규율을 노이즈화한다(16절). 재발 관찰 시 확장한다.
 4. **`_workspace/`·임시 경로 쓰기는 소모 없이 통과**: 서브에이전트 리포트·스크래치 쓰기는 제품 코드 수정이 아니다 — 상태를 유지해 진짜 제품 코드 첫 수정에서 상기한다.
 

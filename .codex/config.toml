@@ -1,5 +1,35 @@
-# Codex 훅 활성화 — 이 저장소를 클론하면 즉시 켜진다(항상 활성, ADR 019).
-# 세션 훅 등록은 .codex/hooks.json 참조. 개인 Codex 설정은 ~/.codex/config.toml(전역)에 둔다
-# (이 프로젝트 config는 하네스가 소유하는 공용 파일이라 개인 값은 넣지 않는다).
+# Codex 프로젝트 설정 — 저장소와 훅 정의를 신뢰한 뒤 적용된다(ADR 031).
+# AGENTS.md는 trust 전에도 기본 32KiB 안에 들어야 하며, 아래 64KiB는 전역 지침 결합 여유를 위한 2차 방어다.
+project_doc_max_bytes = 65536
+
 [features]
-codex_hooks = true
+hooks = true
+
+[[hooks.PostToolUse]]
+matcher = "Bash|shell|local_shell"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/gate-reminder.py\" --record; done; exit 0"
+
+[[hooks.PreToolUse]]
+matcher = "Edit|Write|MultiEdit|NotebookEdit|apply_patch"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/gate-reminder.py\" --check; done; exit 0"
+
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/agentsview-daemon.py\"; done; exit 0"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/harness-review-reminder.py\"; done; exit 0"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/worklog-reminder.py\"; done; exit 0"

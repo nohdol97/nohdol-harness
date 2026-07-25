@@ -46,6 +46,10 @@ def edit_event(file_path, sid=SID, tool="Edit"):
     return {"session_id": sid, "tool_name": tool, "tool_input": {"file_path": file_path}}
 
 
+def apply_patch_event(command, sid=SID):
+    return {"session_id": sid, "tool_name": "apply_patch", "tool_input": {"command": command}}
+
+
 class RecordTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -147,6 +151,35 @@ class CheckTest(unittest.TestCase):
         r = run_hook("--check", edit_event("/tmp/claude-0/scratch/x.py", tool="Write"), self.dir)
         self.assertEqual(r.returncode, 0)
         self.assertEqual(read_state(self.dir), "diag")
+
+    def test_codex_workspace_patch_excluded_without_consuming_state(self):
+        """R3: Codex apply_patch.command의 _workspace 대상도 통과하고 diag를 유지한다."""
+        self.arm()
+        patch = "*** Begin Patch\n*** Add File: _workspace/job/report.md\n+report\n*** End Patch\n"
+        r = run_hook("--check", apply_patch_event(patch), self.dir)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(read_state(self.dir), "diag")
+
+    def test_codex_product_patch_blocks(self):
+        """R2: Codex apply_patch.command의 제품 경로는 exit 2로 차단한다."""
+        self.arm()
+        patch = "*** Begin Patch\n*** Update File: src/app.py\n@@\n-old\n+new\n*** End Patch\n"
+        r = run_hook("--check", apply_patch_event(patch), self.dir)
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(read_state(self.dir), "reminded")
+
+    def test_codex_mixed_patch_blocks(self):
+        """R2·R3: _workspace와 제품 경로가 섞인 patch는 제품 수정으로 차단한다."""
+        self.arm()
+        patch = (
+            "*** Begin Patch\n"
+            "*** Add File: _workspace/job/report.md\n+report\n"
+            "*** Update File: src/app.py\n@@\n-old\n+new\n"
+            "*** End Patch\n"
+        )
+        r = run_hook("--check", apply_patch_event(patch), self.dir)
+        self.assertEqual(r.returncode, 2)
+        self.assertEqual(read_state(self.dir), "reminded")
 
     def test_malformed_stdin_fails_open(self):
         """R4: 깨진 입력 → exit 0 (무장 상태여도 세션을 막지 않는다)."""

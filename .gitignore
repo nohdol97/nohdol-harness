@@ -19,7 +19,6 @@ REGISTRY.md
 !.codex/agents/
 .codex/agents/*
 !.codex/agents/*.toml
-!.codex/hooks.json
 !.codex/config.toml
 
 # OS

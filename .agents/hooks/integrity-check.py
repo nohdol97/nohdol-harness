@@ -4,8 +4,9 @@
 harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립트 1개로 결정론화한다
 (루트 AGENTS.md 8절 승격 원칙 — tdd-gate·secret-gate 계보). 검사: 심링크(R1)·
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
-첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 40KB
-예산(R14)·항상-온 문서의 ADR 참조 실재(R15)·한글 뷰 드리프트(R16·R17, ADR 030).
+첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 32KB
+안전 예산(R14)·항상-온 문서의 ADR 참조 실재(R15)·한글 뷰 드리프트(R16·R17,
+ADR 030)·Codex 프로젝트 설정 계약(R18).
 심링크 불가 설치처는 R1·R2를 SKIP한다(R11).
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
@@ -322,19 +323,113 @@ def check_gitignore(root):
     return out or [("R7 gitignore", PASS, "")]
 
 
-AGENTS_BUDGET = 40_000  # 항상-온 임포트 로딩 예산(루트 AGENTS.md 8절 ④ — harness-review 수동 wc -c를 기계화)
+AGENTS_BUDGET = 32_000  # Codex 기본 project_doc_max_bytes 32,768 대비 안전 여유
 
 
 def check_agents_budget(root):
-    """R14: AGENTS.md 40KB 예산 — 초과는 매 세션 고정 토큰 비용이라 커밋 전에 잡는다."""
+    """R14: AGENTS.md 32KB 안전 예산 — Codex 기본 절단점 전에 비대화를 잡는다."""
     path = os.path.join(root, "AGENTS.md")
     if not os.path.isfile(path):
         return [("R14 AGENTS.md budget", FAIL, "AGENTS.md missing")]
     size = os.path.getsize(path)
     if size > AGENTS_BUDGET:
         return [("R14 AGENTS.md budget", FAIL,
-                 "%d bytes exceeds %d budget — trim before commit (AGENTS.md 8절 ④)" % (size, AGENTS_BUDGET))]
+                 "%d bytes exceeds %d safety budget below Codex default 32768 — trim before commit"
+                 % (size, AGENTS_BUDGET))]
     return [("R14 AGENTS.md budget", PASS, "")]
+
+
+CODEX_DOC_MAX = 65_536
+CODEX_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse"}
+CODEX_HOOK_MATCHERS = {
+    "SessionStart": {"startup", "resume", "clear"},
+    "PreToolUse": {"apply_patch"},
+    "PostToolUse": {"Bash", "shell", "local_shell"},
+}
+CODEX_HOOK_COMMANDS = {
+    "SessionStart": [
+        ("agentsview-daemon.py",),
+        ("harness-review-reminder.py",),
+        ("worklog-reminder.py",),
+    ],
+    "PreToolUse": [("gate-reminder.py", "--check")],
+    "PostToolUse": [("gate-reminder.py", "--record")],
+}
+
+
+def check_codex_config(root):
+    """R18: 정식 hooks 키·64KiB 보조 한도·실측된 inline hook 등록을 검사한다."""
+    config_path = os.path.join(root, ".codex", "config.toml")
+    legacy_path = os.path.join(root, ".codex", "hooks.json")
+    if os.path.isfile(legacy_path):
+        return [("R18 Codex config", FAIL,
+                 ".codex/hooks.json is a parallel source not loaded in the verified runtime — keep hooks inline in config.toml")]
+    if not os.path.isfile(config_path):
+        return [("R18 Codex config", FAIL, ".codex/config.toml missing")]
+    if tomllib is None:
+        return [("R18 Codex config", SKIP,
+                 "Python < 3.11 has no tomllib — Codex validates TOML at runtime")]
+    try:
+        with open(config_path, "rb") as f:
+            data = tomllib.load(f)
+    except Exception as e:
+        return [("R18 Codex config", FAIL, "invalid TOML: %s" % e)]
+
+    out = []
+    features = data.get("features") or {}
+    if "codex_hooks" in features:
+        out.append(("R18 Codex config", FAIL,
+                    "deprecated features.codex_hooks present — use features.hooks"))
+    if features.get("hooks") is not True:
+        out.append(("R18 Codex config", FAIL, "features.hooks must be true"))
+    if data.get("project_doc_max_bytes") != CODEX_DOC_MAX:
+        out.append(("R18 Codex config", FAIL,
+                    "project_doc_max_bytes must be %d defense-in-depth headroom" % CODEX_DOC_MAX))
+    hooks = data.get("hooks") or {}
+    missing = sorted(CODEX_HOOK_EVENTS - set(hooks))
+    if missing:
+        out.append(("R18 Codex config", FAIL,
+                    "missing inline hook events: %s" % ", ".join(missing)))
+    for event in sorted(CODEX_HOOK_EVENTS & set(hooks)):
+        entries = hooks.get(event)
+        if not isinstance(entries, list) or not entries:
+            out.append(("R18 Codex config", FAIL,
+                        "%s must have a non-empty event definition" % event))
+            continue
+        commands = []
+        matchers = set()
+        valid_handlers = True
+        for entry in entries:
+            if not isinstance(entry, dict):
+                valid_handlers = False
+                continue
+            matchers.update(part for part in str(entry.get("matcher") or "").split("|") if part)
+            handlers = entry.get("hooks")
+            if not isinstance(handlers, list) or not handlers:
+                valid_handlers = False
+                continue
+            for handler in handlers:
+                if (not isinstance(handler, dict)
+                        or handler.get("type") != "command"
+                        or not isinstance(handler.get("command"), str)
+                        or not handler["command"].strip()):
+                    valid_handlers = False
+                    continue
+                commands.append(handler["command"])
+        missing_matchers = CODEX_HOOK_MATCHERS[event] - matchers
+        if missing_matchers:
+            out.append(("R18 Codex config", FAIL,
+                        "%s matcher missing: %s" % (event, ", ".join(sorted(missing_matchers)))))
+        if not valid_handlers or not commands:
+            out.append(("R18 Codex config", FAIL,
+                        "%s must have non-empty type=command handlers" % event))
+            continue
+        for fragments in CODEX_HOOK_COMMANDS[event]:
+            if not any(all(fragment in command for fragment in fragments) for command in commands):
+                out.append(("R18 Codex config", FAIL,
+                            "%s command missing contract: %s"
+                            % (event, " + ".join(fragments))))
+    return out or [("R18 Codex config", PASS, "")]
 
 
 # R15 대상은 항상-온 문서만 — 스테일 포인터의 피해가 매 세션 곱으로 붙는 곳.
@@ -443,7 +538,7 @@ def check_korean_readme_views(root):
 CHECKS = [check_symlinks, check_claude_intrusion, check_skill_frontmatter,
           check_agent_frontmatter, check_codex_agent_adapters, check_moc,
           check_claude_md, check_gitignore, check_agents_budget, check_adr_refs,
-          check_agents_kr_view, check_korean_readme_views]
+          check_agents_kr_view, check_korean_readme_views, check_codex_config]
 
 
 def run(root):

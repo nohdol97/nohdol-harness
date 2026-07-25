@@ -1,5 +1,5 @@
 > ⚠️ 생성된 뷰 — 편집 금지. 원본은 `AGENTS.md`(영어)이며, 원본 변경 시 이 다이제스트를 같은 커밋에서 재생성한다 (ADR 030). 세부 규칙 판단은 영어 원본을 따른다.
-> source-hash: `a5d7a083c2d6`
+> source-hash: `2a2119d5460a`
 
 # 루트 AGENTS.md 한국어 다이제스트 — 멀티 프로젝트 하네스
 
@@ -88,7 +88,7 @@
 - 원본은 `.agents/agents/`·`.agents/skills/`, `.claude/agents`·`.claude/skills`는 심링크. **새 에이전트·스킬은 반드시 `.agents/`에 생성**하고 `.claude/` 직접 생성 금지 — 심링크가 실파일로 대체되면 두 CLI가 다른 파일을 보게 된다(우회 신호).
 - CLAUDE.md는 첫 줄 `@AGENTS.md` 임포트 + Claude 전용 항상-온 앵커만 둔다(전문 복사 금지, ADR 021).
 - 외부 도구의 스킬 설치는 전역 경로(홈)로만 — 프로젝트 모드 설치는 공용 저장소를 오염시킨다.
-- 세션 훅은 `.claude/settings.json`과 `.codex/hooks.json`에 대칭 등록한다(ADR 019·029).
+- 세션 훅은 `.claude/settings.json`과 `.codex/config.toml` 인라인 테이블에 대응 등록한다. Codex 프로젝트 설정 trust와 정확한 훅 정의 해시 trust는 별도이며 둘 다 필요하고, 실측된 동작만 보장한다(ADR 019·029·031).
 
 ## 12. 하위 프로젝트 하네스 중앙 관리 (ADR 006)
 

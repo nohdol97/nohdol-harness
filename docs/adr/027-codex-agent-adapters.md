@@ -32,4 +32,4 @@ TOML에 역할 본문을 복사하면 Markdown과 두 번째 원본이 생기므
 
 ## 검증
 
-스펙 C1~C4에 따라 TOML 파싱·원본 메타데이터 일치·추가 키 부재·Git 추적·무결성 회귀 테스트를 확인했다. 회귀 24/24, 현 저장소 36 pass/0 fail/0 skip, reviewer 독립 검증 PASS다. C5 실제 7종 spawn은 로컬 Codex 인증 만료로 모델 호출 전에 중단되어 사용자 재로그인 후 런타임 확인으로 남긴다. 새 프로세스의 프로젝트 로드와 설치 바이너리 agent-role 스키마는 확인되어 저장소 정확성의 차단 사유는 아니다.
+스펙 C1~C4에 따라 TOML 파싱·원본 메타데이터 일치·추가 키 부재·Git 추적·무결성 회귀 테스트를 확인했다. C5는 2026-07-25 Codex CLI 0.145.0의 새 read-only·ephemeral 프로세스에서 7종 agent type 열거와 reviewer 격리 spawn 성공으로 닫았다. full-history fork가 부모 agent type을 상속하는 경계도 함께 확인했다.

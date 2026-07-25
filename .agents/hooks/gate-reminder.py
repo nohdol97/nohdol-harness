@@ -12,11 +12,10 @@
 재시도는 통과 — 차단은 세션당 최대 1회다. 판정 내용의 품질은 검증하지
 않는다(orchestrate·리뷰 몫). 모든 오류는 통과(fail-open).
 
-Codex: .codex/hooks.json에도 선제 등록한다(ADR 029 파리티 기본값). 단
-검증된 Codex 훅 이벤트는 SessionStart뿐이라 PreToolUse 상당 이벤트·차단
-시맨틱스·stdin 계약은 미확인 — fail-open이라 미지원이면 무해하게 무시되고,
-실검증 전 Codex의 확실한 방어선은 AGENTS.md 7절 3항 문구다(이 훅은 커밋
-산출물이 아닌 세션 중 라우팅 행동 교정이라 git 계층으로도 못 옮긴다).
+Codex: .codex/config.toml 인라인 PreToolUse·PostToolUse로 등록한다(ADR 031).
+Codex CLI 0.145.0에서 stdin 계약과 exit 2 차단을 실측했으며 fail-open은
+유지한다. 이 훅은 커밋 산출물이 아닌 세션 중 라우팅 행동 교정이라 git
+계층으로 옮기지 않는다.
 
 스펙: docs/specs/2026-07-22-gate-reminder-hook.md
 회귀 테스트: .agents/hooks/gate-reminder_test.py (수정 시 반드시 통과)
@@ -111,6 +110,22 @@ def is_excluded(file_path):
     return norm.startswith(EXCLUDE_PREFIXES)
 
 
+PATCH_TARGET_RE = re.compile(
+    r"^\*\*\* (?:Add|Update|Delete) File:\s*(.+?)\s*$"
+    r"|^\*\*\* Move to:\s*(.+?)\s*$",
+    re.MULTILINE,
+)
+
+
+def modification_targets(tool_input):
+    """Claude file_path와 Codex apply_patch.command에서 수정 대상 경로를 뽑는다."""
+    direct = tool_input.get("file_path") or tool_input.get("notebook_path")
+    if direct:
+        return [direct]
+    command = tool_input.get("command") or ""
+    return [left or right for left, right in PATCH_TARGET_RE.findall(command)]
+
+
 def check():
     """PreToolUse(Edit|Write 계열): diag 상태의 제품 코드 첫 수정을 1회 차단(R2·R3)."""
     sid, tool_input = read_event()
@@ -122,8 +137,8 @@ def check():
         return 0  # 진단 이력 없는 세션
     if state != "diag":
         return 0  # 이미 상기했다 — 세션당 1회
-    target = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
-    if is_excluded(target):
+    targets = modification_targets(tool_input)
+    if targets and all(is_excluded(target) for target in targets):
         return 0  # 리포트·스크래치 쓰기는 제품 코드 수정이 아니다 — 상태 유지
     with open(path, "w", encoding="utf-8") as f:
         f.write("reminded")

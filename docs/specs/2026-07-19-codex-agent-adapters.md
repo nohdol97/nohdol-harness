@@ -1,6 +1,6 @@
 # 스펙: Codex 네이티브 custom-agent 어댑터
 
-- 날짜: 2026-07-19 / 상태: 구현됨 (C5 인증 후 실발행 확인 대기)
+- 날짜: 2026-07-19 / 상태: 구현·실발행 확인
 - 관련: `AGENTS.md` 9~11절, `docs/adr/027-codex-agent-adapters.md`
 
 ## 배경
@@ -42,9 +42,9 @@
 - [x] **C2 (R2)**: Python 표준 라이브러리 `tomllib`으로 7개 TOML을 파싱하면 모두 성공하고, 세 필수 필드가 존재하며 `name`·`description`이 Markdown frontmatter와 일치한다.
 - [x] **C3 (R3·R4)**: 각 `developer_instructions`가 대응 계약 경로와 전문 선로드·누락 보고를 포함하고, 금지된 고정 설정 키는 한 파일에도 없다.
 - [x] **C4 (R5)**: 무결성 점검과 문서 MOC 검사가 통과하고, README·AGENTS.md·ADR·변경 이력이 같은 구조를 설명한다.
-- [ ] **C5 (R1~R4)**: 새 Codex 프로세스의 모델 입력에 custom agent 7종이 collaboration agent type으로 노출된다.
+- [x] **C5 (R1~R4)**: 새 Codex 프로세스의 모델 입력에 custom agent 7종이 collaboration agent type으로 노출되고, reviewer 격리 spawn이 성공한다.
 
-> C5 런타임 확인: 새 read-only·ephemeral `codex exec`는 thread 시작까지 도달했으나 로컬 ChatGPT 토큰 만료(`token_expired`·`refresh_token_reused`)로 모델 호출 전에 중단됐다. 비인증 `codex debug prompt-input`의 프로젝트 로드와 설치 바이너리의 3필드 agent-role 스키마, reviewer 독립 검증은 통과했다. 사용자 재로그인 후 실제 7종 열거·spawn을 재실행하면 남은 런타임 표면이 닫힌다.
+> C5 런타임 확인(2026-07-25): Codex CLI 0.145.0의 새 read-only·ephemeral 프로세스에서 7종 agent type이 모두 열거됐고, 격리 컨텍스트의 reviewer spawn이 성공했다. full-history fork는 부모 agent type을 상속하므로 다른 역할 발행에는 격리 컨텍스트가 필요하다.
 
 ## 미해결 질문
 
@@ -56,3 +56,4 @@
 |---|---|---|---|
 | 2026-07-19 | 초안 작성 후 사용자 승인 요청을 근거로 확정 | 전체 | Codex에서 기존 표준 팀원 7종을 네이티브 custom agent로 사용하기 위함 |
 | 2026-07-19 | 어댑터 7종·드리프트 검사 구현, C1~C4 통과·C5 인증 후 확인 대기로 상태 갱신 | 전체 | 회귀 24/24·저장소 무결성 36 pass·reviewer PASS, 로컬 인증 만료는 저장소 정확성 비차단 판정 |
+| 2026-07-25 | C5 런타임 열거·reviewer 격리 spawn 확인 | 완료 기준·런타임 노트 | Codex CLI 0.145.0 실제 프로세스에서 어댑터 발행 계약 검증 |

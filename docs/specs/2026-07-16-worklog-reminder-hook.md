@@ -18,7 +18,7 @@ claude-mem(github.com/thedotmack/claude-mem, Apache-2.0)은 이 "세션 경계 �
 - 세션 전수 캡처·압축·시맨틱 검색(claude-mem의 워커·DB) — 채택하지 않는다(제안서 비목표, ADR 018). 이 훅은 **감지·환기**만 하고 상태를 쓰지 않는다.
 - SessionEnd/Stop 훅으로의 구현 — 그 이벤트는 모델을 깨우지 못해 지시를 세션에 주입할 수 없다(harness-review-reminder와 동일 제약). 이전 세션의 미커밋 작업은 지속형 설치처에서 워킹 트리에 그대로 남으므로, 다음 SessionStart의 로컬 git 조회로 같은 경계 보호를 얻는다.
 - 멀티세션 여부의 자동 판정 — 로컬만으로는 GitHub epic 이슈 존재를 알 수 없다(gh는 네트워크라 훅 부적합). 그래서 메시지는 단정이 아니라 조건부 환기이며, "멀티세션 작업만 해당"을 문구로 명시한다.
-- ~~Codex 세션 트리거~~ → **2026-07-16 채택(ADR 019)**: Codex v0.114+가 동일 포맷 SessionStart 훅을 지원해 이 훅을 `.codex/hooks.json`에도 등록했다(스크립트 무변경 — 도구 무관). 활성화는 저장소 커밋(`.codex/config.toml`, 항상 켜짐)·macOS/Linux 한정(실험·Windows 미지원). macOS 실측 검증은 harness-updates.md 대기 항목(안 뜨면 전역 config 폴백 — #17532).
+- ~~Codex 세션 트리거~~ → **채택·실측 완료(ADR 019·031)**: `.codex/config.toml` 인라인 SessionStart로 등록하고 trust된 Codex CLI 0.145.0 macOS 세션에서 stdout의 developer context 주입을 확인했다. trust 이전과 Windows는 보장하지 않는다.
 
 ## 요구사항
 
@@ -51,3 +51,4 @@ claude-mem(github.com/thedotmack/claude-mem, Apache-2.0)은 이 "세션 경계 �
 |---|---|---|---|
 | 2026-07-16 | 초안 작성 및 구현 | 전체 | claude-mem 분석·채택(제안서 2026-07-16, ADR 018) — 세션 경계 진행-기록 유실 공백을 무의존 SessionStart 로컬 git 감지로 메움 |
 | 2026-07-16 | Codex 세션 트리거 채택 — 비목표에서 in-scope로, `.codex/hooks.json` 등록(스크립트 무변경) | 비목표 | 사용자 요청(맥북 Codex 병행). Codex v0.114+ 동일 포맷 지원. docs/adr/019 |
+| 2026-07-25 | Codex 등록을 인라인 config로 전환하고 trust·developer context 실측 반영 | 비목표 | ADR 031, CLI 0.145.0 macOS 검증 |
