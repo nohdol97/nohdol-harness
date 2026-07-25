@@ -128,7 +128,7 @@ Title: commit-convention format `type(프로젝트스코프): 요약` (root AGEN
 <이 PR이 무엇을 왜 바꾸는가 — 3줄 이내. 리뷰어가 이것만 읽고 diff를 열 수 있게>
 
 ## 변경 내용
-<번호 목록 — 리뷰어가 diff를 읽는 순서 가이드. 파일 나열이 아니라 변경 단위>
+<번호 목록 = diff 읽기 가이드(§13-0 사용자 성장): 파일 나열이 아니라 변경 단위를 **읽어야 할 순서로** 나열하고, 각 항목에 **왜 이 부분이 중요한지 한 줄**을 붙인다 — 사용자가 순서대로 읽고 이해하도록>
 
 ## 연결
 - 스펙: <`docs/specs/...` 경로. 없으면 "해당 없음 — <사유: 사소한 수정 등>">
@@ -138,7 +138,7 @@ Title: commit-convention format `type(프로젝트스코프): 요약` (root AGEN
 <실행한 명령과 실제 결과 — 예: `npm test` 34/34 통과. "테스트 통과" 같은 무증거 선언 금지>
 
 ## 리뷰 포인트
-<판단이 필요한 지점, 자신 없는 부분, 트레이드오프 — 없으면 "없음">
+<판단이 필요한 지점·자율 결정·트레이드오프. 각 항목은 **결과만("X로 함")이 아니라 결정 공간을 가르친다**: 무엇 대 무엇의 갈림길이었고, 이 맥락에서 이 선택인 이유(§13-0 사용자 성장 — 자명한 결정은 생략). 없으면 "없음">
 ```
 
-Check: does the verification section contain actual commands and numbers / are spec/issue links stated (with a reason if absent) / can the PR's purpose be understood from the summary alone.
+Check: does 변경 내용 read as an ordered reading-guide with a "why it matters" line per item / does 리뷰 포인트 teach the decision space (fork + reason) not just the outcome / does the verification section contain actual commands and numbers / are spec/issue links stated (with a reason if absent) / can the PR's purpose be understood from the summary alone.
