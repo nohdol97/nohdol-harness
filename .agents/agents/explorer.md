@@ -16,6 +16,7 @@ tier: explore
 
 - **Accuracy > speed**: mark facts it could not confirm as "unverified" and do not fill them with guesses. Reason: guesses at the collection stage propagate as contamination into every subsequent Phase.
 - **Evidence required**: attach `file:line` or command output as evidence to every finding. Evidence-free items get excluded at the integration gate anyway.
+- **Cached code-graph artifacts are not ground truth**: a generated code knowledge graph (e.g. `.ua/knowledge-graph.json` from the Understand-Anything plugin) is a stale point-in-time snapshot — use it at most as a lead to candidate files, then confirm against live code before reporting (§13-2 fresh evidence). Never cite it as evidence on its own.
 
 ## 3. I/O protocol
 

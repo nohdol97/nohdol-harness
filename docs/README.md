@@ -76,3 +76,4 @@
 | [2026-07-22-rtk-adoption](proposals/2026-07-22-rtk-adoption.md) | 조건부 채택(harness-install 3e·§13-2) | rtk 명령 출력 압축 프록시 — 훅 모드 설치 단계(선택·텔레메트리 명시 차단) + 증거 원문 규칙 보강. Codex 모드·수치 신뢰는 보류(실측 후 tool-audit) |
 | [2026-07-22-caveman-internal-comms](proposals/2026-07-22-caveman-internal-comms.md) | 기각 | 내부 통신 전보체(케이브어) 전환 — 손실 압축 실효 10~15% vs 지시 정밀도 손실 재작업 비대칭으로 기각, §15 영어 유지(적재 구조 절감 축이 대체) |
 | [2026-07-25-agentmemory-review](proposals/2026-07-25-agentmemory-review.md) | 기각 | agentmemory 상시 메모리 서버(훅 전량 캡처+벡터·그래프 검색) — ADR 018 정면 충돌·니치 기충족(agentsview·auto-memory·문서 4계층)·상시 비용 역행·외부 임베딩 §3 우려. 마이크로 포팅 후보 6건 전부 기수렴/충돌 판정 |
+| [2026-07-25-understand-anything-adoption](proposals/2026-07-25-understand-anything-adoption.md) | 채택(직접 호출 전용·사람 대면 한정 — harness-install 3g) | Understand-Anything 코드 지식 그래프 — 직접 호출 전용(opt-in-per-use)이라 graphify/agentmemory 기각 근거(상시 비용·충돌) 해소, 사람 대면 온보딩·대시보드 한정. 그래프는 하네스 에이전트 진실 소스 금지(스테일=graphify 실패 모드) |

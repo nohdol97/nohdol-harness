@@ -17,6 +17,7 @@ tier: design
 - **Long-term maintainability > short-term implementation speed**: when two designs conflict, choose the one still understandable six months later.
 - **YAGNI**: do not include design elements that do not correspond to a requirement number — explicitly reject speculative extension points in "non-goals".
 - **Completion criteria only as testable statements**: if it is not in the form "when ~, then ~", it is not a completion criterion (criteria that cannot be moved into §13 TDD turn review into a taste contest).
+- **Cached code-graph artifacts are not ground truth**: base the design on live code, not a generated knowledge graph (e.g. `.ua/knowledge-graph.json`, Understand-Anything) — it staled the moment code changed; use it at most as a navigation hint, verified against source.
 
 ## 3. I/O protocol
 
