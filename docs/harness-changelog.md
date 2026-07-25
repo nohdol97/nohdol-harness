@@ -161,3 +161,4 @@
 | 2026-07-25 | 스킬맵에 Understand-Anything 라우팅 추가 — 직접 호출 전용(`/understand…`만, 자동 라우팅 금지), 그래프는 사람 대면 내비게이션 한정(하네스 진실 소스 금지) | CLAUDE.md | 사용자 결정(2026-07-25) — 상세는 AGENTS.md 표 같은 날짜 행·proposal |
 | 2026-07-25 | 스킬맵에 claude-video `/watch` 라우팅 추가 — 직접 호출 전용(자동 라우팅 금지), Whisper 오디오 제3자 전송이라 사내·민감 녹화는 `--no-whisper`/자막 전용(§3) | CLAUDE.md | 사용자 결정(2026-07-25) — 상세는 AGENTS.md 표 같은 날짜 행·proposal |
 | 2026-07-25 | 앵커 신설 — "사용자 이해=완료 요건"(§13 최상위 원칙): 이해 못 한 작업은 완료 아님, 퀴즈는 하드 전달 게이트(실패·생략 시 PR 차단), 결정은 가르치고 읽기 가이드 동반 | CLAUDE.md | 사용자 정의(2026-07-25) — 상세는 AGENTS.md 표 같은 날짜 행 |
+| 2026-07-25 | Hermes Agent(Nous) 검토 — 기각 기록(제안 문서·MOC) | docs/proposals/2026-07-25-hermes-agent-review.md, docs/README.md | 사용자 검토 요청("hermes 쓰는 편이 낫지 않아?") 후 기각 승인 — 범주 불일치(채택 아니라 Claude Code+Codex 이탈), 간판 기능(자율 스킬 생성·대화 검색 DB)이 ADR 007·018과 정면 충돌, 니치 기충족(orchestrate·autoloop·agentsview·auto-memory·rtk), Nous Portal 클라우드 경유 §3 유출. agentskills.io 이식형 SKILL.md 표준만 관찰 보류. 기각도 기록해 재검토 반복 방지(제안=과정, §6) |
