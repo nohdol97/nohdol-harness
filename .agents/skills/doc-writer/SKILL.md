@@ -1,6 +1,6 @@
 ---
 name: doc-writer
-description: Write project documents in one consistent format - specs, work reports, READMEs, runbooks, PR bodies. Picks the template from references/templates.md, drafts in Korean (internal team reports in English per root AGENTS.md 15), then self-checks against the template checklist. Use when the user says 문서 작성, 문서 만들어줘, 스펙 써줘, 리포트 정리, README 써줘, PR 본문 써줘, when creating a PR (branch-workflow finish), or when section 13 (SDD) requires a spec before coding. Do NOT use for ADR or change-history-table entries - those follow root AGENTS.md section 6 directly, not this template. In orchestrate team mode, SDD spec drafting belongs to the architect agent (which uses this skill's template) - route standalone doc requests here. Re-run keywords - doc, doc-writer, document, spec, PR, 문서, 문서 작성, 스펙, PR 본문.
+description: "Write specs, work reports, READMEs, runbooks, and PR bodies from fixed templates; also use when SDD requires a spec. Triggers: 문서 작성, 스펙, 리포트, README, PR 본문. Not for ADRs/change-history rows or team-mode architect drafting. Re-run: doc-writer, document, spec, PR, 문서 작성, 스펙, PR 본문."
 ---
 
 # doc-writer — consistent-format document writing

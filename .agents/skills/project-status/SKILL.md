@@ -1,6 +1,6 @@
 ---
 name: project-status
-description: Summarize the status of all registered projects in one report. Reads REGISTRY.md, fans out explorer agents per project (git state, recent activity, harness presence, stale registry rows), and integrates findings into a single must-know report. Use when the user says 프로젝트 상태, 전체 현황, 상태 요약, what changed across projects, or before planning cross-project work. Re-run keywords - status, overview, 현황, 상태 요약.
+description: "Summarize all registered projects from REGISTRY.md with explorer fan-out for git state, activity, harness presence, and stale rows. Use for 프로젝트 상태, 전체 현황, 상태 요약, what changed across projects, cross-project planning. Re-run: project-status, status, overview, 현황, 상태 요약."
 ---
 
 # project-status — Full Project Status Report

@@ -1,6 +1,6 @@
 ---
 name: team-review
-description: Review code diffs, PRs, specs, or harness changes with a size-scaled reviewer team - single reviewer agent for small diffs, perspective fan-out (correctness, security, tests-vs-spec, convention, performance, simplicity/over-engineering, UX/accessibility) with an integrator severity gate for medium and large ones. Judges against the spec's completion criteria (SDD, root AGENTS.md section 13). Use when the user says 리뷰해줘, 코드 리뷰, PR 검토, 검증해줘, review this. Do NOT use the built-in review/code-review skills nor external review skills (gstack review, cso, sc:analyze) for these - team-review judges against the spec completion criteria and runs the integrator severity gate - "security audit" also routes here, not to cso. Re-run keywords - review, team-review, 리뷰, 코드 리뷰, 검토, 검증.
+description: "Review diffs, PRs, specs, or harness changes against spec criteria using one reviewer for small scope or perspective fan-out plus integration for large/high-risk scope. Use for review, security audit, 리뷰·검토·검증. Not for built-in/plugin review tools; harness team-review owns the verdict. Re-run: team-review, review, code review, 리뷰, 코드 리뷰, 검토, 검증."
 ---
 
 # team-review — Size-Scaled Team Review
@@ -25,6 +25,8 @@ Count the target's (diff·PR·spec document·harness change) changed files and r
 | **Team** | Changed files 6+ or high risk (infra·security·cross-project) — threshold single source: orchestrate Phase 0-1 verdict table | Perspective fan-out below + integrator |
 
 If the boundary is ambiguous, start solo; if the solo reviewer reports "scope exceeded", promote to team.
+
+**Agent-call budget**: record the expected reviewer count after choosing applicable perspectives. Preserve correctness/tests and any security·infra perspective required by the target, then omit non-applicable axes. Rework uses the **same reviewer thread** for **delta re-verification** with only the new diff, latest tests, and changed completion criteria. Add another reviewer only for a **new independent risk axis**, an unavailable prior thread, or author/verifier independence. Do not respawn the same perspective merely to obtain a fresh context.
 
 **Review-window quiz (both modes — PR-bound work only)**: right after dispatching the review (solo reviewer or team fan-out, background per item 4 below), run the §13-0 comprehension quiz with the user in the same turn (quiz spec single source: branch-workflow finish 4) — quiz and review in parallel; misalignment surfaces alongside or before the verdict.
 
@@ -74,4 +76,5 @@ One reviewer agent handles it, with the gate principles (evidence-free findings 
 | Blind spots | One reviewer's perspective bias carries straight into the final verdict | Perspective decomposition + independent parallel + gate |
 | Verdict criteria | Taste·impression-based review | Reproducible verdict against spec completion criteria |
 | Cost | Same weight for every review | Size-scaled — solo for small, team only for large |
+| Rework cost | New reviewer and full recollection each round | Same reviewer thread + delta re-verification |
 | Noise | Evidence-free findings mixed in | Excluded at the gate |

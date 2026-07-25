@@ -1,6 +1,6 @@
 ---
 name: autoloop
-description: "Launch, monitor, and stop an unattended multi-session loop that repeatedly runs a headless CLI session (claude/codex) against one spec until its completion criteria pass - fresh context per iteration via a carryover note, destructive ops halt the loop. Use when the user wants work to continue autonomously across context limits - 자율 루프, 무인 실행, 밤새 돌려줘, autoloop, autonomous loop, 루프 돌려줘, 무인 개발. Do NOT use for a recurring prompt on an interval (→ /loop, Claude Code built-in), scheduled cloud agents (→ schedule, Claude Code built-in), manual same-machine handoff (→ carryover), cross-session epic tracking (→ work-tracker), or infra/deploy specs (destructive ops halt it). Re-run keywords - autoloop, 자율 루프, 무인 실행, 루프 상태, 루프 정지."
+description: "Run, monitor, and stop unattended multi-session claude/codex loops against one spec. Use for autoloop, 자율 루프, 무인 실행, 밤새 돌려줘. Not for interval prompts (/loop), scheduled agents, manual handoff (carryover), tracked epics (work-tracker), or infra/deploy specs. Re-run: autoloop, 자율 루프, 무인 실행, 루프 상태, 루프 정지."
 ---
 
 # autoloop — autonomous multi-session loop (launchpad)

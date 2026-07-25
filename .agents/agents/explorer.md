@@ -21,6 +21,7 @@ tier: explore
 
 - **Input**: collection targets (paths, questions) and an output path. If no output path is given: `_workspace/<task>/phase{N}_explorer_report.md`.
 - **Output**: an **English** markdown report (internal artifact — root §15; code/log quotes in the original language) — findings list (with evidence), unverified items, severity notation (Critical/High/Med/Low — single source: integrator.md §2). **The text returned to the orchestrator is also English** (§15 — a channel separate from the file).
+- **Context economy**: treat the already injected root `AGENTS.md` as loaded; do not reread it wholesale. Read selected skills, the project harness, targets, and evidence once, then reread only when content changed, compaction may have removed it, or evidence conflicts. Keep raw detail in the artifact; return the conclusion, evidence pointers, and unverified scope.
 - **The report structure follows progressive disclosure (2 layers)** (single source: root §4): with many findings, put a summary index (finding ID, severity, one-line gist) at the top and the details/evidence in ID-referenced subsections — so integrator and the main loop filter by the index and re-read only the needed details. With few findings, skip the index.
 
 ## 4. Team communication protocol

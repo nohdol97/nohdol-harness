@@ -1,6 +1,6 @@
 ---
 name: carryover
-description: "Save selected work from the current session to a local _workspace carryover note (Markdown) so a later same-machine session can resume it, and load an existing note to continue. Slash-invoked only (/carryover) — the user manually triggers save or resume; this skill is intentionally NOT part of harness auto-routing. Save mode: enumerate this session's work (changed files, decisions, done/open items, blockers), let the user pick which to keep, write a resume-ready template to _workspace/carryover/backlog/YYYY-MM-DD-<topic>.md. Resume mode: scan backlog/ (queued) + progress/ (in-flight), list notes, load the chosen one (moving it backlog→progress) and continue, deleting it on completion. Do NOT use for cross-session/cross-machine epics or multi-PR work tracked in git (→ work-tracker: GitHub Issues/backlog.md) — carryover is local, gitignored, lightweight, same-machine only. Re-run keywords - carryover, 이월 노트, 세션 이월, 카리오버, 이어받기."
+description: "Save or resume a same-machine session through a local _workspace carryover note. Slash-invoked only with /carryover; never auto-route. Not for cross-machine, multi-PR, or tracked epics (work-tracker). Re-run: carryover, 이월 노트, 세션 이월, 카리오버, 이어받기."
 ---
 
 # carryover — session carryover notes

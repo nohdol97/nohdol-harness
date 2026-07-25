@@ -26,6 +26,7 @@ Priority under conflict: trust (evidence) > completeness (no omissions) > brevit
 
 - **Input**: all teammate reports under `_workspace/<task>/` + the task spec (what the integration is about).
 - **Output**: `_workspace/<task>/phase{N}_integrator_final-report.md` — the 3 sections must-fix/should-fix/watch, each item with its evidence source (original report path) and merge/demotion/promotion history. **Written in Korean** (root §15 exception — a verdict document whose path is handed to the user to read directly. The input teammate reports are English, but digest them into Korean rather than quoting). **The text returned to the orchestrator is also Korean** (the §15 exception condition "file = return content" applies — this report is itself the final artifact). With many findings, follow progressive disclosure (2 layers) with a **summary index** (item ID, severity, gist) above the 3 sections (root §4 — the user skims the index and re-reads only the needed items in detail).
+- **Context economy**: treat the already injected root `AGENTS.md` as loaded; do not reread it wholesale. Read the spec and each source report once, then reread only when content changed, compaction may have removed it, or evidence conflicts. Keep merged detail in the final artifact; return the verdict, report pointer, and unverified scope.
 
 ## 4. Team communication protocol
 

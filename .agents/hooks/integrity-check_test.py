@@ -206,6 +206,78 @@ class TestIntegrityCheck(unittest.TestCase):
         code, out = run_check(self.root)
         self.assertEqual(code, 0, out)
 
+    # --- R19 상시 노출 토큰 예산 ---
+    def _write_skill_catalog_bytes(self, total):
+        shutil.rmtree(os.path.join(self.root, ".agents/skills"))
+        os.makedirs(os.path.join(self.root, ".agents/skills"))
+        remaining = total
+        index = 0
+        while remaining:
+            size = min(1000, remaining)
+            name = "skill-%02d" % index
+            write(os.path.join(self.root, ".agents/skills", name, "SKILL.md"),
+                  '---\nname: %s\ndescription: "%s"\n---\n# %s\n'
+                  % (name, "x" * size, name))
+            remaining -= size
+            index += 1
+        write_korean_views(self.root)
+
+    def _write_skill_catalog_descriptions(self, descriptions):
+        shutil.rmtree(os.path.join(self.root, ".agents/skills"))
+        os.makedirs(os.path.join(self.root, ".agents/skills"))
+        for index, desc in enumerate(descriptions):
+            name = "skill-%02d" % index
+            write(os.path.join(self.root, ".agents/skills", name, "SKILL.md"),
+                  '---\nname: %s\ndescription: "%s"\n---\n# %s\n'
+                  % (name, desc, name))
+        write_korean_views(self.root)
+
+    def test_skill_description_catalog_over_budget_fails(self):
+        """R19: description UTF-8 합계 9,001바이트부터 FAIL."""
+        self._write_skill_catalog_bytes(9_001)
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R19", out)
+        self.assertIn("9001", out.replace(",", ""))
+
+    def test_skill_description_catalog_at_budget_ok(self):
+        """R19: description UTF-8 합계 정확히 9,000바이트는 통과."""
+        self._write_skill_catalog_bytes(9_000)
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R19", out)
+
+    def test_skill_description_multibyte_catalog_over_budget_fails(self):
+        """R19: 글자 수가 아니라 UTF-8 바이트 합계를 검사한다."""
+        self._write_skill_catalog_descriptions(["가" * 1000] * 3 + ["x"])
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R19", out)
+        self.assertIn("9001", out.replace(",", ""))
+
+    def test_skill_description_multibyte_catalog_at_budget_ok(self):
+        """R19: 한글 description 합계도 정확히 9,000바이트면 통과한다."""
+        self._write_skill_catalog_descriptions(["가" * 1000] * 3)
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R19", out)
+
+    def test_claude_budget_over_fails(self):
+        """R19: CLAUDE.md가 5,500바이트를 넘으면 FAIL."""
+        prefix = "@AGENTS.md\n"
+        write(os.path.join(self.root, "CLAUDE.md"),
+              prefix + "x" * (5_501 - len(prefix.encode("utf-8"))))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R19", out)
+        self.assertIn("CLAUDE.md", out)
+
+    def test_claude_budget_at_limit_ok(self):
+        """R19: CLAUDE.md 정확히 5,500바이트는 통과."""
+        prefix = "@AGENTS.md\n"
+        write(os.path.join(self.root, "CLAUDE.md"),
+              prefix + "x" * (5_500 - len(prefix.encode("utf-8"))))
+        code, out = run_check(self.root)
+        self.assertNotIn("FAIL R19", out)
+
     # --- R4 에이전트 frontmatter ---
     def test_agent_missing_tier_fails(self):
         write(os.path.join(self.root, ".agents/agents/foo.md"),

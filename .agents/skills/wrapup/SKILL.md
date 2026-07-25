@@ -1,6 +1,6 @@
 ---
 name: wrapup
-description: "Wrap up a session before clearing context - enumerate this session's work and persist it by scope: work-tracker (cross-session epics) or carryover (local handoff note). ONLY when signals exist, capture harness/project improvement signals (repeated requests/failures, harness bypass, reusable lessons, subproject skill/agent candidates), log lessons to auto-memory, and PROPOSE metaskill follow-up - never applies harness changes itself. Slash-invoked only, NOT auto-routed; cannot run /clear (guides the user). Complements harness-review (end-of-session capture vs periodic scan). Do NOT use for mid-session logging without an impending clear (→ work-tracker), nor to auto-apply harness edits or auto-run /clear. Re-run keywords - wrapup, 마무리, 세션 마무리, clear 전 정리, 세션 회고."
+description: "Wrap up before clearing: route durable work to work-tracker or carryover, and capture real improvement signals/lessons. Slash-invoked only; guides but cannot run /clear. Not for mid-session logging, auto-applying harness edits, or periodic review. Re-run: wrapup, 마무리, 세션 마무리, clear 전 정리, 세션 회고."
 ---
 
 # wrapup — Session Wrap-up Before clear

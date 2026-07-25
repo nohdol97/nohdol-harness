@@ -1,6 +1,6 @@
 ---
 name: context7
-description: Fetch current, version-specific documentation for libraries, frameworks, SDKs, APIs, and CLI tools via the context7 MCP (resolve-library-id then query-docs) instead of answering library API questions from memory. Use when the user asks how to use, configure, install, migrate, or debug a specific library or framework - React, Next.js, Prisma, Tailwind, Django, Spring Boot, etc. Do NOT use for - Anthropic/Claude/LLM/model-id/pricing questions (→ claude-api built-in skill), reading one specific user-given URL (→ defuddle/WebFetch), or general programming concepts and business-logic debugging. When context7 is unavailable, fall back to WebFetch/WebSearch. Re-run keywords - context7, library docs, framework docs, API reference, 라이브러리 문서, 프레임워크 사용법, 라이브러리 사용법, 문서 조회.
+description: "Fetch current version-specific library/framework/SDK/API/CLI docs through context7. Use for configure/install/migrate/debug questions and 라이브러리 문서. Not for Anthropic/Claude API, model-ID or pricing; one URL (defuddle/WebFetch); or general programming/business logic. Re-run: context7, library docs, framework docs, API reference, 라이브러리 문서, 문서 조회."
 ---
 
 # context7 — Fetch Current Library Documentation (Docs over Memory)

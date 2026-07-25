@@ -6,7 +6,7 @@ harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립�
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
 첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 32KB
 안전 예산(R14)·항상-온 문서의 ADR 참조 실재(R15)·한글 뷰 드리프트(R16·R17,
-ADR 030)·Codex 프로젝트 설정 계약(R18).
+ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19).
 심링크 불가 설치처는 R1·R2를 SKIP한다(R11).
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
@@ -48,6 +48,8 @@ EXPECTED_LINKS = {".claude/agents": "../.agents/agents",
 # CLI 로더 하드캡 — 초과하면 스킬이 통째로 로드되지 않는다(2026-07-20 Codex 실장애: wrapup 1041자).
 # 권장값은 800자(metaskill 공통 규칙 2)지만, 권장 초과는 노이즈라 하드캡만 FAIL로 잡는다.
 DESC_HARDCAP = 1024
+SKILL_CATALOG_BUDGET = 9_000
+CLAUDE_MD_BUDGET = 5_500
 PASS, FAIL, SKIP = "PASS", "FAIL", "SKIP"
 
 
@@ -186,6 +188,35 @@ def check_skill_frontmatter(root):
             else:
                 out.append(("R3 skill %s" % name, PASS, ""))
     return out or [("R3 skills", SKIP, "no SKILL.md found")]
+
+
+def check_always_on_budget(root):
+    """R19: 자동 노출되는 스킬 description 합계와 CLAUDE.md 바이트 예산."""
+    out = []
+    base = os.path.join(root, ".agents", "skills")
+    total = 0
+    if os.path.isdir(base):
+        for name in sorted(os.listdir(base)):
+            skill_md = os.path.join(base, name, "SKILL.md")
+            if not os.path.isfile(skill_md):
+                continue
+            desc = (_frontmatter_values(skill_md) or {}).get("description", "")
+            total += len(desc.encode("utf-8"))
+    if total > SKILL_CATALOG_BUDGET:
+        out.append(("R19 skill description catalog", FAIL,
+                    "%d bytes exceeds %d always-on catalog budget"
+                    % (total, SKILL_CATALOG_BUDGET)))
+
+    claude = os.path.join(root, "CLAUDE.md")
+    if os.path.isfile(claude):
+        size = os.path.getsize(claude)
+        if size > CLAUDE_MD_BUDGET:
+            out.append(("R19 CLAUDE.md budget", FAIL,
+                        "%d bytes exceeds %d Claude-only anchor budget"
+                        % (size, CLAUDE_MD_BUDGET)))
+    if not out:
+        out.append(("R19 always-on budget", PASS, ""))
+    return out
 
 
 def check_agent_frontmatter(root):
@@ -536,6 +567,7 @@ def check_korean_readme_views(root):
 
 
 CHECKS = [check_symlinks, check_claude_intrusion, check_skill_frontmatter,
+          check_always_on_budget,
           check_agent_frontmatter, check_codex_agent_adapters, check_moc,
           check_claude_md, check_gitignore, check_agents_budget, check_adr_refs,
           check_agents_kr_view, check_korean_readme_views, check_codex_config]

@@ -41,6 +41,7 @@
 | [029](adr/029-codex-hook-parity-default.md) | 2026-07-22 | 부분 대체(→031) | 세션 훅 Codex 파리티 기본값 (인라인 등록·실측 계약은 031, 파리티와 fail-open은 유효) |
 | [030](adr/030-english-harness-assets.md) | 2026-07-22 | 활성 | 모델-로드 하네스 자산 영어 단일 원본 전환 (§15 개정, 한글 뷰 3종 + 드리프트 가드, ADR·스펙·changelog는 한글 유지) |
 | [031](adr/031-codex-runtime-contract.md) | 2026-07-25 | 활성 | Codex 런타임 계약 실측 정렬 (32KiB 방어, 인라인 훅, trust, custom-agent 발행 확인) |
+| [032](adr/032-token-efficient-orchestration.md) | 2026-07-25 | 활성 | 토큰 효율형 오케스트레이션 (호출 예산·델타 재사용·세션 경계·상시 노출 예산) |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -61,6 +62,7 @@
 | [2026-07-19-codex-agent-adapters](specs/2026-07-19-codex-agent-adapters.md) | 구현·실발행 확인 | `.codex/agents/*.toml` | 027·031 |
 | [2026-07-22-gate-reminder-hook](specs/2026-07-22-gate-reminder-hook.md) | 구현됨 | `.agents/hooks/gate-reminder.py` | 028 |
 | [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
+| [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

@@ -1,6 +1,6 @@
 ---
 name: tool-eval
-description: Evaluate an external tool, plugin, MCP server, or agent-skill for adoption into this harness - fetch its README, assess it (overlap with existing assets, always-on/runtime cost, section-3 data-egress, precedent vs already-rejected tools), decide adopt/personal-only/reject with the user, then record a proposal + MOC + changelog and, on adoption, wire harness-install + routing with reviewer verification. Use when the user hands a GitHub/tool URL and asks whether to use, adopt, or review it - "이 도구 검토해줘", "이 플러그인 써도 돼", "이거 쓸 수 있어", evaluate this tool. Do NOT use for - measuring an ALREADY-installed tool's usage (→ tool-audit), library/framework docs (→ context7), or reading a URL's content (→ defuddle/WebFetch). Re-run keywords - tool-eval, evaluate tool, adopt tool, plugin review, 도구 검토, 플러그인 검토, 채택 검토, 도구 평가.
+description: "Evaluate a candidate external tool/plugin/MCP/skill for adoption: overlap, token/runtime cost, data egress, precedent, proposal, and integration. Use for 도구 검토, 플러그인 써도 돼, 채택 검토, tool URL evaluation. Not for installed-tool usage (tool-audit), library docs (context7), or merely reading a URL. Re-run: tool-eval, evaluate tool, adopt tool, 도구 검토, 플러그인 검토, 채택 검토."
 ---
 
 # tool-eval — External Tool Adoption Evaluation

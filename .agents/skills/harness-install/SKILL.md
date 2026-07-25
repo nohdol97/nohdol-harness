@@ -1,6 +1,6 @@
 ---
 name: harness-install
-description: Bootstrap this harness on a new machine after cloning. Verifies .claude symlinks, creates untracked workspace directories (project/, _workspace/), scans existing projects, interviews the user, and generates the installation-specific REGISTRY.md with path conventions. Use when the user says 하네스 설치, 초기 설정, 새 컴퓨터 세팅, REGISTRY.md 만들어줘, or when REGISTRY.md is missing at session start. Re-run keywords - install, bootstrap, setup, 설치, 초기화.
+description: "Bootstrap this harness after clone: verify symlinks, create untracked workspaces, scan projects, interview, and generate installation-specific REGISTRY.md. Use when REGISTRY.md is missing or for 하네스 설치, 초기 설정, 새 컴퓨터 세팅. Re-run: harness-install, install, bootstrap, setup, 설치, 초기화."
 ---
 
 # harness-install — New Installation Site Bootstrap

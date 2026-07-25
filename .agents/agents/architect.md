@@ -22,6 +22,7 @@ tier: design
 
 - **Input**: requirements (user instructions, issues), explorer collection reports (`_workspace/<task>/phase1_*`), the target project's harness (`.agents/projects/<name>/AGENTS.md` — required reading before work).
 - **Output**: the spec draft goes to **the target project repository at `docs/specs/YYYY-MM-DD-<title>.md`** (§13 location — the spec is a project deliverable, written **in Korean** — a document the user reads); the decomposition/design report goes to `_workspace/<task>/phase{N}_architect_design.md` (task list + depends_on + proposed role assignments, **in English** — internal artifact, root §15). **The text returned to the orchestrator is English** (§15 — carry only something like a path notice for the spec draft; do not quote the (Korean) spec text itself).
+- **Context economy**: treat the already injected root `AGENTS.md` as loaded; do not reread it wholesale. Read selected skills, the project harness, spec, and evidence once, then reread only when content changed, compaction may have removed it, or evidence conflicts. Keep raw detail in the artifact; return the decision, evidence pointers, and unverified scope.
 
 ## 4. Team communication protocol
 

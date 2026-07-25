@@ -1,6 +1,6 @@
 # 스펙: 하네스 무결성 기계 점검 스크립트 (integrity-check)
 
-- **상태**: 구현됨 (2026-07-25 — Codex 런타임 계약 R18 포함)
+- **상태**: 구현됨 (2026-07-25 — Codex 런타임 계약 R18·토큰 예산 R19 포함)
 - **날짜**: 2026-07-19
 - **대상 코드**: `.agents/hooks/integrity-check.py` (+ 회귀 테스트 `.agents/hooks/integrity-check_test.py`)
 - **관련**: docs/proposals/2026-07-19-oh-my-openagent-adoption.md (채택 ②), AGENTS.md 8절 승격 원칙, harness-review 주간 무결성 점검
@@ -43,7 +43,8 @@ harness-review 주간 점검의 "구조 무결성" 단계(심링크·frontmatter
 - **R14 (AGENTS.md Codex 로딩 예산)**: `AGENTS.md`가 32,000바이트를 넘으면 FAIL — Codex 기본 프로젝트 문서 한도 32,768바이트보다 안전 여유를 둔다. 파일 부재도 FAIL.
 - **R15 (ADR 참조 실재)**: 항상-온 문서(`CLAUDE.md`·`AGENTS.md`)가 참조하는 ADR 번호("ADR 021", "ADR 019·029" 열거 포함)마다 `docs/adr/<번호>-*.md` 실재를 검사한다 — 스테일 포인터의 피해가 매 세션 곱으로 붙는 두 문서만 대상으로 한정한다(전 문서 스캔은 비목표 — 오탐 표면·유지비 대비 이득 없음).
 - **R18 (Codex 프로젝트 설정 계약)**: `.codex/config.toml`이 파싱되고 정식 `[features].hooks = true`, `project_doc_max_bytes = 65536`, 인라인 SessionStart·PreToolUse·PostToolUse를 포함해야 한다. 각 이벤트는 Codex matcher와 `type=command` handler를 가지며 SessionStart 3스크립트, Pre/Post의 gate-reminder `--check`/`--record` 계약을 참조해야 한다. 폐기 예정 `codex_hooks` 키 또는 병렬 `.codex/hooks.json`이 있으면 FAIL한다(ADR 031).
-- 완료 기준: R14 경계 32,000은 통과·32,001은 FAIL, R18의 정식 계약은 통과하고 이벤트·matcher·handler·command 드리프트는 FAIL, 부재 ADR 참조는 FAIL한다. 전체 회귀 51개.
+- **R19 (상시 노출 토큰 예산)**: 루트 스킬 frontmatter description의 UTF-8 바이트 합계가 9,000을 넘거나 `CLAUDE.md`가 5,500바이트를 넘으면 FAIL한다. 개별 description 하드캡 R13과 별개로, 자동 목록 전체와 Claude 전용 앵커의 재비대화를 차단한다(ADR 032).
+- 완료 기준: R14 경계 32,000은 통과·32,001은 FAIL, R18의 정식 계약은 통과하고 이벤트·matcher·handler·command 드리프트는 FAIL, 부재 ADR 참조는 FAIL한다. R19는 ASCII·다중바이트 스킬 합계 9,000/9,001과 CLAUDE 5,500/5,501 경계를 검증한다. 전체 회귀 57개.
 
 ## 5. 완료 기준
 
@@ -60,3 +61,4 @@ harness-review 주간 점검의 "구조 무결성" 단계(심링크·frontmatter
 | 2026-07-20 | R13 스킬 description 1024자 하드캡 검사 + 회귀 케이스 2종(초과 FAIL·경계값 통과) 추가 | 요구사항·완료 기준, `check_skill_frontmatter` | wrapup(1041자)이 Codex에서 로드 실패한 실장애 — 기계로 막을 수 있는 규격 위반이라 8절 승격 원칙 적용(재발 시 주간 점검이 자동 포착) |
 | 2026-07-25 | R14를 32,000바이트로 강화하고 R18 Codex 인라인 훅·정식 키·64KiB 설정 계약 검사 5종 추가 | 요구사항·완료 기준 | Codex 0.145.0 실측에서 기본 32KiB 절단과 `.codex/hooks.json` 미로딩을 확인해 재발을 기계 차단 |
 | 2026-07-25 | R18을 matcher·handler·실제 script/mode 계약까지 강화하고 mutation 회귀 3종 추가 | R18·완료 기준 | 독립 reviewer F3 — 이벤트 이름만 남은 빈/오배선 설정이 PASS하던 공백 차단 |
+| 2026-07-25 | R19 스킬 description 합계 9,000B·CLAUDE.md 5,500B 상시 노출 예산과 경계 회귀 4종 추가 | 요구사항·완료 기준, `check_always_on_budget` | ADR 032 — 개별 하드캡을 모두 지켜도 카탈로그 합계가 매 요청 고정 입력으로 재비대화하는 공백 차단 |

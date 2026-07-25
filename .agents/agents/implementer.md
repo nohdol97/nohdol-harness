@@ -23,6 +23,7 @@ tier: implement
 
 - **Input**: the task spec (a TaskCreate item — requirements, target paths, completion criteria) and reference material (explorer reports, etc.).
 - **Output**: the changed files + a change summary at `_workspace/<task>/phase{N}_implementer_changes.md` (what changed and why, the verification commands run and their results, the points the reviewer should look at — **English**, internal artifact, root §15. Commit messages and code comments, however, follow the target repository's conventions). **The text returned to the orchestrator is also English** (§15 — a channel separate from the file).
+- **Context economy**: treat the already injected root `AGENTS.md` as loaded; do not reread it wholesale. Read selected skills, the project harness, spec, and evidence once, then reread only when content changed, compaction may have removed it, or evidence conflicts. Keep raw detail in the artifact; return changed paths, test evidence pointers, and unverified scope.
 
 ## 4. Team communication protocol
 

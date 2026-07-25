@@ -1,6 +1,6 @@
 ---
 name: defuddle
-description: Extract clean main-content markdown from web pages via the defuddle CLI, stripping nav/ads/sidebars/clutter to cut token cost and sharpen summaries and quotes. Use instead of WebFetch when the user gives a URL to read, summarize, quote, or analyze - articles, blog posts, online docs, release notes, news. Do NOT use for - URLs ending in .md (already markdown, use WebFetch), authenticated/private/paywalled pages (use WebFetch or gh), claude.ai artifact URLs (use WebFetch), or when defuddle is not installed and cannot be installed (fall back to WebFetch). Re-run keywords - defuddle, web extract, clean markdown, read url, fetch article, 웹 본문 추출, 기사 읽기, 링크 읽어줘, 페이지 정리.
+description: "Extract clean article or documentation content from a supplied web URL with defuddle. Use for read, summarize, quote, 링크 읽어줘, 기사 읽기. Not for .md URLs, authenticated/private/paywalled or claude.ai pages (WebFetch/gh), or when unavailable. Re-run: defuddle, web extract, read url, 웹 본문 추출, 링크 읽어줘."
 ---
 
 # defuddle — Extract Main Content Only from Web Pages (Token Savings)

@@ -22,6 +22,7 @@ tier: design
 
 - **Input**: symptom description, logs/error messages, occurrence time/environment, the target project's harness (`.agents/projects/<name>/AGENTS.md` — required reading before work).
 - **Output**: `_workspace/<task>/phase{N}_troubleshooter_rootcause.md` — symptoms / repro procedure / hypothesis table (hypothesis, verification method, result, rejection evidence) / confirmed cause (`file:line` + evidence) / fix direction / regression-prevention test proposal. **English** (internal artifact — root §15; error-message/log quotes in the original language). **The text returned to the orchestrator is also English** (§15 — a channel separate from the file). With many hypotheses/candidates, **progressive disclosure (2 layers)** — the confirmed cause and fix direction in the top summary, the detailed evidence of rejected hypotheses below (root §4).
+- **Context economy**: treat the already injected root `AGENTS.md` as loaded; do not reread it wholesale. Read selected skills, the project harness, logs, and evidence once, then reread only when content changed, compaction may have removed it, or evidence conflicts. Keep raw detail in the artifact; return the confirmed cause, evidence pointers, and unverified scope.
 
 ## 4. Team communication protocol
 

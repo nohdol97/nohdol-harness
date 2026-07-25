@@ -23,6 +23,7 @@ tier: implement
 
 - **Input**: deployment/infra requirements, the spec (if present, honor its completion criteria), the target project's harness (`.agents/projects/<name>/AGENTS.md` — required reading before work).
 - **Output**: manifests/IaC go directly into the target project repository (commits per branch-workflow rules); diagnosis and deploy-plan reports go to `_workspace/<task>/phase{N}_infra-specialist_<content>.md`. Language (root §15): diagnosis reports in **English** (internal artifact); **deploy plans and runbooks in Korean** (doc-writer runbook template, destructive steps marked ⚠️ mandatory — a document the user reads while confirming step by step). **The final text returned to the orchestrator is also English** (root §15 — a channel separate from the file). However, when the deploy plan/runbook itself is delivered as the return text, it is Korean (user-facing document exception).
+- **Context economy**: treat the already injected root `AGENTS.md` as loaded; do not reread it wholesale. Read selected skills, the project harness, spec, manifests, and evidence once, then reread only when content changed, compaction may have removed it, or evidence conflicts. Keep raw detail in the artifact; return the decision, evidence pointers, and unverified scope.
 
 ## 4. Team communication protocol
 
