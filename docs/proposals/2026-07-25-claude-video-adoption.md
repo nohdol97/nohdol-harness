@@ -18,6 +18,7 @@
 
 - **채택**: 영상 이해가 필요할 때의 직접 호출(`/watch …`) 역량.
 - **직접 호출 전용(사용자 결정)**: `understand-*`와 동일하게 자동 라우팅하지 않는다 — 영상 URL을 붙여 요약을 요청해도 `/watch`가 자동 발동하지 않고, 사용자의 명시적 `/watch`에만 돈다. 강제는 문서화된 라우팅 정책(CLAUDE.md 스킬맵 + §7 + harness-install 3h)이며 외부 플러그인 프론트매터는 고치지 않는다(§11). 이유: 프레임=이미지 토큰이 커질 수 있어 깜짝 소비를 막는다.
+- **사내 마켓플레이스 차단 대체 경로**: 사내는 `/plugin marketplace`가 흔히 막히나, claude-video는 우회 경로가 있다 — `npx skills add bradautomates/claude-video -g`(agentskills CLI, Claude Code의 `~/.claude/skills`도 대상) 또는 수동 clone+심링크(`ln -s <repo>/skills/watch ~/.claude/skills/watch`). npm·GitHub까지 막히면 사유와 함께 스킵. 사용자 결정: 사내도 강제 유지·차단은 자연 스킵.
 
 ## §3 유출 처리
 
