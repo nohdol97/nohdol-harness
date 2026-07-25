@@ -103,6 +103,17 @@ A **direct-invocation-only** onboarding/navigation aid (MIT, Egonex-AI/Understan
 3. **Scope boundary (mandatory)**: the generated graph is a **human-facing** navigation/onboarding artifact only. **Harness agents (explorer/architect) must not treat `.ua/knowledge-graph.json` as ground truth** — code changes stale the graph (the graphify failure mode, proposal 2026-07-18); any model-facing use is a hint that must be verified against live code (§13-2 fresh evidence), never the sole basis.
 4. On failure, offline, or user refusal: skip and note it in the completion report — absence is harmless (it is a direct-invocation convenience, not a harness dependency).
 
+#### 3h. claude-video — `/watch` video comprehension skill (default)
+
+A **direct-invocation-only** skill (MIT, bradautomates/claude-video) that lets Claude actually watch a video: `yt-dlp` fetches captions/downloads, `ffmpeg` extracts scene-aware frames (with a dedup pass + duration-scaled frame budget), and Claude `Read`s frames + a timestamped transcript. Handles URLs (YouTube/Loom/TikTok/X/…) and local files (`.mp4/.mov/.mkv/.webm`). Fills a genuine gap — no harness asset can watch video (defuddle=web text, context7=docs). Adoption design: docs/proposals/2026-07-25-claude-video-adoption.md.
+
+1. Install (global — nothing enters the tracked repo, §11):
+   - **Claude Code**: the two commands are interactive slash commands the **user runs**: `/plugin marketplace add bradautomates/claude-video` then `/plugin install watch@claude-video`.
+   - **Other CLIs**: `npx skills add bradautomates/claude-video -g` (global). Runtime deps `yt-dlp`·`ffmpeg` auto-install on first `/watch` (macOS `brew`; Linux/Windows print the exact commands). Proceed after user confirmation.
+2. **Direct-invocation-only routing (mandatory — user decision 2026-07-25)**: `/watch` runs only on the user's explicit `/watch …`, **never auto-routed** (even when a video URL is pasted with a summarize request). Documented routing policy (we do not edit the external plugin's global frontmatter, §11), enforced by §7 precedence + the CLAUDE.md routing note. Reason: keeps the frame→image-token cost opt-in-per-use.
+3. **§3 runtime caveat (state it at install)**: frames go to Claude (baseline, like any screenshot), but the **Whisper fallback egresses audio** to a third party (Groq `whisper-large-v3` / OpenAI `whisper-1`) when a video has no captions (local files, TikTok, some Vimeo). **사내 (corporate) profile or any sensitive/internal recording → run with `--no-whisper` (frames-only) or captions-only public videos** — do not ship internal-recording audio to an external Whisper API (§3). 개인 (personal) profile on public/own content → Whisper is acceptable. API keys live in `~/.config/watch/.env` (mode 0600) — never copy them elsewhere (§3).
+4. On failure, offline, or user refusal: skip and note it in the completion report — absence is harmless (a direct-invocation convenience, not a harness dependency).
+
 ### 4. Scan existing projects
 
 List the subdirectories under `project/`, and for each collect observable facts (substructure, whether it is a git repository, harness presence — judged by existence of `.agents/projects/<name>/` (root AGENTS.md §12), stack clues). **Fill role/purpose by directly reading each project's README/docs and summarizing** — if there are no docs, write "미확인" (unconfirmed). **Do not fill by guessing** — mixing observation with guesswork makes the entire registry untrustworthy.
@@ -128,6 +139,7 @@ Generate with this structure: untracked-warning header → **installation profil
 - [ ] rtk installed (default-install) + telemetry disabled (`RTK_TELEMETRY_DISABLED=1`) + hook mode registered (`rtk init -g`, `rtk verify` passing) + evidence rule explained; if skipped, the reason is in the completion report — absence is harmless
 - [ ] gh CLI installed (default-install) + `gh auth status` authenticated (auth is run by the user, never token-extracted on their behalf); if skipped, the reason and the PR/issue degradation note are in the completion report
 - [ ] Understand-Anything installed (default-install; Claude Code = user runs the two `/plugin` commands, other CLIs = install.sh) + direct-invocation-only routing stated + graph-not-ground-truth scope boundary stated; if skipped, the reason is in the completion report — absence is harmless
+- [ ] claude-video (`/watch`) installed (default-install; Claude Code = user runs the two `/plugin` commands, other CLIs = `npx skills add … -g`) + direct-invocation-only routing stated + Whisper §3 caveat stated (corporate/sensitive = `--no-whisper`/captions-only); if skipped, the reason is in the completion report — absence is harmless
 - [ ] REGISTRY.md exists + **installation profile (개인/사내)** + path convention + table + change history (if corporate profile, the no-modify/no-push meaning was explained)
 - [ ] REGISTRY.md·project/ do not appear in `git status` (ignore confirmed)
 - [ ] Unconfirmed items are honestly marked "미확인"
