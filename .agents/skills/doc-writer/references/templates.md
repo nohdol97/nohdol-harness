@@ -21,7 +21,7 @@ Filename: `docs/specs/YYYY-MM-DD-<제목>.md`
 <이 작업이 끝나면 참이 되는 문장들. 측정 가능하게>
 
 ## 비목표
-<이번에 의도적으로 하지 않는 것 — 범위 방어선>
+<이번에 의도적으로 하지 않는 것 — 범위 방어선. 반입 대상이면 "(사내에서 후속 진행)"을 제목에 달고 사내 후속 항목을 여기에 열거한다>
 
 ## 요구사항
 <기능·비기능 요구사항. 번호 목록 R1, R2, ... (테스트가 이 번호를 참조한다)>
@@ -43,6 +43,14 @@ Filename: `docs/specs/YYYY-MM-DD-<제목>.md`
 ```
 
 Check: can every completion criterion be turned into a test as-is / is there a non-goals section / are the requirements numbered.
+
+**Fires when REGISTRY.md has a 「사내 반입 경계」 section AND the target project's 반입 column reads `사내`** — the project is built here and carried into a corporate environment for follow-up work. **Read both signals, in that order.** No section means this install site has no corporate carry-in, so skip silently no matter what the column says (a column value surviving a section's removal is stale, not authoritative). Section present but column `미확인` — ask the user once, write the answer back to the registry row, then proceed on the answer; `로컬` skips. With both signals positive, the three handover principles recorded in that section are not optional prose — they must be visible in these existing sections. **Add no new sections** (the fixed structure above still governs); place them as follows:
+
+- **비목표** — retitle to `## 비목표 (사내에서 후속 진행)` and enumerate the corporate follow-up items. Naming them in the spec is what keeps unattended sessions (autoloop) from re-deciding the boundary every iteration; boundaries stated only in chat do not survive a context reset.
+- **인터페이스 / 설계 개요** — define the cut as an **adapter boundary**: the interface plus a contract test asserting that every implementation returns the same result shape. Exclusion alone forces a redesign on the corporate side, so the seam is the deliverable, not the omission.
+- **완료 기준** — two criteria, both **countable**, in the same `"~하면 ~된다"` form the section already requires. Existence-shaped wording (`체크리스트가 README에 있다`) is not usable: an empty heading satisfies it, and an unattended session (autoloop) will write exactly that, since its only mechanical gate is the presence of a 완료 기준 section. Bind them to something with a number instead — ① every item enumerated in 비목표 has a matching entry in the README carry-in checklist (**item counts match**, so the criterion fails while any item is missing) ② running each corporate follow-up path prints the "미구현, 사내 후속" notice and exits non-zero (**one case per path**) rather than silently no-op.
+
+Keep company-identifying values out of the spec text: hostnames, internal URLs, cluster or namespace names, internal app names, org or team names, account IDs. Public product and technology names (k8s, ArgoCD, OIDC) are **not** restricted — the axis cannot be stated without them, and a name every company uses identifies none. The test is one sentence: *does this string point at our company's instance of the thing?* The spec is committed and leaves the repository (root AGENTS.md §3).
 
 **For specs of root hooks (`.agents/hooks/` session hooks, `.agents/githooks/` git hooks), the completion criteria must include a cross-platform checklist** — the 2026-07-14 Windows failure turned into chains of per-commit fixes (two 3-fix chains) because there was no pre-verification procedure (spec 2026-07-15-hooks-common-bootstrap): ① **Encoding** — the case where output/blocking messages actually get through on a cp949 (Korean Windows) console (common source: `_common.utf8_stdio`) ② **Interpreter** — whether the registered command (the shell chain in settings) fails open when the interpreter is absent or is a Windows Store stub (exists but fails to execute) ③ **External-CLI output judgment** — phrase-based judgment must be tested with **fixtures of actually observed phrases** (both affirmative and negative sentences) (fabricated fixtures let negative-sentence misjudgments like "no ... running" pass).
 
