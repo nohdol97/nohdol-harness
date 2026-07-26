@@ -42,6 +42,7 @@
 | [030](adr/030-english-harness-assets.md) | 2026-07-22 | 활성 | 모델-로드 하네스 자산 영어 단일 원본 전환 (§15 개정, 한글 뷰 3종 + 드리프트 가드, ADR·스펙·changelog는 한글 유지) |
 | [031](adr/031-codex-runtime-contract.md) | 2026-07-25 | 활성 | Codex 런타임 계약 실측 정렬 (32KiB 방어, 인라인 훅, trust, custom-agent 발행 확인) |
 | [032](adr/032-token-efficient-orchestration.md) | 2026-07-25 | 활성 | 토큰 효율형 오케스트레이션 (호출 예산·델타 재사용·세션 경계·상시 노출 예산) |
+| [033](adr/033-knowledge-source-routing.md) | 2026-07-26 | 활성 | 지식 소스를 설계 단계 라우팅에 편입 (§7 8항, REGISTRY 기록 시에만 발동·임의 경로·요약은 증거 아님·fail-open) |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
