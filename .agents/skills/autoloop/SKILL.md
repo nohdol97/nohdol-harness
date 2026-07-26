@@ -44,17 +44,20 @@ Determine the verb from the invocation arguments: `status`·`상태` → **statu
 3. **Confirm launch, then report**: after 2–3 seconds, read `launch.log` — if it contains "기동 거부" (launch refused), relay the reason to the user and stop (no silent no-op; skip step 4 — there is nothing to watch). If normal, report the output path (`_workspace/autoloop/<슬러그>/`) and tell the user: check with `/autoloop status` from another session, stop with `/autoloop stop`.
 4. **Register the completion signal.** A launched loop nobody is told about is a half-finished handoff — the run ends silently and the user has to think to ask. Start a **background Bash** whose command exits when the run ends, so this session is re-invoked and reports the outcome unprompted. One notification is wanted, so this is `run_in_background` with an `until` loop, **not `Monitor`** — an unbounded monitor stays armed after the event has already fired.
    ```bash
-   cd <하네스 루트 절대경로>
+   cd <하네스 루트 절대경로> || { echo "감시 실패: 하네스 루트로 이동할 수 없습니다"; exit 1; }
    W=_workspace/autoloop/<슬러그>
    PID=$(cat "$W/driver.pid" 2>/dev/null)
-   [ -n "$PID" ] || { echo "감시 실패: $W/driver.pid 없음 — 종료를 감지할 수 없습니다"; exit 1; }
+   case "$PID" in ''|*[!0-9]*) echo "감시 실패: $W/driver.pid 가 pid가 아닙니다"; exit 1;; esac
+   kill -0 "$PID" 2>/dev/null || { echo "감시 실패: pid $PID 가 무장 시점에 이미 없습니다 — 낡은 driver.pid"; exit 1; }
    until grep -q '^\[autoloop\] 종료:' "$W/launch.log" || ! kill -0 "$PID" 2>/dev/null; do sleep 60; done
-   tail -3 "$W/driver.log"
+   tail -1 "$W/launch.log"; tail -3 "$W/driver.log"
    ```
    - **Watch `launch.log`, not `driver.log`.** Both record the end, but `driver.log` is opened append-only and never truncated, while R10 resume reuses the same `--work-name` — so on every relaunch the previous run's end line is already sitting there and the watcher would satisfy itself in seconds and report the *old* outcome. `launch.log` is truncated by the `>` in step 2, so it can only ever hold this run's end.
    - **Match the end line itself, never `done`.** The driver prints `[autoloop] 종료: <reason>` once for all seven stop conditions, so this fires on every one of them. A filter narrowed to `done` stays silent through blocked, stalled, exhausted, stopped, cost, and error — and silence is indistinguishable from "still running", which is the exact failure this step exists to remove.
    - The `kill -0` arm covers what the end line cannot: a crash or `SIGKILL` that ends the run without printing it. **It sends no signal** — it only tests whether the pid still exists, so it does not conflict with the `stop` verb's no-kill rule.
-   - **Fail loudly, never toward "finished".** Absolute `cd` and the empty-pid guard exist because every sloppy variant of this watcher exits immediately and reads as completion: a wrong cwd makes the grep target missing, and `kill -0 ""` fails, which `!` turns into loop exit. A watcher that cannot watch must announce that, not fake a result.
+   - **Fail loudly, never toward "finished".** Every sloppy variant of this watcher exits in seconds and reads as completion, because `!` turns any `kill -0` failure into loop exit: a wrong cwd, a blank or non-numeric pid, or a **pid that is already dead when the watcher arms** (nothing ever deletes `driver.pid`, so a stale one outlives its run in the same never-cleaned directory). Hence all three guards — checked `cd`, `case` on the pid, and an arm-time liveness test. A pid that is dead *before* the watch begins is a setup failure, not an outcome; only a pid that dies *during* the watch is.
+   - **`감시 실패` is not a loop outcome.** On that notification, say monitoring failed and the loop's state is unknown, then read it with `status` — never report it as the run's result.
+   - **Read the outcome from `launch.log`'s end line, not the `driver.log` tail.** The tail is context, and on a resumed run it can still carry lines from the previous run for the same reason the trigger moved off that file.
    - **The driver itself stays detached under `nohup`. Do not collapse the two into one by launching the driver in the background slot** — the watcher is expendable and the loop is not. An unattended run must not depend on this session staying open, and that independence is the reason the tool exists.
    - **The signal is best-effort and session-bound**: the watcher dies when the session ends, while the loop keeps running. Tell the user this at launch — if they close the session, `/autoloop status` is how they pick the result back up. Do not present the notification as a guarantee.
    - On notification, report per the `status` section below, tuning-signal scan included.
