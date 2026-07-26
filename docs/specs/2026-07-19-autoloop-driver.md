@@ -47,7 +47,7 @@
 
 ### 스킬 (`.agents/skills/autoloop/SKILL.md`)
 
-- **R11 (3동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내, **종료 신호 등록** — `launch.log`의 `[autoloop] 종료:` 줄(R8 — `driver.log`가 아니다) 또는 프로세스 소멸까지 기다리는 백그라운드 감시를 걸어 기동 세션이 종료를 통보받게 한다. pid는 무장 시점에 생존을 확인한다(무장 전부터 죽어 있으면 종료가 아니라 설정 실패다). 감시는 소모품이고 드라이버는 아니므로 둘을 한 프로세스로 합치지 않는다) / `status`(carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
+- **R11 (3동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내, **종료 신호 등록** — `launch.log`의 `[autoloop] 종료:` 줄(R8 — `driver.log`가 아니다) 또는 프로세스 소멸까지 기다리는 백그라운드 감시를 걸어 기동 세션이 종료를 통보받게 한다. 무장 시점 검사는 **종료 줄 부재와 pid 부재가 함께일 때만** 설정 실패로 본다 — 루프는 무장 전에 정상 종료할 수 있으므로(R7⑦은 1초 미만) pid 부재 단독은 낡은 pid의 증거가 아니다. 감시는 소모품이고 드라이버는 아니므로 둘을 한 프로세스로 합치지 않는다) / `status`(carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
 - **R12 (스킬 공통 규칙)**: frontmatter 규격(첫 줄 `---`·name·description **800자 권장·1024자 하드캡**(부정 트리거가 길이보다 우선 — metaskill 공통 규칙 2)·한국어 재실행 키워드·부정 트리거), 본문 500줄 이내, with/without 표.
 
 ### 멀티 엔진 (driver.py — Claude Code CLI + Codex CLI)
