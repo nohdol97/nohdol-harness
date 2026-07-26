@@ -38,9 +38,20 @@ Determine the verb from the invocation arguments: `status`·`상태` → **statu
      --implement-model <implement 티어 모델> --verify-model <design 티어 모델> \
      [--engine codex | --implement-engine claude --verify-engine codex] \
      --work-name <슬러그> > _workspace/autoloop/<슬러그>/launch.log 2>&1 &
+   echo $! > _workspace/autoloop/<슬러그>/driver.pid
    ```
    Defaults: max-iterations 10, stall-limit 3, engine claude. This session resolves the tier models and engine from the §9 mapping and the launching CLI (above). For large overnight work, raise max-iterations but always keep it finite.
-3. **Confirm launch, then report**: after 2–3 seconds, read `launch.log` — if it contains "기동 거부" (launch refused), relay the reason to the user and stop (no silent no-op). If normal, report the output path (`_workspace/autoloop/<슬러그>/`) and tell the user: check with `/autoloop status` from another session, stop with `/autoloop stop`.
+3. **Confirm launch, then report**: after 2–3 seconds, read `launch.log` — if it contains "기동 거부" (launch refused), relay the reason to the user and stop (no silent no-op; skip step 4 — there is nothing to watch). If normal, report the output path (`_workspace/autoloop/<슬러그>/`) and tell the user: check with `/autoloop status` from another session, stop with `/autoloop stop`.
+4. **Register the completion signal.** A launched loop nobody is told about is a half-finished handoff — the run ends silently and the user has to think to ask. Start a **background Bash** whose command exits when the run ends, so this session is re-invoked and reports the outcome unprompted. One notification is wanted, so this is `run_in_background` with an `until` loop, **not `Monitor`** — an unbounded monitor stays armed after the event has already fired.
+   ```bash
+   until grep -q ' | EXIT ' _workspace/autoloop/<슬러그>/driver.log 2>/dev/null \
+      || ! kill -0 "$(cat _workspace/autoloop/<슬러그>/driver.pid 2>/dev/null)" 2>/dev/null; do sleep 60; done
+   tail -3 _workspace/autoloop/<슬러그>/driver.log
+   ```
+   - **Watch the `EXIT` line, never `reason=done`.** The driver writes `EXIT reason=…` once for all seven stop conditions, so this fires on every one of them. A filter narrowed to `done` stays silent through blocked, stalled, exhausted, stopped, cost, and error — and silence is indistinguishable from "still running", which is the exact failure this step exists to remove.
+   - The `kill -0` arm covers what the `EXIT` line cannot: a crash or `SIGKILL` that ends the run without writing it.
+   - **The driver itself stays detached under `nohup`. Do not collapse the two into one by launching the driver in the background slot** — the watcher is expendable and the loop is not. An unattended run must not depend on this session staying open, and that independence is the reason the tool exists.
+   - On notification, report per the `status` section below, tuning-signal scan included.
 
 ## status — inspect
 

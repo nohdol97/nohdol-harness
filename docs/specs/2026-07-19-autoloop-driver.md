@@ -44,7 +44,7 @@
 
 ### 스킬 (`.agents/skills/autoloop/SKILL.md`)
 
-- **R11 (3동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내) / `status`(carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
+- **R11 (3동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내, **종료 신호 등록** — `EXIT` 줄 또는 프로세스 소멸까지 기다리는 백그라운드 감시를 걸어 기동 세션이 종료를 통보받게 한다. 감시는 소모품이고 드라이버는 아니므로 둘을 한 프로세스로 합치지 않는다) / `status`(carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
 - **R12 (스킬 공통 규칙)**: frontmatter 규격(첫 줄 `---`·name·description **800자 권장·1024자 하드캡**(부정 트리거가 길이보다 우선 — metaskill 공통 규칙 2)·한국어 재실행 키워드·부정 트리거), 본문 500줄 이내, with/without 표.
 
 ### 멀티 엔진 (driver.py — Claude Code CLI + Codex CLI)
@@ -126,4 +126,5 @@
 |---|---|---|---|
 | 2026-07-19 | 초안 작성 후 확정 | 이 문서 | 사용자 구축 승인(자율 루프 3게이트 설계 합의) — metaskill 신설 절차 §13 SDD |
 | 2026-07-19 | R2에 untrusted 봉투(⑥) + 완료 기준 C18 추가 | driver.py `build_prompt`, driver_test.py | oh-my-openagent 프롬프트 인젝션 위생 이식(제안: 2026-07-19, 루트 3절) — 무인 루프 주입 표면 방어 |
+| 2026-07-26 | R11 `start`에 종료 신호 등록 추가(감시는 별도 프로세스, 드라이버는 계속 detach) | 이 문서, autoloop SKILL.md | 기동 세션이 루프 종료를 통보받을 경로가 없어 사용자가 물어야만 완료를 알 수 있었음(실사례 — agent-eval-gate 런) |
 | 2026-07-19 | 리뷰 반영 — R3 bare 인터프리터 그랜트 금지·`--allow-extra` 명시 확장(H1), 목표 절 주장 정직화(완전 봉쇄 아님+사용 가드레일), C1 파싱 실패 정체(L1)·C2 null open_items(M2)·C5 그랜트 검사 보강, R8 실패 반복 기록 명시(L2), R12 800자 권장·1024 캡 정합(M3) | 이 문서 | reviewer 독립 검증 BLOCK(H1·M1~M3·L1~L5) 반영 |
