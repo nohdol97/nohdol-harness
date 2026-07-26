@@ -62,7 +62,7 @@ The harness reaches infrastructure (k8s, AWS), so mistake blast radius exceeds t
 ## 7. Routing Rules
 
 1. On request, identify relevant projects in **REGISTRY.md's registry**.
-2. Load that project's AGENTS.md (harness).
+2. Load that project's AGENTS.md (harness). **If the registry row records a harness but the file is not there, stop before any product change.** The sub-harness is untracked and has no remote recovery (ADR 005·006), so this is the normal state on a machine a project was carried into before its harness followed. Reading and diagnosis stay open — recovery needs them — but Edit/Write/commit wait until it is restored (copy from the machine that has it, or `metaskill` carry-in). Reason: the absence is silent and it unloads *every* project rule and gate at once, so work proceeds ungoverned rather than merely uninformed. This is the one routing stop that outranks §13-0's "choose and flag rather than pause" (root §2: it is a §3-class guardrail — the rules that would judge the choice are the ones missing).
 3. **Single project**: implementation/multi-step work passes `orchestrate` Phase 0-1 to choose direct / one subagent / generate-verify / team (ADR 010). Re-take it for continuations that add implementation, behavior, or infra changes, and when read-only diagnosis first becomes product Edit/Write (ADR 028). Registered cross-session resume uses work-tracker.
 4. **Multiple related projects**: form an `orchestrate` team; pattern details are in metaskill `references/patterns.md`. Delegation depth ≤2 (coordinator→lead→worker).
 5. **k8s/IaC edits**: route through `infra-specialist`, including continuations. Its §2 pre-flight is the admission-check source because infra values can fail at resource creation.
