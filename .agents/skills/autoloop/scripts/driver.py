@@ -30,6 +30,14 @@ import sys
 # git checkout:*)는 금지 — 임의 코드 실행으로 블랙리스트를 감싸 우회할 수 있어
 # 게이트가 지시 수준으로 격하된다(리뷰 H1). 프로젝트별 러너가 더 필요하면
 # --allow-extra 로 사용자가 명시적으로 그랜트한다(§3 정합).
+#
+# 이 목록은 --setting-sources project 와 짝을 이룰 때만 실제 게이트가 된다.
+# 사용자 설정(~/.claude/settings.json)이 함께 로드되면 두 방향으로 무너진다:
+# ① permissions.allow 가 병합돼 여기서 금지한 bare 그랜트가 되살아나고,
+# ② PreToolUse 훅이 Bash 명령을 재작성하면(프록시 래퍼 류) 재작성된 문자열이
+#    아래 패턴 어디에도 안 맞아 허용은 무효, 블랙리스트도 함께 빗나간다.
+# 무인 게이트는 예측 가능해야 하므로 설치처별 사용자 설정을 상속하지 않는다.
+# 하네스 루트의 추적되는 project 설정만 남기는 이유는 항상-온 로드(§12) 때문이다.
 # ---------------------------------------------------------------------------
 SAFE_ALLOW = [
     "Read", "Glob", "Grep", "Edit", "Write", "Task", "TodoWrite",
@@ -206,7 +214,10 @@ def resolve_engine(cfg, readonly=False):
 
 def build_claude_args(cfg, prompt, readonly=False):
     """Claude 헤드리스 인자(R14). bypassPermissions·--dangerously-skip-permissions 금지(§3)."""
-    args = ["-p", prompt, "--output-format", "json", "--permission-mode", "acceptEdits"]
+    # --setting-sources project: 설치처 사용자 설정을 상속하지 않는다(위 목록 주석의 ①②).
+    # user 를 빼면 게이트가 아래 목록 그대로 서고, project 를 남겨야 항상-온이 로드된다(§12).
+    args = ["-p", prompt, "--output-format", "json", "--permission-mode", "acceptEdits",
+            "--setting-sources", "project"]
     model = resolve_model(cfg, readonly=readonly)
     if model:
         args += ["--model", model]
@@ -218,8 +229,10 @@ def build_claude_args(cfg, prompt, readonly=False):
 
 def build_codex_args(cfg, prompt, readonly, out_file):
     """Codex 헤드리스 인자(R14). --dangerously-bypass-approvals-and-sandbox 절대 금지(§3).
-    안전 게이트 = sandbox 레벨: 구현=workspace-write(쓰기 워크스페이스 confine·네트워크 기본 차단으로
-    원격 파괴 작업 봉쇄), 검증=read-only(쓰기 자체 차단). fine-grained denylist 없음(비목표 잔여 갭)."""
+    안전 게이트 = sandbox 레벨: 구현=workspace-write(쓰기 워크스페이스 confine), 검증=read-only.
+    fine-grained denylist 없음(비목표 잔여 갭). 네트워크 차단은 sandbox 기본값일 뿐이고
+    설치처 ~/.codex/config.toml 의 [sandbox_workspace_write] 가 덮을 수 있다 — 여기서 고정하지
+    않는다(R3-2 미해소 갭: 런타임 미측정 상태로 -c 를 걸면 조용히 무효가 될 수 있어서)."""
     sandbox = "read-only" if readonly else "workspace-write"
     args = ["exec", "--skip-git-repo-check", "--sandbox", sandbox, "-C", cfg.project, "-o", out_file]
     model = resolve_model(cfg, readonly=readonly)

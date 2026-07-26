@@ -253,6 +253,18 @@ class TestC5SafetyArgs(DriverTestBase):
             self.assertNotIn(pat, driver.SAFE_ALLOW)
             self.assertNotIn(pat, driver.READONLY_ALLOW)
 
+    def test_user_settings_are_not_inherited(self):
+        # 설치처 사용자 설정을 상속하면 게이트가 두 방향으로 무너진다(실측 확인된 회귀):
+        # 전역 permissions.allow 병합으로 bare 인터프리터 그랜트가 되살아나고,
+        # Bash 명령을 재작성하는 PreToolUse 훅이 있으면 allow/disallow 양쪽이 빗나간다.
+        cfg = self.make_config()
+        for args in [driver.build_claude_args(cfg, "p"), driver.build_claude_args(cfg, "p", readonly=True)]:
+            self.assertIn("--setting-sources", args)
+            sources = args[args.index("--setting-sources") + 1].split(",")
+            self.assertNotIn("user", sources)
+            # project 는 남겨야 한다 — 빼면 하네스 항상-온이 로드되지 않는다(§12)
+            self.assertIn("project", sources)
+
     def test_role_tier_model_routing(self):
         # 기능별 티어(§9): 검증(readonly)=design 티어 모델, 구현=implement 티어 모델.
         # 드라이버 코드엔 모델명이 없다 — 값은 기동 세션이 라인업에서 골라 넘긴다.
