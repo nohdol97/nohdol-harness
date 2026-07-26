@@ -25,7 +25,7 @@
 
 - **Orchestration invariants (§7, ADR 028·032)**: implementation continuations, work-tracker/carryover resumes, and diagnosis→first product Edit all re-enter `orchestrate`. K8s/IaC goes through `infra-specialist`. Product changes of 3+ files use `implementer`; ≤2 low-risk files may be direct but still require independent review. Collection uses `explorer`, causation uses `troubleshooter`, verification uses `reviewer`. Record the expected Agent-call budget, reuse the same agent for delta work, and add agents only for a new independent risk axis or required independence. Dispatch independent work simultaneously; background is the default, with foreground only for ≲1-minute lookups needed in the same response.
 
-- **Skill priority (§7)**: a matching specialized harness skill precedes `orchestrate`; harness skills precede built-in, plugin, SuperClaude, and gstack skills on the same trigger. External tools are auxiliaries inside harness procedures. The user alone merges; never delegate to auto-merge/main-push skills.
+- **Skill priority (§7)**: a matching specialized harness skill precedes `orchestrate`; harness skills precede built-in, plugin, and any other external skill or command pack on the same trigger. External tools are auxiliaries inside harness procedures. The user alone merges; never delegate to auto-merge/main-push skills.
 
 - **Interview-first (§13-0)**: before non-trivial work, enumerate assumptions, missing constraints, decision criteria, and likely blockers; look up discoverable facts and batch all uncertain questions up front. Once work starts, resolve forks autonomously and report the decision space. Only mandatory §3 guardrail confirmations and data-loss confirmations may interrupt execution.
 
