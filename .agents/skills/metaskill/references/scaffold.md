@@ -24,6 +24,8 @@ One question: *"이 프로젝트, 사내로 가져가서 후속 작업할 건가
 
 If the section is absent from REGISTRY.md, skip this step silently — it is install-site-specific (an install site with no corporate carry-in should not be asked about one). Do not create the section here; `harness-install` owns it.
 
+**On `사내`, the sub AGENTS.md gets a "where the work belongs" section** (§3 below writes the file; this is one more required section in it). It carries: ① how to tell which machine the session is on — the REGISTRY.md 설치처 프로필, `개인` = outside, `사내` = inside, so no new marker is needed ② an **area→files map** for this project, derived from the registry classification table and the actual layout, with the inside column restricted to **new files only** (an inside edit to a file the outside repo also owns is what turns every later `git pull` into a conflict) ③ the registry's decision sentence as the fallback for anything unlisted ④ a **symmetric stop-and-report gate**: when the request does not match the machine, name the file or capability, say which side owns it, give the shorter path, and proceed only on explicit instruction — in both directions, since outside-built guesses at corporate state get redone anyway. Put the two-remote wiring in the Git section (`origin` = local side, `upstream` = the other side, pulled from and never pushed to). The boundary has to ride in the document because routing loads it on every entry into the project, while a boundary stated in chat dies at the next context reset.
+
 ## 2. Directory & basic scaffolding
 
 - Create the `project/<name>/` directory (path convention — root REGISTRY.md, install-site-specific). Use the stack's standard scaffolder (e.g. `npm create vite`, `uv init`). If no scaffolder exists, create only the minimal structure by hand.

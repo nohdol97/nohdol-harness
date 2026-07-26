@@ -1,6 +1,6 @@
 ---
 name: metaskill
-description: "Create, scaffold, audit, improve, or retire harness assets including AGENTS.md, agents, skills, and ADRs. Use for 하네스 만들기/개선, project scaffold, or approved evolution signals. Not for proposal-only daily/weekly scans (harness-review). Re-run: metaskill, harness, scaffold, audit, evolve, 하네스, 하네스 개선."
+description: "Create, scaffold, audit, improve, or retire harness assets including AGENTS.md, agents, skills, and ADRs; also carry in a project built on another machine. Use for 하네스 만들기/개선, project scaffold, approved evolution signals, or 프로젝트 반입·가져오기. Not for proposal-only daily/weekly scans (harness-review). Re-run: metaskill, harness, scaffold, audit, evolve, carry-in, 하네스, 하네스 개선, 프로젝트 반입, 가져와."
 ---
 
 # metaskill — the skill that builds harnesses
@@ -40,6 +40,16 @@ Trigger: **when a recurring task is observed, or a procedure/role appears mid-wo
 2. On approval, create at **`.agents/projects/<name>/skills/<skill>/SKILL.md`** or **`.agents/projects/<name>/agents/<agent>.md`** — `.agents/projects/` is untracked, so it never enters git. Format is identical to root (all 10 "skill common rules" below, agent-rules.md 10 sections).
 3. **List the skills/agents and their paths in the sub AGENTS.md** — this location is not auto-discovered by the CLI, so routing reading the sub AGENTS.md is the only path that loads them. Put the actual commands in the body (a skill without commands is worse than none).
 4. Promote to root `.agents/skills/` (tracked) only skills that generalize across projects/install sites (after removing project-specific content).
+
+## Project carry-in scenario ("사내에서 그 프로젝트 가져와줘" — fires only where REGISTRY.md has a 「사내 반입 경계」 section)
+
+Importing a project built on the other machine. **Not the same as new-project scaffolding**: the repository already exists with its history, so nothing is generated except the harness side. The reason this lives at root rather than in the sub-harness is ordering — the sub-harness is untracked, so at carry-in time it does not exist on this machine yet.
+
+1. **Bring the repository.** The user moves it (clone from the personal remote where the network allows, otherwise an archive) and creates the corporate remote themselves — repository creation and pushing are externally publishing operations (root AGENTS.md §3). Wire two remotes: `origin` = corporate (push target), `upstream` = personal (pull only, never pushed to). One-way flow is what keeps the two copies from becoming rival originals.
+2. **Carry the sub-harness across by hand.** `.agents/projects/<name>/` is untracked and has no remote recovery path (ADR 005), so neither a clone nor an archive of the *project* contains it — it lives in the *harness* repo, and only on the machine that made it. Without this step the session routes into the project with no project rules at all, silently. Copy the directory from the other machine (`AGENTS.md` at minimum, plus `adr/` and any lazily created `skills/`/`agents/`).
+3. **Register in REGISTRY.md** — a row with 반입 = `사내`, and the same 이름 as the sub-harness directory (routing resolves by that name).
+4. **Verify the boundary section survived.** The sub AGENTS.md must carry the "where the work belongs" area map (see the scaffold reference). If it is missing — the project predates the boundary rule — write it now from the registry classification table and the repository's actual layout, because from this machine every edit to a file the other side owns is a future `git pull` conflict.
+5. Wrap up: REGISTRY.md change-history row, sub AGENTS.md change-history row. On a 사내 profile the tracked harness files are not modified, so there is nothing to commit at root — the untracked additions are the whole deliverable.
 
 ## Pending-queue application scenario (personal install site — "하네스 업데이트 적용해줘")
 
