@@ -69,8 +69,13 @@ knowledge root, not a publication (decided with the user, 2026-07-28).
    guessed contract is worse than no note: it looks conforming, so nothing
    later flags it.
 
-4. **Read all three before drafting**, plus `<study-root>/AGENTS.md` §5. They are
-   the contract; this file is only the procedure. §5 is not optional context: it
+4. **Read all three before drafting**, plus `<study-root>/AGENTS.md` **§2 through
+   §5**. They are the contract; this file is only the procedure. Read the whole
+   span rather than picking sections: several load-bearing rules live there and
+   **nowhere in the three references** — what `hot.md` is for and how large it
+   may get (§2-§3, and `hot.md` carries no blockquote of its own), and the ban on
+   inventing a source, quote, relationship, or certainty level (§4). Nothing else
+   would put those in front of you. §5 is not optional context: it
    carries the guardrails this procedure cannot restate correctly from memory —
    no credential enters the vault, no vault material goes to an additional
    external service without the user's approval, legacy notes outside the curated
@@ -101,11 +106,9 @@ knowledge root, not a publication (decided with the user, 2026-07-28).
 
 ## Phase 2 — write the note
 
-Write under `vault/wiki/<Title>.md` using `note-schema.md` verbatim: flat YAML
-frontmatter (`type`, `status`, `created`, `updated`, `related`, `sources`,
-`verification`, `checked`), H1 matching the filename exactly, and the body
-sections that keep sourced fact, synthesis, inference, hypothesis, and open
-questions distinguishable.
+Write under `vault/wiki/<Title>.md` using `note-schema.md` verbatim — its
+frontmatter field set, its H1 rule, and its body sections, taken from the file
+you read in Phase 0 rather than from anything written here.
 
 **The contract is the reference file, never the neighboring notes.** This is the
 one place a baseline run actually failed (2026-07-28, sandbox copy of the vault,
@@ -114,31 +117,25 @@ subagent given the same task without this skill). It updated `index.md`,
 note in index's 주제 list on its own. Two of those files state their own rules in
 their bodies; `hot.md` does not and was still updated. So Phase 3's value is
 **guarantee, not rescue** — Phase 4 verifies the landing instead of leaving it to
-luck. What it got wrong
-was the note itself, and every error was an imitation of the sibling notes it
-had just read:
+luck. What it got wrong was the note itself, and every error was an imitation of
+the sibling notes it had just read:
 
 - **`checked` omitted** — absent from the neighbors, though the claim was
   version-specific and the schema requires it exactly there.
 - **`tags:` added** — a field the neighbors carry and the schema excludes.
 - **`status: evergreen` on a first capture** — copied from neighbors; the schema
-  reserves `evergreen` for stable maintained knowledge and gives a first capture
-  `seed`.
-- **`sources` filled with prose** describing a command run, where the schema
-  admits only exact URLs or `raw/` paths.
+  grades a first capture otherwise.
+- **`sources` filled with prose** describing a command run, which is not among
+  the forms the schema admits.
 
 The vault holds notes that predate the curated contract, so the nearest example
 is often the wrong one. Read the schema and grade against it; when a neighbor
 disagrees with the reference, the reference wins and the neighbor stays untouched
 (migrating it is a separate request).
 
-Two further failure modes, both from the schema reference:
-
-- **`/` in a title cannot be a filename** — the filesystem reads it as a path
-  separator. Use a space in the filename, H1, and every `[[wikilink]]`, and state
-  the real spelling in the first body line.
-- **`verification` summarizes the weakest material claim, not the strongest.**
-  One unresolved central claim caps the whole note.
+Two traps in the schema's own field rules are worth re-reading before drafting
+rather than recalling: the one about a `/` in a title, and the one about how the
+note-level `verification` value is graded.
 
 Add `[[wikilinks]]` in both directions. **At least one inbound link from an
 existing note is required**, or an explicit statement of why none fits: the
@@ -164,30 +161,21 @@ existing entries are meant to be preserved rather than rewritten. Modification
 times can be rewritten by the sync client, so freshness read from them is a
 hint, not proof (study AGENTS.md §5).
 
-### 3a. `index.md` — mandatory, one line
+### 3a. `index.md` — mandatory, one 「최근 갱신」 line
 
-`index.md` answers "where do I start", not "what exists" (`index-policy.md`).
-Two distinct edits, and most writes need only the first:
+**Every write adds a 「최근 갱신」 line.** That is this skill's obligation and the
+reason it exists; the rest of what goes in `index.md` — the recent-change cap,
+when a topic earns a 주제 line, what a 주제 line may name, how a dangling entry
+is handled — is **`index-policy.md`'s to state, and it is already in context from
+Phase 0.** Apply it from there. Do not restate it here or reason from memory of
+it: a paraphrase is how this file once introduced a threshold error the original
+never had (2026-07-28 comprehension quiz), which is the drift ADR 034 exists to
+prevent.
 
-- **「최근 갱신」 — always.** Add one line at the top naming the note and, in a
-  sentence, what it now settles. Keep roughly the five most recent and drop the
-  overflow; `log.md` is the record, and a hand-trimmed second copy only drifts
-  from it.
-- **「주제」 — only when a hub exists or is now due.** A 주제 line always names a
-  **hub note**, never an atomic one. A topic being new is not the trigger; the
-  trigger is the cluster reaching **more than two or three notes** without a
-  hub, and then you write the hub (`type: topic`) rather than adding index
-  lines. **A first note in a new topic therefore gets no 주제 line at all** —
-  only its 「최근 갱신」 line. Creating a hub for a single note builds a map of
-  one place, and the index grows by notes again, which is the one thing the
-  policy exists to prevent.
-
-  (The 「최근 갱신」 line above does name the atomic note — that is the
-  sanctioned place for it, and dropping that line to honor the 주제 prohibition
-  would delete the record this phase exists to make.)
-
-A dangling `[[wikilink]]` in the entry point is reported, not left: write the
-note, mark the entry as having none, or remove the line.
+One point the policy does not cover, because it only arises when writing:
+**the 주제 restriction never cancels the 「최근 갱신」 line.** That line names the
+atomic note and is its sanctioned place. Dropping it to honor the 주제 rule
+deletes the record this phase exists to make.
 
 ### 3b. `log.md` — mandatory, one row, append-only
 
@@ -196,24 +184,26 @@ first. Say what changed and what it corrected or established, in enough detail
 that a later session can reconstruct the decision. **Never alter or delete a row
 already written** — newest-first is a reading order, not permission to edit.
 
-### 3c. `hot.md` — refresh, roughly ≤500 tokens
+### 3c. `hot.md` — refresh
 
-Carry only current focus, recently learned durable points, open questions, and
-next actions. It is a cache: on conflict the note and its source win, never
-`hot.md`.
+Refresh it to what study `AGENTS.md` §2-§3 specify, size included.
 
 ## Phase 4 — verify before reporting
 
-1. Frontmatter parses and carries **exactly** the schema's eight fields — no
-   extra `tags`, no plugin metadata, `checked` present. `created` unchanged on a
-   revision, `updated` moved only if meaning changed, `status` graded against the
-   schema's definitions rather than against the neighbors.
-2. Every `[[wikilink]]` resolves to a real file; every `sources` entry is a real
-   URL or an existing `raw/` path.
-3. Every material claim maps to inspected evidence or is labeled `unverified`,
-   inference, hypothesis, or contested.
-4. `index.md` gained its line, `log.md` gained its row, no prior row changed,
-   no **pre-existing** `raw/` file changed (Phase 1 may have added one).
+1. Frontmatter parses and carries **exactly the field set the schema lists** —
+   count and names from the reference you read in Phase 0, never from this file
+   or from a neighboring note. No extra `tags`, no plugin metadata. Every field's
+   value is graded against the schema's own field rules, `status` and the date
+   fields included, rather than against the neighbors.
+2. Every `[[wikilink]]` resolves to a real file, and every `sources` entry is in
+   one of the forms the schema admits and actually resolves.
+3. Every material claim carries the status `evidence-check.md` assigns it, and
+   the note-level value follows `note-schema.md`'s rule for combining them —
+   the per-claim statuses and the aggregation rule live in different files.
+4. `index.md` gained its line, `log.md` gained its row with no prior row changed,
+   `hot.md` was refreshed, and no **pre-existing** `raw/` file changed (Phase 1
+   may have added one). All three landings are checked, not two — an unverified
+   `hot.md` is the one this procedure would otherwise let slide.
 5. **If the note carries a diagram, run the study harness's checker** — a broken
    Mermaid block renders as an error while the source still looks complete, so
    no other step in this procedure catches it:
@@ -234,10 +224,8 @@ next actions. It is a cache: on conflict the note and its source win, never
    say so in the report as an unverified item and finish. The three references
    are the opposite case: they gate the write, so they gate at Phase 0.
 
-   `garden.py` counts distinct wikilink targets in `index.md` against a default
-   budget of 15. That is a smell threshold, not a law, and the capped 「최근 갱신」
-   lines legitimately count toward it — what the number should never absorb is
-   atomic notes accumulating in the 주제 list.
+   `index-policy.md` documents what `garden.py` measures and how to read the
+   number it prints; take the interpretation from there.
 
 Report to the user in Korean (§15): the note path, the index line and log row
 added, the verification status assigned and why, and anything left unverified.
@@ -247,11 +235,12 @@ added, the verification status assigned and why, and anything left unverified.
 - One note, one central concept or claim.
 - The title is specific enough to link without surrounding context.
 - At least one existing note links **in**, or the report says why none does.
-- Frontmatter carries the schema's eight fields and nothing else.
-- No invented source, quote, relationship, or confidence level.
+- Frontmatter carries the schema's field set and nothing else, counted from the
+  reference rather than from this file.
+- Nothing invented, per study `AGENTS.md` §4's note contract.
 - `index.md` records this write; `log.md` records it permanently; neither lost a
   prior entry.
-- No atomic note was added to `index.md`'s 주제 list.
+- `index.md` conforms to `index-policy.md` after the write.
 - No secret entered any of the five touched paths (§3).
 - Legacy notes outside the curated layer were not **normalized or migrated**.
   Adding a backlink to one is allowed and often necessary — 214 of 231 notes
@@ -266,4 +255,4 @@ added, the verification status assigned and why, and anything left unverified.
 | Format | Graded against whichever note was read last — measured baseline: extra `tags`, missing `checked`, `evergreen` on a first capture, prose in `sources` | The study harness's note contract, read at run time |
 | Discoverability | Index/log/hot did survive the baseline, but nothing guaranteed it — two of the three state their rules in their own bodies, `hot.md` does not | Index line + permanent log row + hot refresh, verified in Phase 4 |
 | Rule drift | Root copy diverges from the study original | One original in `nohdol-study`, no copy here (ADR 034) |
-| Evidence | Fluent prose hides what was never checked | Verification status set by the weakest claim |
+| Evidence | Fluent prose hides what was never checked | Every claim graded, and the note graded by the schema's own aggregation rule |
