@@ -1,8 +1,8 @@
 # Document templates (single source per type)
 
-Section structure and order are fixed. Leave inapplicable sections as "해당 없음 — <사유>" (not applicable — reason).
+Section structure and order are fixed. Leave inapplicable sections as "해당 없음 — <사유>" (not applicable — reason). **Sole exception: the sections template 3A marks conditional are omitted outright** — that template states the exception and its bounds.
 
-> Templates 1, 3, 4, 5 produce **user-facing documents** (root AGENTS.md section 15) — their template text is Korean and the drafted document is written in Korean. Template 2 produces a model-only internal report — written in English.
+> Templates 1, 3A, 3B, 4, 5 produce **user-facing documents** (root AGENTS.md section 15) — their template text is Korean and the drafted document is written in Korean. Template 2 produces a model-only internal report — written in English.
 
 ## 1. Spec (SDD — root AGENTS.md section 13)
 
@@ -80,24 +80,119 @@ Filename: `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md`
 
 Check: does every finding have evidence / is the Limits section honest.
 
-## 3. README
+## 3. README — two templates, one fork
+
+**Which one fires: is there a `.git` directory beside this README?** Beside it → **3A** (the repository's first screen, read by someone deciding whether to use the thing). Not beside it → **3B** (a directory or module README, read by someone already inside the repository). One mechanical test, because the two templates differ in what they are for, not in size — a directory README with a badge row is as wrong as a repository root with no way to run it.
+
+**Language: Korean, both templates** (root AGENTS.md section 15 — user-read). Popular repositories write English READMEs and only their **structure** is ported here; no English variant is produced. Reason: a second-language README is a synchronization obligation of the kind section 15's Korean-view rule already pays for on the harness assets, and it would be paid on every project.
+
+**These templates apply to READMEs written or revised from now on.** Existing READMEs are not retrofitted — the unit of judgment is the writing act, not the file (same rule as REGISTRY.md's outbound-caution scope).
+
+### 3A. Repository-root README
 
 ```markdown
 # <이름>
 
-<한 문단: 무엇이고, 누구를 위한 것인가>
+> <한 줄 태그라인 — 이 저장소가 무엇을 해주는가. 명사 나열이 아니라 동사로 끝낸다>
 
-## 구조 | 시작하기
-<디렉토리 트리 또는 설치·실행 최소 명령>
+<뱃지 줄 — 조건부, 아래 「뱃지 규칙」>
+
+## 이게 뭔가
+
+<2~4문장. 어떤 문제를, 누구를 위해, 어떻게 푸는가. 여기까지 읽고 "나에게 필요한가"가 판단돼야 한다 — 판단이 안 되면 아래를 아무리 잘 써도 읽히지 않는다>
+
+## 데모
+
+<조건부. 저장소에 실제로 있는 이미지·GIF·asciinema만>
+
+## 시작하기
+
+<복사해서 그대로 도는 최소 명령. 설치 → 실행 → 첫 결과가 3단계 이내.
+전제(런타임 버전·필요 권한)는 블록 위 한 줄로>
+
+## 사용법
+
+<대표 시나리오 2~3개. 각각 명령·코드 + **실행해서 얻은 실제 출력**. 지어낸 출력 금지(13절 2항 무증거 선언 금지가 문서에도 적용된다)>
+
+## 설정 레퍼런스
+
+<조건부. 옵션 표: 키 | 기본값 | 설명>
+
+## 동작 방식
+
+<핵심 흐름 번호 목록. 내부 구현이 아니라 "입력이 어떤 경로로 결과가 되는가". 구현 상세는 링크로>
+
+## FAQ · 트러블슈팅
+
+<조건부. 실제로 받은 질문·실제로 밟은 오류만>
+
+## 사내 반입 체크리스트
+
+<조건부. 제목을 이대로 유지한다 — 스펙 템플릿 완료 기준 ①이 이 목록의 항목 수를 스펙 비목표 항목 수와 대조한다>
+
+## 로드맵
+
+<조건부. 스펙·이슈로 존재하는 것만>
+
+## 기여
+
+<조건부>
+
+## 라이선스
+
+<조건부. LICENSE 파일이 있을 때만>
+
+## 참고
+
+<조건부. 더 깊은 문서로의 링크 — 스펙·런북·ADR. 내용 복사 금지, 링크만>
+```
+
+**Mandatory sections** (always present): 제목·태그라인, 이게 뭔가, 시작하기, 사용법, 동작 방식.
+
+**Conditional sections** — include when the condition holds, **omit the heading entirely otherwise**. Each condition is a fact about the repository, checkable without judgment:
+
+| 섹션 | 넣는 조건 | 생략 이유 |
+|---|---|---|
+| 뱃지 줄 | 아래 뱃지 규칙을 통과하는 뱃지가 1개 이상 | 근거 없는 뱃지는 상태를 주장하는 거짓말이다 |
+| 데모 | 실행 결과를 담은 이미지·GIF·asciinema 파일이 저장소에 있다 | 플레이스홀더는 "곧 나온다"가 아니라 "관리되지 않는다"로 읽힌다 |
+| 설정 레퍼런스 | 사용자가 바꿀 수 있는 설정 키가 1개 이상 | 설정이 없는데 빈 표를 두면 있는 줄 알고 찾는다 |
+| FAQ · 트러블슈팅 | 실제로 받은 질문 또는 실제로 밟은 오류가 1건 이상 | 예상 질문은 저자의 상상이라 아무도 안 겪는다 |
+| 사내 반입 체크리스트 | REGISTRY.md의 그 프로젝트 행 반입 = `사내` | 그 외 프로젝트엔 대응하는 인계 대상이 없다 |
+| 로드맵 | 다음 작업이 스펙 또는 이슈로 존재한다 | 구두 아이디어를 적으면 약속으로 읽히고 지켜지지 않는다 |
+| 기여 | 본인 외 기여자를 받을 저장소다 | 받을 생각이 없는 절차는 유지되지 않는다 |
+| 라이선스 | LICENSE 파일이 저장소에 있다 | 파일 없이 섹션만 두면 미정 상태가 정해진 것처럼 보인다 |
+| 참고 | 링크할 더 깊은 문서(스펙·런북·ADR)가 있다 | 링크 없는 링크 섹션 |
+
+**These are the only sections exempt from the "해당 없음 + 사유" rule** (SKILL.md procedure step 3). Mandatory sections are not exempt — an inapplicable mandatory section means 3A is the wrong template, not that the section may be dropped.
+
+**뱃지 규칙** (max 4, one line):
+
+- **저장소에 근거 파일이 실제로 있는 뱃지만 단다** — CI 뱃지는 워크플로 파일이 있을 때, 라이선스 뱃지는 LICENSE가 있을 때, 패키지 뱃지는 실제로 배포된 레지스트리 항목이 있을 때, 커버리지 뱃지는 커버리지를 리포트하는 파이프라인이 있을 때. 근거를 확인한 다음 단다.
+- **정적 값으로 상태를 흉내내지 않는다** — 하드코딩한 `build: passing` 류는 검증 없이 통과를 선언하는 것이라 root AGENTS.md 13절 2항 위반과 같은 종류다. 상태 뱃지는 상태를 읽어오는 것만 쓴다.
+- **뱃지 URL도 저장소 밖으로 나가는 텍스트다** — 외부 뱃지 서비스는 저장소·조직 이름을 URL에 담고 이미지 요청으로 그 이름을 밖에 보낸다. 반입 `사내` 프로젝트에서는 회사 식별값(조직명·내부 호스트·사내 앱 이름)이 뱃지 URL에 들어가지 않아야 한다(root AGENTS.md 3절, REGISTRY.md 반출 주의).
+
+Check: 태그라인만 읽고 무엇을 하는 저장소인지 아는가 / 시작하기 블록을 그대로 복사해 돌릴 수 있는가 / 사용법 출력이 실행 결과인가(지어낸 것이 아닌가) / 조건부 섹션 중 조건을 못 채운 채 남은 것이 없는가 / 뱃지가 전부 근거 파일을 가지는가 / 다른 문서 내용을 복사하지 않고 링크했는가.
+
+### 3B. Directory / internal README
+
+```markdown
+# <이름>
+
+<한 문단: 이 디렉토리가 무엇이고, 누가 언제 여는가>
+
+## 구조
+<디렉토리 트리 — 항목마다 한 줄 설명. 파일 나열이 아니라 "무엇이 어디 있는가">
 
 ## 동작 방식
 <핵심 흐름 번호 목록>
 
-## 규칙 상세 | 참고
+## 참고
 <더 깊은 문서로의 링크 — 내용 복사 금지, 링크만>
 ```
 
-Check: can the purpose be understood from the first paragraph alone / was no other document's content copied.
+All four are mandatory; 3B has no conditional sections, so the "해당 없음 + 사유" rule applies here unchanged.
+
+Check: 첫 문단만 읽고 이 디렉토리를 열 이유를 아는가 / 트리 항목마다 설명이 붙었는가 / 다른 문서 내용을 복사하지 않았는가 / 뱃지·데모·로드맵·기여·라이선스 같은 3A 전용 섹션이 섞이지 않았는가.
 
 ## 4. Runbook (operational procedure)
 

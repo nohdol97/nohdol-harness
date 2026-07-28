@@ -13,7 +13,7 @@ When every document has a different format, the reading cost is paid anew each t
 
 1. **Determine the type**: map the request to the table below. If ambiguous, ask the user for the purpose (who reads this document, and when).
 2. **Load the template**: read only that type's section from `references/templates.md`.
-3. **Draft**: follow the template's section structure and order exactly. Do not add, delete, or reorder sections arbitrarily — for an inapplicable section, do not delete it; leave "해당 없음" (not applicable) plus a one-line reason (so the next reader does not have to judge whether it is an omission).
+3. **Draft**: follow the template's section structure and order exactly. Do not add, delete, or reorder sections arbitrarily — for an inapplicable section, do not delete it; leave "해당 없음" (not applicable) plus a one-line reason (so the next reader does not have to judge whether it is an omission). **One closed exception: the sections template 3A explicitly lists as conditional are omitted outright when their condition is not met.** The 해당 없음 rule serves a reader auditing a document for gaps; a repository README's reader is deciding whether to use the thing, and a column of 해당 없음 lines defeats the first screen it exists to build. The exception covers only those listed sections — every mandatory section still applies, template 3B has no conditional sections, and no other template gains this.
 4. **Self-check**: verify against the checklist at the bottom of the template, then declare done.
 
 ## Type → template mapping
@@ -22,7 +22,8 @@ When every document has a different format, the reading cost is paid anew each t
 |---|---|---|
 | **Spec** | Before feature additions/behavior changes (root AGENTS.md section 13 SDD, mandatory) | Target project repo `docs/specs/YYYY-MM-DD-<제목>.md` |
 | **Work report** | Team/phase deliverables | `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md` |
-| **README** | Project/directory introduction | Root of the target directory |
+| **README (repository root)** | The first screen of a repository someone can clone or install | Repository root — template 3A |
+| **README (directory / internal)** | A directory or module below that root | That directory — template 3B |
 | **Runbook (operational procedure)** | Recurring ops procedures (deploy, recovery, inspection) | Target project repo `docs/runbooks/` |
 | **PR body** | On PR creation (branch-workflow finish procedure, step 5) | `gh pr create --body` input |
 
@@ -34,7 +35,7 @@ ADRs and change-history tables are not this skill's target — the single source
 - **Why-First**: attach a reason to every rule and decision.
 - No section with a heading but no content. Mark guesses honestly as "미확인" (unverified).
 - Code, commands, and paths in backticks. Dates as YYYY-MM-DD.
-- Change-history table at the bottom (날짜/변경 내용/대상/사유 — date/change/target/reason) — living documents only (specs, runbooks, READMEs). One-off reports are excluded.
+- Change-history table at the bottom (날짜/변경 내용/대상/사유 — date/change/target/reason) — **specs and runbooks only**. One-off reports are excluded, and so are **READMEs**: root harness README changes are already recorded in `docs/harness-changelog.md` (root AGENTS.md section 6, ADR 021) and sub-project README changes ride that repository's own git history, so a table inside the file would be a third place recording the same change — the state root AGENTS.md section 5 calls untrustworthy. Verified 2026-07-28: neither the root `README.md` nor `project/agent-eval-gate/README.md` carries such a table, while changelog rows name `README.md` in their 대상 column — the previous wording was declared and never implemented.
 
 ## with / without
 
