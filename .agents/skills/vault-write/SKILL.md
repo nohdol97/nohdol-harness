@@ -204,7 +204,17 @@ Refresh it to what study `AGENTS.md` §2-§3 specify, size included.
    `hot.md` was refreshed, and no **pre-existing** `raw/` file changed (Phase 1
    may have added one). All three landings are checked, not two — an unverified
    `hot.md` is the one this procedure would otherwise let slide.
-5. **If the note carries a diagram, run the study harness's checker** — a broken
+5. **No inline code span or bold marker straddles a line break** — a
+   `code span` or **bold** marker whose opening and closing delimiter sit on
+   different source lines is legal CommonMark (the line break normalizes to a
+   space) but renders unreliably in Obsidian, breaking formatting from that
+   point on. Neither the diagram checker nor `vault-gardening` catches this. A
+   bare open/close count match is not enough — two unrelated delimiters can
+   still pair across lines and still total even, so scan sequentially: which
+   opening delimiter pairs with which closing one, and whether a line break
+   falls between them. Reflow the sentence onto one line, even if long, rather
+   than wrapping mid-span.
+6. **If the note carries a diagram, run the study harness's checker** — a broken
    Mermaid block renders as an error while the source still looks complete, so
    no other step in this procedure catches it:
 
@@ -212,7 +222,7 @@ Refresh it to what study `AGENTS.md` §2-§3 specify, size included.
    python3 <study-root>/.agents/skills/diagram/scripts/check.py "<vault>/wiki/NOTE.md"
    ```
 
-6. Optionally confirm the index has not started listing rather than orienting:
+7. Optionally confirm the index has not started listing rather than orienting:
 
    ```sh
    python3 <study-root>/.agents/skills/vault-gardening/scripts/garden.py --vault <vault>
