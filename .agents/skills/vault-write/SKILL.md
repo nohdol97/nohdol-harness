@@ -173,13 +173,18 @@ Two distinct edits, and most writes need only the first:
   sentence, what it now settles. Keep roughly the five most recent and drop the
   overflow; `log.md` is the record, and a hand-trimmed second copy only drifts
   from it.
-- **「주제」 — only for a new topic.** One line per topic naming its **hub note**.
-  **Never add an atomic note to the 주제 list.** (The 「최근 갱신」 line above
-  does name the atomic note — that is the sanctioned place for it, and dropping
-  that line to honor this prohibition would delete the record this phase exists
-  to make.) If a topic has no hub and has
-  accumulated more than two or three notes, write the hub (`type: topic`)
-  instead of adding index lines. Creating a cluster means creating its map.
+- **「주제」 — only when a hub exists or is now due.** A 주제 line always names a
+  **hub note**, never an atomic one. A topic being new is not the trigger; the
+  trigger is the cluster reaching **more than two or three notes** without a
+  hub, and then you write the hub (`type: topic`) rather than adding index
+  lines. **A first note in a new topic therefore gets no 주제 line at all** —
+  only its 「최근 갱신」 line. Creating a hub for a single note builds a map of
+  one place, and the index grows by notes again, which is the one thing the
+  policy exists to prevent.
+
+  (The 「최근 갱신」 line above does name the atomic note — that is the
+  sanctioned place for it, and dropping that line to honor the 주제 prohibition
+  would delete the record this phase exists to make.)
 
 A dangling `[[wikilink]]` in the entry point is reported, not left: write the
 note, mark the entry as having none, or remove the line.
