@@ -29,6 +29,7 @@ nohdol-harness/
 │   │   ├── context7/        # 라이브러리·프레임워크 버전별 최신 문서 조회 (context7 MCP 래퍼, 미설치·실패 시 WebFetch/WebSearch 폴백)
 │   │   ├── tool-audit/      # 외부 도구(플러그인·MCP·스킬 팩) 사용 실측 감사 (agentsview로 매칭 집계 → 판정·제안, 실행은 metaskill)
 │   │   ├── tool-eval/       # 외부 도구·플러그인 채택 평가 (README 대조 → 채택/개인/기각 → proposal·MOC → 채택 시 harness-install·라우팅·reviewer). tool-audit는 설치 후 실측, tool-eval은 설치 전 평가
+│   │   ├── vault-write/     # study vault 지식 노트 작성 — nohdol-study 하네스의 노트 계약을 런타임 참조(사본 없음), index.md·log.md·hot.md 기록 필수 (ADR 034)
 │   │   ├── carryover/       # 세션 이월 노트 (슬래시 전용) — 남길 작업 선택 → _workspace 로컬 md, 다음 세션 재개 (work-tracker와 공존)
 │   │   ├── autoloop/        # 자율 멀티세션 루프 발사대 — 세션 외부 드라이버(scripts/driver.py)가 headless claude -p 반복 기동, 게이트 3종(안전·검증·정지) (ADR 025)
 │   │   └── wrapup/          # clear 전 마무리 관문 (슬래시 전용) — 세션 작업 훑기 → 개선 신호 포착·제안(harness-review 상보) → 범위로 저장 대상 판단해 work-tracker/carryover 위임(로컬 무확인·work-tracker 등록만 직전 확인) → /clear 안내 (얇은 오케스트레이터)
