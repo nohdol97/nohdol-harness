@@ -25,7 +25,7 @@ This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as
 ### 1. Sweep this session's work
 
 Collect what happened in this session. At minimum:
-- **Changed/added files** — check via `git status`·`git diff --stat` (regardless of commit status)
+- **Changed/added files** — check via `git status`·`git diff --stat` (regardless of commit status). **Subproject work done in a worktree is invisible from the root and from `project/<name>/`** — a status run in either place reports a clean tree while uncommitted work sits in the worktree. Enumerate them with `git -C project/<name> worktree list` — **not by globbing the directory**, since a branch name with a slash nests (`project/.worktrees/<name>/feat/x/`) and a glob returns the intermediate `feat/`, not a worktree — then run the status check **at each worktree path**; a sweep that misses them is the exact input that makes step 3 conclude "nothing to leave" over unsaved work.
 - **Decisions/agreements made** — directions and choices settled in the conversation
 - **Done items / unfinished items / blockers** — what is finished now, what must continue next, what is stuck
 
@@ -50,7 +50,7 @@ Look back over this session and **lightly check only whether improvement signals
 
 Hold the scope collected in step 1 (change size, commit/push status, unfinished items, cross-machine needs) against the boundary table below and **judge the save target yourself** — do not present an empty menu every time. Judgment rules:
 
-- **Nothing to leave**: all changes committed/pushed and no unfinished work/handoff crossing the session → go to step 5 without saving (no confirmation).
+- **Nothing to leave**: all changes committed/pushed and no unfinished work/handoff crossing the session → skip the saving in step 4 and continue at step 5 (no confirmation). **"Nothing to leave" does not skip the worktree sweep** — a fully merged and pushed task is precisely the state whose worktree is now removable.
 - **carryover**: there is a **local handoff** the next session will pick up (in-progress work, unfinished memos, this-machine-only context) → **auto-run** `carryover` (save mode) (local, gitignored, low-cost, easy to undo → no confirmation).
 - **work-tracker**: a formal epic spanning multiple PRs/days, or **cross-machine tracking** is needed → **the judgment is automatic, but confirm once just before registering** ("이 에픽을 work-tracker에 등록할까요?"). Whether the store is a GitHub issue or `docs/backlog.md`, it is git-tracked and externally oriented, and registering everything creates an issue graveyard (§14) — never write without confirmation.
 - **Both**: if formal tracking and a local handoff coexist, split them (formal → work-tracker, local memo → carryover — no duplicate loading of the same content). Only the work-tracker part goes through the confirmation above.
@@ -61,7 +61,15 @@ Hold the scope collected in step 1 (change size, commit/push status, unfinished 
 
 Invoke the judged target's skill as-is (no duplicate implementation): carryover → `carryover` (save mode); work-tracker → `work-tracker` (register mode) **after user confirmation**; both → invoke sequentially but **never load the same content into both** (formal tracking to work-tracker, local memos to carryover — table below). Move on only after each skill completes.
 
-### 5. Guide `/clear` + next-session start prompt
+### 5. Sweep subproject worktrees (delegated — `branch-workflow` owns the rule)
+
+Subproject work runs in worktrees under `project/.worktrees/`, and finished ones would otherwise pile up unnoticed. **Run `branch-workflow`'s "Worktree cleanup" section against every worktree this session's projects hold** — that skill is the single source for the merge measurement, the removal conditions, the command order, and the §3 batch confirmation. **Do not restate those conditions here**; a second copy drifts from the original and this skill re-implements nothing (core constraint above).
+
+Placement is deliberate: cleanup runs **after** step 4's saving, so anything worth keeping is already in a carryover note or an issue before a directory is removed. The order is belt-and-braces rather than the actual guard — a worktree with unsaved work fails the removal check on its own.
+
+If no worktree exists, say nothing (an empty cleanup report is noise). Report survivors in one line with their reason — they are the next session's starting points.
+
+### 6. Guide `/clear` + next-session start prompt
 
 When saving/proposing is done, along with a wrap-up summary, **guide the user to type `/clear`** (the skill does not run clear on their behalf — core constraint 1 above). Then **present the "next-session start prompt" as a copyable code block** — so the user does not have to reconstruct the resume path (`/carryover 재개` · "이어서 하자") from memory, wrapup produces the sentence that, pasted into a new session, starts the resume (2026-07-21 user request). Generation rules per save target:
 
@@ -95,4 +103,5 @@ The prompt is **in Korean** (a sentence the user types — root §15), and the t
 | Pre-clear wrap-up | Regret ("should have registered") only after the context is emptied | The gate right before clear forces the save decision |
 | Improvement signals | Fresh end-of-session signals evaporate; harness-review reconstructs after the fact | Captured while context is alive → recorded/proposed immediately |
 | Save-target judgment | Confusion between work-tracker and carryover, asked every time | Auto-judged by scope (local saves unconfirmed, only work-tracker confirmed just before), asking back only when ambiguous |
-| Duplicate implementation | Wrap-up/apply logic improvised every time | Reuses existing skills (work-tracker·carryover·metaskill) |
+| Duplicate implementation | Wrap-up/apply logic improvised every time | Reuses existing skills (work-tracker·carryover·metaskill·branch-workflow) |
+| Worktrees | Finished ones accumulate; work inside them is invisible to a root `git status` and gets swept up as "nothing to leave" | Enumerated during the sweep, removed only after a measured merge check |

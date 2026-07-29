@@ -53,7 +53,7 @@ Keep only the work the user picks from this session as a local note.
 4. **Write the file**: write to `_workspace/carryover/backlog/YYYY-MM-DD-<topic-slug>.md` using the template below. Get the date with `date +%F` (no guessing). Create `backlog/` if missing.
    - If a same-day same-topic file already exists, do not overwrite — append a session-delimited section or add `-2` to the slug (prevents losing previously carried-over content).
 
-5. **Report**: tell the user the written file path, and **present the next session's start prompt as a copy-paste code block** (same format as wrapup step 5 — same experience in standalone invocation): `/carryover 재개 — <주제슬러그> 노트. 첫 행동: <first item of "In progress · Next">`. Take the "first action" verbatim from the note (do not invent it).
+5. **Report**: tell the user the written file path, and **present the next session's start prompt as a copy-paste code block** (same format as wrapup step 6 — same experience in standalone invocation): `/carryover 재개 — <주제슬러그> 노트. 첫 행동: <first item of "In progress · Next">`. Take the "first action" verbatim from the note (do not invent it).
 
 ### Note template (skeleton for resuming)
 
@@ -62,6 +62,7 @@ Keep only the work the user picks from this session as a local note.
 
 - Date: YYYY-MM-DD
 - Target project/repo: <name or path>
+- Worktree: <absolute path + branch, when the work runs in one — omit the line otherwise>
 - One-line summary: <what this note is about — this line appears in the resume-mode list>
 
 ## Done
@@ -95,7 +96,7 @@ Pick an existing carryover note and take over.
 
 3. **Load, digest + move**: read the chosen note and report the situation (done / next / blockers / references) **digested into Korean** (not pasted verbatim — summarized so it is easy to continue now). If the chosen note is in `backlog/`, **move it to `progress/`** — this session has picked it up, so keep the next scan's "queued" list clean. If already in `progress/`, leave it.
 
-4. **Re-entry**: continue along the path the note's "How to resume" points to — if it is new implementation or behavior change, **step through the orchestrate gate again** (§7 item 3; continuation also re-enters the gate). The gate **also rules on the implementation owner** (3+ files → dispatch implementer; high risk → team ruling — orchestrate implementation-owner rule): a session heading straight into direct implementation right after resume, without a gate ruling, is a bypass signal (real case 2026-07-21). Review → team-review; documents → doc-writer. carryover itself performs no work — it only hands over the re-entry point.
+4. **Re-entry**: continue along the path the note's "How to resume" points to. **If the note carries a Worktree line, resume at that path** — verify it with `git -C project/<name> worktree list` and never create a second worktree for the same branch (`branch-workflow` start procedure, edge cases); a resume that starts a fresh branch in `project/<name>/` splits the work across two directories. If it is new implementation or behavior change, **step through the orchestrate gate again** (§7 item 3; continuation also re-enters the gate). The gate **also rules on the implementation owner** (3+ files → dispatch implementer; high risk → team ruling — orchestrate implementation-owner rule): a session heading straight into direct implementation right after resume, without a gate ruling, is a bypass signal (real case 2026-07-21). Review → team-review; documents → doc-writer. carryover itself performs no work — it only hands over the re-entry point.
 
 5. **Cleanup (optional)**: if the work is finished and the note is no longer needed, **delete** the note (in `progress/`) after confirming with the user — completion means deletion, not a move to done/ (see structure above). If unfinished, leave it in `progress/` for the next session to take over.
 

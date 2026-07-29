@@ -15,16 +15,36 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
 
 > **Order**: for implementation or multi-step work, the **orchestrate Phase 0-1 gate ruling comes first** (root AGENTS.md section 7, item 3) — this start procedure is the first step after the ruling confirms execution, before touching any files. If you create the branch before the gate and the ruling comes back "not direct execution", an empty branch is left behind.
 
-1. **Check current state**: `git status` — if there are uncommitted changes, do not proceed; ask the user how to handle them (commit/stash/discard). Reason: auto-handling changes that may belong to someone else's work becomes a data-loss incident. **Right after a session resume or a `/model` switch, re-check the current branch with `git branch --show-current` before editing files** — you may have silently landed back on main (real case 2026-07-22: caught just before a direct commit to main right after resume — applies not only at the start but also to mid-work resumes).
-2. **Update main**: `git fetch origin` → `git checkout main` → `git pull --ff-only`. If fast-forward is impossible (local main contaminated), stop and report the state — branching from a contaminated main propagates the problem into the branch.
-3. **Create a new branch**: `git checkout -b <type>/<concise-description>` — type matches the commit convention (feat|fix|refactor|chore, etc.), description in kebab-case (e.g. `feat/login-oauth`, `fix/schedule-overlap`).
-4. Do the work (commits follow Conventional Commits + project scope). **For feature additions or behavior changes, keep the spec → failing test order before implementing** (root AGENTS.md section 13 SDD+TDD; spec uses the doc-writer template).
+**Work happens in a dedicated worktree, never in the `project/<name>/` checkout itself.** That checkout is left on whatever branch it was already on, untouched. Reason: branching off `origin/main` into a fresh directory makes "started from the latest main" **structural instead of procedural**, and it closes both failure modes this skill was built for at once — a stale starting point, and silently landing back on main after a resume (a worktree holds exactly one branch, so there is nothing to land back onto).
+
+**Firing condition — work that changes files.** Implementation, fixes, refactors, spec/doc edits inside the subproject repository: worktree first. **Read-only work creates no worktree** — diagnosis, status checks, exploration, and reading code stay in `project/<name>/`, because setup and cleanup buy nothing when nothing is written. When read-only diagnosis becomes the first product Edit, that transition re-enters the orchestrate gate (root §7 item 3) and this procedure runs then.
+
+**That checkout is now nobody's job to refresh**, since the start procedure no longer pulls it — so it drifts behind `origin/main` indefinitely and read-only work is exactly what gets routed to it. Before diagnosing there, `git -C project/<name> fetch origin` and read `origin/main` when the answer depends on current state; treat the working copy as a possibly-stale snapshot. Same reasoning as root §5 — a stale read is what makes a confident wrong answer.
+
+**The session does not move into the worktree.** cwd stays at the harness root; every command names the worktree by **absolute path** (`git -C <worktree>`, absolute paths for Read/Edit/Write). Reason: `EnterWorktree` binds the session to one repository's worktree and switching out requires a worktree of *that same* repository — so cross-project work would be trapped in the first project's worktree, subagents included (they inherit the parent's cwd). Staying at root also keeps root §12's "every session starts at the root" premise intact rather than making harness loading depend on parent-directory `CLAUDE.md` discovery.
+
+1. **Create the worktree** — from the harness root:
+   ```bash
+   git -C project/<name> fetch origin
+   git -C project/<name> worktree add <ROOT>/project/.worktrees/<name>/<type>/<description> \
+       -b <type>/<description> --no-track origin/main
+   ```
+   `<type>/<description>` follows the commit convention — type is feat|fix|refactor|chore etc., description in kebab-case (`feat/login-oauth`, `fix/schedule-overlap`). **`--no-track` is required**: without it the new branch takes `origin/main` as upstream, so `git status` in the worktree reports it as "behind" and suggests `git pull` — which would merge main into the feature branch (measured 2026-07-29: upstream reads `chore/x...origin/main` without the flag, and no upstream with it). Variants:
+   - **Resuming an existing branch** (work-tracker resume, review rework): drop `-b` and `--no-track` — `worktree add <abs-path> <type>/<description>`.
+   - **No remote** (local-only repository): branch off local `main` instead of `origin/main`.
+   - **`origin/main` cannot be fetched**: stop and report. Branching from a stale base reintroduces exactly the drift this skill prevents.
+
+   **Location is `project/.worktrees/<name>/<branch>/`**, and each part of that is load-bearing: `project/` is gitignored (REGISTRY.md path convention), so the root repository stays clean; the leading dot keeps it out of the `project/*/` glob that project scans use; and it sits **outside `_workspace/`**, whose weekly housekeeping lists 14-day-old directories as deletion candidates — a worktree holding uncommitted work must never land on that list. **The worktree path must be absolute**: a relative path is resolved against `-C`'s directory, not the root.
+2. **Uncommitted changes in `project/<name>/` no longer block the start.** The old rule stopped here and asked the user, because `git checkout main` would have moved work that might not be yours. Nothing moves now — `worktree add` does not touch that checkout. Still **report the leftover changes in one line** so they are not forgotten, and if they belong to the task you are about to start, ask before working around them in a second directory. The old resume-time `git branch --show-current` re-check is gone with the same cause: a worktree holds one branch, so there is no branch to have silently landed on (the 2026-07-22 case it guarded is recorded in ADR 035).
+3. Do the work **at the worktree path** (commits via `git -C <worktree>`, following Conventional Commits + project scope). **When the work is dispatched to a subagent — the official route at 3+ files — put the absolute worktree path in the issuing prompt** (orchestrate's CONTEXT element): agents inherit the session cwd, which is the root, and `project/<name>/` is sitting on an unrelated branch, so an agent left to infer the location commits to the wrong branch. **For feature additions or behavior changes, keep the spec → failing test order before implementing** (root AGENTS.md section 13 SDD+TDD; spec uses the doc-writer template).
 
 ## Finish procedure (on task completion)
 
+> Steps 1–3 run **inside the worktree** — `git -C <worktree> …`, tests and build invoked at that path. Running them in `project/<name>/` verifies and pushes a different branch than the one you changed.
+
 1. **Verify**: confirm tests and build pass (do not open a PR in a failing state).
-2. **Rebase right before the PR**: `git fetch origin` → `git rebase origin/main`. On conflict, **before** resolving, report the conflicting files and content to the user and confirm the resolution direction.
-3. **Push**: `git push -u origin <브랜치>`. For an already-pushed branch whose history was rewritten by rebase, use `--force-with-lease`, but **only on your own feature branch + with user confirmation** (section 3 guardrail — force variants require confirmation without exception). Never force-push to main under any circumstances.
+2. **Rebase right before the PR**: `git -C <worktree> fetch origin` → `git -C <worktree> rebase origin/main`. On conflict, **before** resolving, report the conflicting files and content to the user and confirm the resolution direction.
+3. **Push**: `git -C <worktree> push -u origin <브랜치>`. For an already-pushed branch whose history was rewritten by rebase, use `--force-with-lease`, but **only on your own feature branch + with user confirmation** (section 3 guardrail — force variants require confirmation without exception). Never force-push to main under any circumstances.
 4. **Comprehension quiz gate (root AGENTS.md §13 first-class principle — user comprehension is a completion requirement; this step is the quiz spec single source)**: a **hard delivery gate, not a formality** — a failed or **skipped** comprehension check blocks the PR exactly as a failing test blocks §13-2 delivery (do not open the PR without it).
 
    - **Run point**: the **review window** — right after implementation completes and the background reviewer is dispatched, the orchestrator quizzes the user in the same turn (orchestrate verification-mandatory rule / team-review Phase 0), so quiz and review run in parallel instead of serially. **Hand the user a diff reading-guide with the quiz, to read before answering** (§13-0 co-growth): the same read-in-order + why-each-matters content that populates the PR body's 변경 내용/리뷰 포인트 (doc-writer template §5), so the quiz tests real reading rather than recall and the user builds review skill.
@@ -35,20 +55,50 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
    - **Open-questions list (not a gate)**: after ④'s explanations, offer **3 points the user may want to dig into**, prioritizing axes answered wrong and axes no round could sample. No answer is required — silence proceeds to the PR. Reason: the quiz surfaces what the user wrongly believes they know, this list serves what they know they don't, and it makes the coverage gap visible instead of silent.
    - **A wrong answer or pushback ("이게 아닌데") = misalignment signal**: hold the PR, explain the actual behavior vs the expectation, and if the work is not what the user wanted, return to the fix loop before any PR. Reason: the review window carries the quiz on previously dead wait time, and composing it forces tracing every change back to the request (§16 surgical-change check).
    - **Scope exception**: this quiz step alone also applies to root remote-PR sessions (root AGENTS.md §5 ② cites it) even though the rest of this skill is subproject-only.
-5. **Create the PR**: `gh pr create` — title in commit-convention format; body follows the **doc-writer PR template** (`.agents/skills/doc-writer/references/templates.md` #5: 요약/변경 내용/연결/검증/리뷰 포인트) exactly. If the task is registered in work-tracker, put `Closes #<issue-number>` in the 연결 (links) section (auto-closes the issue on merge). The 검증 (verification) section must contain actual commands and results — no evidence-free "tests pass". Report the PR URL.
-6. **The user does the merge.** After merge, recommend deleting the feature branch — the next task's start procedure (1–3) presumes "branches are disposable".
+5. **Create the PR**: `gh pr create --repo <owner/repo>` — **`--repo` for the same reason as in the cleanup section** (cwd is the harness root, so an unqualified `gh` targets the root harness repository); derive it from `git -C project/<name> remote get-url origin`. Title in commit-convention format; body follows the **doc-writer PR template** (`.agents/skills/doc-writer/references/templates.md` #5: 요약/변경 내용/연결/검증/리뷰 포인트) exactly. If the task is registered in work-tracker, put `Closes #<issue-number>` in the 연결 (links) section (auto-closes the issue on merge). The 검증 (verification) section must contain actual commands and results — no evidence-free "tests pass". Report the PR URL.
+6. **The user does the merge.** After merge, clean up per the section below — the start procedure presumes "branches and worktrees are disposable".
+
+## Worktree cleanup (single source — `wrapup` delegates here)
+
+A worktree is removable only when **both** hold, checked in this order:
+
+1. **The branch is merged, measured now** — root §5 forbids inferring merge state from conversation recency; run the check in this session, after a `git -C project/<name> fetch origin`.
+   - **`gh pr view <branch> --repo <owner/repo> --json state,mergedAt` is the primary measurement** (`state: "MERGED"`). It reads the PR, so it is correct regardless of how the merge was performed. **`--repo` is not optional here.** `gh` resolves the repository from cwd, and cwd is the harness root — an unqualified call queries the *root harness* repository, where a subproject branch either does not exist (the check then silently degrades to the fallback and its squash blind spot, so nothing is ever cleaned up) or, on a branch-name collision, returns the harness PR's `MERGED` — which is the exact condition that authorizes `branch -D` below on unmerged subproject work. Derive the value, do not type it from memory: `git -C project/<name> remote get-url origin` → `<owner>/<repo>`. Measured 2026-07-29: unqualified from the root, `gh repo view` resolves to the harness repo and the subproject branch returns *"no pull requests found"*; with `--repo` it returns the real PR state.
+   - **Fallback when `gh` is unavailable or the remote is not GitHub**: `git -C project/<name> branch -r --contains <branch>`, looking for `origin/main`. Know its two limits before trusting it (both measured 2026-07-29): **squash and rebase merges rewrite the commit, so a genuinely merged branch reads as unmerged** — that direction is safe (nothing gets deleted) but it means a squash-merging repository never cleans up through this path, so say so rather than reporting "nothing to remove"; and **a branch with no commits of its own reads as merged**, because its tip *is* the base commit — harmless, since such a worktree holds nothing to lose.
+2. **`git worktree remove` succeeds without `--force`** — measured: it exits 128 with *"contains modified or untracked files"* when anything is unsaved, so **the refusal is itself the data-loss check**. Never reach for `--force` to get past it; a refusal means check 1 passed on a branch whose working copy still holds unsaved work, which is a report, not an obstacle.
+
+Then remove, in this order:
+
+```bash
+git -C project/<name> worktree remove <abs-path>   # first — the worktree holds the branch checked out
+git -C project/<name> branch -d <branch>
+```
+
+Order matters: measured, `branch -d` exits 1 with *"Cannot delete branch … checked out at …"* while any worktree holds it.
+
+**If `branch -d` refuses after a successful removal**, it is reporting that the commits are not reachable from `main` — which is either a genuinely unmerged branch or a squash/rebase merge. **Use `-D` only when check 1 measured `state: "MERGED"` via `gh`**; that measurement is what distinguishes the two, and without it `-D` would discard real work. Otherwise leave the branch and report it — the worktree is already gone, so nothing is blocked.
+
+**Removal requires user confirmation** (root §3 — deletion is a destructive operation and no subproject rule may relax it). Present the removable worktrees as a list and take **one confirmation for the batch**, the same shape `wrapup` uses for work-tracker registration. **The list must mark which entries will need `branch -D`** (the squash-merge case above) and say so in the confirmation request — a force delete is a second destructive operation, and a confirmation given for "remove these worktrees" does not cover it. If a `-D` need surfaces only after the batch ran, ask again for those branches rather than folding them into the earlier answer.
+
+**Whatever fails either check stays, and is reported as a list with its reason** — unmerged / uncommitted work present / merge state unverifiable (fetch failed, no remote). Never delete it and never report a surviving worktree as cleaned up.
+
+> **These are not the harness's other worktrees.** `orchestrate`'s `isolation: worktree` (parallel-write isolation for 2+ concurrent mutating agents) and agent-rules ⑨'s bisect isolation are created by the tool or the agent and live only for one dispatch. The worktrees here outlive a dispatch and hold a feature branch. The two kinds coexist; never clean up one under the other's rule.
 
 ## Edge cases
 
-- **Work drags on and main gets far ahead**: no need to wait for the finish — running `git rebase origin/main` mid-work is fine; conflicts are cheaper to resolve while small.
-- **gh CLI absent / remote is not GitHub**: skip the PR-creation step and report the pushed branch name plus manual PR-creation guidance.
-- **No remote (local-only repository)**: skip fetch/pull in the start procedure and branch off local main; at finish, get the user's confirmation for a local merge.
+- **Work drags on and main gets far ahead**: no need to wait for the finish — running `git -C <worktree> rebase origin/main` mid-work is fine; conflicts are cheaper to resolve while small.
+- **gh CLI absent / remote is not GitHub**: skip the PR-creation step and report the pushed branch name plus manual PR-creation guidance. Cleanup then measures the merge with `git branch -r --contains`, since `gh pr view` is unavailable.
+- **No remote (local-only repository)**: skip the fetch and branch off local `main` at start; at finish, get the user's confirmation for a local merge. Cleanup check 1 reads local `main` in place of `origin/main`.
+- **A worktree for that branch already exists** (`worktree add` fails with "already checked out"): reuse it rather than creating a second one — `git -C project/<name> worktree list` shows the path.
+- **The subproject is not a git repository**: this skill does not apply at all; there is no branch and no worktree to make.
 
 ## with / without
 
 | Metric | Without this skill | With this skill |
 |---|---|---|
-| Starting point | Starting on a stale branch → conflicts pre-booked | Always branch off the latest main |
+| Starting point | Starting on a stale branch → conflicts pre-booked | Branched off the latest main, structurally — the worktree is created from `origin/main` |
+| Main checkout | Shared tree switched between branches; a resume can land back on main | `project/<name>/` never moves; each task gets its own directory holding one branch |
+| Finished branches | Merged branches and their directories accumulate silently | Removed only after a measured merge check, with the `worktree remove` refusal as the data-loss guard |
 | Conflict timing | Discovered all at once at merge time | Pre-resolved + reported via rebase right before the PR |
 | Review record | No record with local merges | Changes and verification results preserved per PR |
 | Final gate | Auto-merge removes human involvement | The merge button belongs to the user — a human stays in control |
