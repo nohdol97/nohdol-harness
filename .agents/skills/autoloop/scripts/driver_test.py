@@ -315,7 +315,7 @@ class TestC7IndependentTest(DriverTestBase):
         self.assertNotEqual(result, "done")  # green 주장 + red 실측 → done 불인정
         with open(os.path.join(self.workdir, "iters", "iter-1.json")) as f:
             rec = json.load(f)
-        self.assertFalse(rec["test"]["green"])
+        self.assertEqual(rec["test"]["outcome"], "red")
 
     def test_green_recorded(self):
         self.write_scenario([{"text": status_text("continue", 1)}])
@@ -323,7 +323,7 @@ class TestC7IndependentTest(DriverTestBase):
         driver.Driver(cfg).run()
         with open(os.path.join(self.workdir, "iters", "iter-1.json")) as f:
             rec = json.load(f)
-        self.assertTrue(rec["test"]["green"])
+        self.assertEqual(rec["test"]["outcome"], "green")
 
 
 class TestC8VerifyGate(DriverTestBase):
@@ -486,6 +486,210 @@ class TestCostCeiling(DriverTestBase):
         self.write_scenario([{"text": status_text("continue", 5), "cost": 0.6}] * 5)
         cfg = self.make_config(max_cost_usd=1.0, stall_limit=99)
         self.assertEqual(driver.Driver(cfg).run(), "cost")
+
+
+class TestC21Checkpoint(DriverTestBase):
+    """R16 — 재기동이 게이트를 초기화하지 않는다."""
+
+    def test_state_file_records_execution_position(self):
+        self.write_scenario([{"text": status_text("continue", 2), "cost": 0.05}])
+        cfg = self.make_config(max_iterations=1)
+        self.assertEqual(driver.Driver(cfg).run(), "exhausted")
+        with open(os.path.join(self.workdir, "state.json")) as f:
+            st = json.load(f)
+        self.assertEqual(st["runs"], 1)
+        self.assertEqual(st["total_iterations"], 1)
+        self.assertAlmostEqual(st["total_cost_usd"], 0.05)
+        self.assertTrue(st["seen_valid"])
+        self.assertEqual(st["prev_open"], 2)
+        self.assertIn("open_items=2", st["prev_status"])
+        self.assertEqual(st["last_exit_reason"], "exhausted")
+
+    def test_stall_counter_survives_restart(self):
+        # 런1: 첫 반복만 진전(seen_valid) → 2번째 반복은 무진전이라 stall=1 로 끝난다
+        self.write_scenario([{"text": status_text("continue", 2)}] * 2)
+        self.assertEqual(driver.Driver(self.make_config(max_iterations=2, stall_limit=2)).run(),
+                         "exhausted")
+        # 런2: 체크포인트가 없으면 첫 반복이 공짜 진전이 되어 정체 게이트가 영구 우회된다
+        self.write_scenario([{"text": status_text("continue", 2)}])
+        self.assertEqual(driver.Driver(self.make_config(max_iterations=1, stall_limit=2)).run(),
+                         "stalled")
+
+    def test_reviewer_feedback_and_last_status_survive_restart(self):
+        self.write_scenario([
+            {"text": status_text("done", 0, note="claimed complete")},
+            {"text": verdict_text("BLOCK", "criterion C1 has no live assertion")},
+        ])
+        self.assertEqual(driver.Driver(self.make_config(max_iterations=1)).run(), "exhausted")
+        self.write_scenario([{"text": status_text("continue", 1)}])
+        driver.Driver(self.make_config(max_iterations=1)).run()
+        first = self.recorded_prompt(0)
+        self.assertIn("REVIEWER FEEDBACK", first)
+        self.assertIn("criterion C1 has no live assertion", first)
+        self.assertIn("open_items=0", first)      # 핸드오프 플로어도 함께 이어진다
+
+    def test_feedback_survives_a_session_process_failure(self):
+        # 세션이 뜨지도 못한 반복은 피드백 '소비'가 아니다 — 지우면 다음 반복이 왜 막혔는지
+        # 모른 채 같은 done 주장을 반복해 design 티어 검증 세션을 한 번 더 태운다.
+        self.write_scenario([
+            {"text": status_text("done", 0)},                        # iter1 구현
+            {"text": verdict_text("BLOCK", "MARKER-REASON")},        # iter1 검증 → 피드백 설정
+            {"exit": 1},                                             # iter2 프로세스 실패
+            {"text": status_text("continue", 1)},                    # iter3
+        ])
+        driver.Driver(self.make_config(max_iterations=3, stall_limit=99)).run()
+        self.assertIn("MARKER-REASON", self.recorded_prompt(3))
+
+    def test_iter_records_are_not_overwritten_by_a_restart(self):
+        # 파일명이 런당 n 이면 재기동이 직전 런의 iter-1.json 을 덮어 감사 기록이 사라진다.
+        self.write_scenario([{"text": status_text("continue", 5)}])
+        driver.Driver(self.make_config(max_iterations=1)).run()
+        self.write_scenario([{"text": status_text("continue", 4)}])
+        driver.Driver(self.make_config(max_iterations=1)).run()
+        self.assertEqual(sorted(os.listdir(os.path.join(self.workdir, "iters"))),
+                         ["iter-1.json", "iter-2.json"])
+
+
+class TestC22CumulativeBudget(DriverTestBase):
+    """R16 — 비용 상한은 작업 누적, 반복 상한은 런당."""
+
+    def test_cost_accumulates_across_restarts(self):
+        self.write_scenario([{"text": status_text("continue", 5), "cost": 0.6}])
+        self.assertEqual(
+            driver.Driver(self.make_config(max_iterations=1, max_cost_usd=1.0, stall_limit=99)).run(),
+            "exhausted")                                  # 0.6 — 상한 미만
+        self.write_scenario([{"text": status_text("continue", 4), "cost": 0.6}])
+        self.assertEqual(
+            driver.Driver(self.make_config(max_iterations=1, max_cost_usd=1.0, stall_limit=99)).run(),
+            "cost")                                       # 누적 1.2 — 재기동이 예산을 되살리지 않는다
+
+    def test_startup_over_budget_exits_without_iterating(self):
+        self.write_scenario([{"text": status_text("continue", 5), "cost": 1.5}])
+        self.assertEqual(
+            driver.Driver(self.make_config(max_iterations=1, max_cost_usd=1.0, stall_limit=99)).run(),
+            "cost")
+        self.write_scenario([{"text": status_text("continue", 4), "cost": 0.1}])
+        self.assertEqual(
+            driver.Driver(self.make_config(max_iterations=5, max_cost_usd=1.0, stall_limit=99)).run(),
+            "cost")
+        with open(os.path.join(self.workdir, "state.json")) as f:
+            st = json.load(f)
+        self.assertEqual(st["total_iterations"], 1)        # 두 번째 런은 반복을 돌리지 않았다
+
+    def test_iteration_cap_stays_per_run(self):
+        for _ in range(2):
+            self.write_scenario([{"text": status_text("continue", 2)}] * 4)
+            self.assertEqual(
+                driver.Driver(self.make_config(max_iterations=2, stall_limit=99)).run(), "exhausted")
+        with open(os.path.join(self.workdir, "state.json")) as f:
+            st = json.load(f)
+        self.assertEqual(st["runs"], 2)
+        self.assertEqual(st["total_iterations"], 4)        # 누적은 기록만, 상한은 런당 2회
+
+
+class TestC23StateIntegrity(DriverTestBase):
+    """R16 — 읽을 수 없는 체크포인트는 fail-open 하지 않는다."""
+
+    def test_unparseable_state_refuses_startup(self):
+        os.makedirs(self.workdir, exist_ok=True)
+        with open(os.path.join(self.workdir, "state.json"), "w") as f:
+            f.write("{not json")
+        ok, reason = driver.startup_guard(self.make_config())
+        self.assertFalse(ok)
+        self.assertIn("state.json", reason)
+
+    def test_missing_state_is_a_normal_first_launch(self):
+        ok, reason = driver.startup_guard(self.make_config())
+        self.assertTrue(ok, reason)
+
+    def test_state_write_goes_through_a_temp_file(self):
+        # 원자성은 R16이 손상 state 를 fail-closed 로 두는 근거다 — 직접 쓰기로 바꾸면 부분
+        # 기록이 정상 경로가 되고, 그러면 기동 거부가 결함을 막는 게이트가 아니라 멀쩡한
+        # 재개를 막는 장치로 바뀐다. os.replace 를 막아 대상 파일이 안 생기는지로 검사한다.
+        cfg = self.make_config()
+        os.makedirs(self.workdir, exist_ok=True)
+        target = os.path.join(self.workdir, "state.json")
+        calls, original = [], driver.os.replace
+
+        def spy(src, dst):
+            calls.append((src, dst))
+            raise OSError("replace blocked for this test")
+
+        driver.os.replace = spy
+        try:
+            with self.assertRaises(OSError):
+                driver.save_state(cfg, dict(driver.STATE_DEFAULTS))
+        finally:
+            driver.os.replace = original
+        self.assertEqual([c[1] for c in calls], [target])
+        self.assertTrue(calls[0][0].endswith(".tmp"), "임시 파일을 경유하지 않았다: %s" % calls[0][0])
+        self.assertFalse(os.path.exists(target), "대상 파일에 직접 쓰고 있다 — 원자적이 아니다")
+
+    def test_write_leaves_no_partial_file(self):
+        self.write_scenario([{"text": status_text("continue", 2)}])
+        driver.Driver(self.make_config(max_iterations=1)).run()
+        self.assertFalse(os.path.exists(os.path.join(self.workdir, "state.json.tmp")))
+        with open(os.path.join(self.workdir, "state.json")) as f:
+            json.load(f)
+
+
+BROKEN_RUNNER = "autoloop-no-such-runner-xyz"
+
+
+class TestC24TestRunnerError(DriverTestBase):
+    """R5-1·R7⑦ — 러너 고장은 '깨진 테스트'가 아니다."""
+
+    def test_unrunnable_command_is_error_not_red(self):
+        self.write_scenario([{"text": status_text("continue", 2)}] * 3)
+        cfg = self.make_config(test_cmd=BROKEN_RUNNER, max_iterations=3, stall_limit=99)
+        self.assertEqual(driver.Driver(cfg).run(), "error")      # 연속 2회 → R7⑦
+        with open(os.path.join(self.workdir, "iters", "iter-1.json")) as f:
+            self.assertEqual(json.load(f)["test"]["outcome"], "error")
+        second = self.recorded_prompt(1)
+        self.assertIn("TEST RUNNER ERROR", second)
+        self.assertIn("Do NOT edit", second)                     # 제품 코드를 쫓지 말라는 라벨
+        with open(os.path.join(self.workdir, "carryover.md")) as f:
+            note = f.read()
+        self.assertIn("사용자 확인 필요", note)
+        self.assertIn("test-runner-error", note)
+        self.assertIn(BROKEN_RUNNER, note)                       # 어떤 명령이 문제인지
+
+    def test_error_outcome_never_confirms_done(self):
+        self.write_scenario([{"text": status_text("done", 0)}] * 3)
+        cfg = self.make_config(test_cmd=BROKEN_RUNNER, max_iterations=3, stall_limit=99)
+        self.assertEqual(driver.Driver(cfg).run(), "error")
+        calls = sorted(f for f in os.listdir(self.record_dir) if f.startswith("call-"))
+        self.assertEqual(calls, ["call-0.json", "call-1.json"])  # 검증 세션이 돌지 않았다
+
+    def test_error_to_green_counts_as_progress(self):
+        marker = os.path.join(self.tmp, "runner-fixed")
+        self.write_scenario([
+            {"text": status_text("continue", 2)},
+            {"text": status_text("continue", 2), "touch": marker},
+            {"text": status_text("continue", 2)},
+        ])
+        cfg = self.make_config(test_cmd="test -f %s || %s" % (marker, BROKEN_RUNNER),
+                               max_iterations=3, stall_limit=2)
+        # error→green 전환을 진전으로 인정하지 않으면 3번째 반복에서 stalled 가 된다
+        self.assertEqual(driver.Driver(cfg).run(), "exhausted")
+
+
+class TestC25TestRatchet(DriverTestBase):
+    """R17 — 실패하는 단정을 지워 green을 만드는 회피를 양쪽 프롬프트에서 막는다."""
+
+    def test_iteration_prompt_forbids_weakening_tests(self):
+        prompt = driver.build_prompt(driver.build_anchor(self.make_config()),
+                                     "/tmp/note.md", "note body", "", "")
+        self.assertIn("TEST RATCHET", prompt)
+        for phrase in ["delete", "skip", "weaken", "blocked"]:
+            self.assertIn(phrase, prompt.lower(), "래칫 금지 문구 누락: %s" % phrase)
+
+    def test_verify_prompt_requires_live_assertion_per_criterion(self):
+        verify = driver.build_verify_prompt(self.make_config())
+        self.assertIn("TEST RATCHET CHECK", verify)
+        self.assertIn("BLOCK", verify)
+        for phrase in ["assertion", "skipped", "commented out"]:
+            self.assertIn(phrase, verify.lower(), "래칫 판정 문구 누락: %s" % phrase)
 
 
 if __name__ == "__main__":
