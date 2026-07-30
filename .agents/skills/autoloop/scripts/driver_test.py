@@ -8,6 +8,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -690,6 +691,107 @@ class TestC25TestRatchet(DriverTestBase):
         self.assertIn("BLOCK", verify)
         for phrase in ["assertion", "skipped", "commented out"]:
             self.assertIn(phrase, verify.lower(), "래칫 판정 문구 누락: %s" % phrase)
+
+
+class TestC27WorktreeGuard(DriverTestBase):
+    """R18 — 하위 프로젝트의 공유 체크아웃을 대상으로 한 무인 루프는 기동하지 않는다(ADR 035)."""
+
+    def git(self, *args):
+        proc = subprocess.run(
+            ["git", "-c", "user.email=t@t", "-c", "user.name=t"] + list(args),
+            capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, "git %s 실패: %s" % (args, proc.stderr))
+        return proc.stdout
+
+    def make_repo(self):
+        """커밋 1개짜리 저장소(main 체크아웃)를 만들고 경로를 돌려준다."""
+        repo = os.path.join(self.tmp, "repo")
+        os.makedirs(repo)
+        self.git("init", "-q", repo)
+        self.git("-C", repo, "commit", "-q", "--allow-empty", "-m", "init")
+        return repo
+
+    def test_shared_checkout_is_refused_with_worktree_guidance(self):
+        repo = self.make_repo()
+        ok, reason = driver.startup_guard(self.make_config(project=repo))
+        self.assertFalse(ok, "공유 체크아웃 대상인데 기동이 허용됐다")
+        self.assertIn("worktree", reason)
+        self.assertIn("R18", reason)
+
+    def test_linked_worktree_passes(self):
+        repo = self.make_repo()
+        wt = os.path.join(self.tmp, "wt")
+        self.git("-C", repo, "worktree", "add", "-q", wt, "-b", "feat/x")
+        ok, reason = driver.startup_guard(self.make_config(project=wt))
+        self.assertTrue(ok, "전용 worktree인데 거부됐다: %s" % reason)
+
+    def test_subdirectory_of_shared_checkout_is_refused(self):
+        """rev-parse가 상대·절대를 섞어 내놓는 지점 — 정규화 없이 비교하면 여기서 통과해버린다."""
+        repo = self.make_repo()
+        sub = os.path.join(repo, "src")
+        os.makedirs(sub)
+        ok, _ = driver.startup_guard(self.make_config(project=sub))
+        self.assertFalse(ok, "공유 체크아웃 하위 디렉터리인데 기동이 허용됐다")
+
+    def test_launch_directory_cannot_create_an_exemption(self):
+        """면제 기준점은 기동 위치가 아니라 드라이버 파일의 위치다(독립 검증 F1).
+
+        `os.getcwd()`를 기준으로 삼으면 하위 프로젝트 안에서 기동하는 것만으로 그 저장소가
+        '루트'가 되어 면제가 자기 자신에게 발동하고, 게이트가 통째로 무효가 된다."""
+        repo = self.make_repo()
+        sub = os.path.join(repo, "src")
+        os.makedirs(sub)
+        for cwd in (repo, sub):
+            ok, _ = driver.startup_guard(self.make_config(project=repo, cwd=cwd))
+            self.assertFalse(ok, "대상 저장소 안(%s)에서 기동했다고 게이트가 면제됐다" % cwd)
+
+    def test_git_env_overrides_do_not_defeat_the_check(self):
+        """`GIT_DIR` 류가 환경에 있으면 rev-parse 가 대상 대신 그걸 답해 두 값이 항상 같아진다."""
+        repo = self.make_repo()
+        os.environ["GIT_DIR"] = os.path.join(repo, ".git")
+        try:
+            ok, _ = driver.startup_guard(self.make_config(project=repo))
+        finally:
+            os.environ.pop("GIT_DIR", None)
+        self.assertFalse(ok, "GIT_DIR 환경변수로 게이트가 통과됐다")
+
+    def test_harness_repository_is_exempt(self):
+        """하네스 저장소는 main 직커밋이 규칙이다(§5) — 그 아래 `_workspace/` 샌드박스도 함께 들어온다.
+
+        기준점이 드라이버 파일의 위치이므로, 실제 하네스 저장소로만 이 면제를 검사할 수 있다."""
+        here = os.path.dirname(os.path.realpath(driver.__file__))
+        if driver.harness_repo_common_dir() is None:
+            self.skipTest("드라이버가 git 저장소 안에 있지 않다")
+        ok, reason = driver.startup_guard(self.make_config(project=here))
+        self.assertTrue(ok, "하네스 저장소 대상인데 거부됐다: %s" % reason)
+
+    def test_non_git_directory_passes(self):
+        ok, reason = driver.startup_guard(self.make_config(project=self.tmp))
+        self.assertTrue(ok, "git 저장소가 아닌데 거부됐다: %s" % reason)
+
+    def test_unreadable_git_state_is_refused_not_exempted(self):
+        """판정 불가는 면제가 아니다 — 통과로 두면 R16을 fail-closed로 만든 이유가 무너진다."""
+        cfg = self.make_config(project=self.tmp)
+        original = driver.resolve_git_dirs
+        driver.resolve_git_dirs = lambda path: (None, None, "git 실행 실패(테스트)")
+        try:
+            ok, reason = driver.startup_guard(cfg)
+        finally:
+            driver.resolve_git_dirs = original
+        self.assertFalse(ok, "git 상태를 못 읽었는데 기동이 허용됐다")
+        self.assertIn("판정", reason)
+
+    def test_missing_project_directory_is_refused(self):
+        ok, _ = driver.startup_guard(self.make_config(project=os.path.join(self.tmp, "nope")))
+        self.assertFalse(ok, "존재하지 않는 대상 디렉터리인데 기동이 허용됐다")
+
+    def test_driver_holds_no_worktree_grant(self):
+        """만드는 쪽은 기동 세션이다 — Claude 엔진의 무인 게이트는 넓히지 않는다.
+
+        문자열 부재만 보면 `Bash(git:*)` 같은 광역 그랜트가 통과하므로 그쪽도 함께 막는다."""
+        for pattern in driver.SAFE_ALLOW + driver.READONLY_ALLOW:
+            self.assertNotIn("worktree", pattern)
+            self.assertNotIn(pattern, ("Bash(git:*)", "Bash(git)", "Bash(*)", "Bash"))
 
 
 if __name__ == "__main__":

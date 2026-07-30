@@ -11,6 +11,10 @@
   R17(테스트 래칫)은 실패하는 단정을 지워 green을 만드는 회피를 지시문·검증 양쪽에서 막는다.
 - 정지(R7): done/blocked/stalled/exhausted/stopped/cost/error — 반드시 하나로 끝난다.
 
+작업 위치(R18): 하위 프로젝트 대상이면 전용 worktree 인지 기동 시 판정하고, 공유 체크아웃이면
+거부한다(ADR 035). 무인 세션이 몇 시간 동안 남의 체크아웃 위에서 브랜치를 옮기고 커밋하는 것을
+막는 것이 목적이며, worktree 생성은 기동 세션의 몫이라 드라이버는 그랜트를 받지 않는다.
+
 체크포인트(R16): 반복 경계마다 state.json에 실행 위치를 원자적으로 남기고 기동 시 이어받는다.
 무인 루프는 세션 한도·강제 종료로 조용히 죽는 것이 상시 경로이므로, 이게 없으면 재기동마다
 정체 카운터·누적 비용·미소진 피드백이 0으로 돌아가 게이트가 통째로 우회된다.
@@ -339,9 +343,86 @@ def save_state(cfg, state):
                 pass
 
 
+# rev-parse 는 이 변수들이 있으면 대상 경로 대신 그걸 답한다 — 남겨 두면 어떤 대상에 대해서도
+# git-dir 과 git-common-dir 이 같은 값으로 나와 R18 판정이 통과로 고정된다(독립 검증 F5 실측).
+GIT_ENV_OVERRIDES = ("GIT_DIR", "GIT_COMMON_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")
+
+
+def resolve_git_dirs(path):
+    """<path>의 (git-dir, git-common-dir, 오류) 절대경로. 저장소가 아니면 (None, None, ""),
+    git 자체를 못 돌리면 (None, None, 사유) — 이 둘을 갈라야 판정이 fail-open 으로 뭉개지지 않는다.
+
+    rev-parse 출력은 상대·절대가 섞여 나온다(실측 git 2.39.5: 저장소 루트에서 `.git`,
+    하위 디렉터리에서 git-dir 은 절대경로인데 git-common-dir 은 `../.git`). 그래서 그대로
+    비교하면 같은 저장소가 다르게 읽히므로, path 기준으로 join 한 뒤 realpath 로 정규화한다."""
+    env = {k: v for k, v in os.environ.items() if k not in GIT_ENV_OVERRIDES}
+    try:
+        proc = subprocess.run(["git", "-C", path, "rev-parse", "--git-dir", "--git-common-dir"],
+                              capture_output=True, text=True, timeout=15, env=env)
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, None, "git 실행 실패(%s)" % e
+    if proc.returncode != 0:
+        return None, None, ""
+    lines = [ln.strip() for ln in proc.stdout.strip().splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return None, None, "rev-parse 출력이 2줄이 아닙니다: %r" % proc.stdout
+    a, b = (os.path.realpath(os.path.join(path, ln)) for ln in lines[:2])
+    return a, b, ""
+
+
+def harness_repo_common_dir():
+    """이 드라이버가 놓인 하네스 저장소의 git-common-dir. 판정 불가면 None.
+
+    **`os.getcwd()`(`cfg.cwd`)를 쓰지 않는 이유**: 그건 사용자가 어디서 기동했는지일 뿐이라,
+    하위 프로젝트 안에서 기동하면 그 저장소가 "루트"로 잡혀 면제가 자기 자신에게 발동한다 —
+    게이트가 통째로 무효가 된다(독립 검증 F1 실측). 드라이버 파일의 위치는 하네스 저장소
+    안이라는 것이 설치 구조상 보장되므로(`.agents/skills/...`, `.claude/` 심볼릭 링크로 불려도
+    realpath 가 원본으로 되돌린다) 이쪽이 판정의 고정점이다."""
+    _, common, _ = resolve_git_dirs(os.path.dirname(os.path.realpath(__file__)))
+    return common
+
+
+def worktree_guard(cfg):
+    """R18 — 하위 프로젝트 대상 루프는 전용 worktree 에서만 돈다(ADR 035). 반환: 거부 사유(없으면 "").
+
+    무인 세션은 SAFE_ALLOW 로 `git add`·`git commit`·`git checkout -b` 를 쥔 채 몇 시간을 돈다.
+    그 대상이 `project/<이름>/` 공유 체크아웃이면 사용자가 쓰던 체크아웃의 브랜치가 밤새 움직이고
+    커밋이 그 위에 쌓인다 — ADR 035 가 구조로 없앤 실패 모드를 아무도 안 보는 동안 재현하는 것이다.
+    Claude 엔진에 `git worktree` 그랜트를 주지 않는 이유도 같다: 만드는 쪽은 기동 세션(SKILL.md
+    사전 검사)이고 여기서는 만들어졌는지만 판정한다 — 무인 게이트를 넓히지 않고 구조만 강제한다.
+
+    **판정은 "공유 체크아웃"보다 넓다**: 연결된 worktree 도 아니고 하네스 저장소도 아닌 git 저장소는
+    전부 거부한다(bare·서브모듈·중첩 저장소 포함). 좁히려면 대상이 어떤 종류의 저장소인지 분류해야
+    하는데, 그 분류가 틀리면 조용히 통과시키는 쪽으로 틀린다 — 거짓 거부는 worktree 를 만들면
+    풀리고 거짓 통과는 밤새 남의 체크아웃을 움직인다. 면제는 둘뿐이다: git 저장소가 아닌 대상
+    (격리할 브랜치 자체가 없다)과 하네스 루트 저장소(main 직커밋이 규칙 — §5. `_workspace/` 아래
+    샌드박스 스펙도 이 경로로 들어온다). git 상태를 읽지 못하는 경우는 면제가 아니라 거부다 —
+    판정 불가를 통과로 두면 R16 을 fail-closed 로 만든 이유가 여기서 무너진다.
+    우회용 플래그는 두지 않는다 — 상한을 무심코 무력화하는 손잡이가 되는 것은 `--max-cost-usd`
+    리셋 플래그를 기각한 이유와 같다."""
+    project = os.path.realpath(cfg.project)
+    if not os.path.isdir(project):
+        return "대상 디렉터리가 없습니다: %s" % project
+    proj_git, proj_common, err = resolve_git_dirs(project)
+    if err:
+        return "대상의 git 상태를 읽지 못해 작업 위치를 판정할 수 없습니다(%s): %s (R18)" % (project, err)
+    if proj_git is None:
+        return ""
+    if proj_git != proj_common:
+        return ""      # 연결된 worktree — git-dir 만 .git/worktrees/<이름> 로 갈린다(실측)
+    if proj_common == harness_repo_common_dir():
+        return ""
+    return (
+        "대상이 전용 worktree 가 아닙니다(%s) — 무인 루프는 worktree 에서만 돌립니다"
+        "(R18·ADR 035). 하위 프로젝트라면 `git -C <프로젝트> worktree add "
+        "<루트>/project/.worktrees/<프로젝트>/<type>/<설명> -b <type>/<설명> --no-track "
+        "origin/main` 으로 만든 뒤 그 절대경로를 --project 로 넘기세요. **기동 위치를 바꿔도 "
+        "판정은 같습니다** — 하네스 저장소는 이 드라이버 파일의 위치로 정합니다" % project)
+
+
 def startup_guard(cfg):
-    """기동 사전 검사(R9·R10·R16). 오라클 없는 루프·명시 정지 상태의 무단 재개·읽을 수 없는
-    체크포인트를 거부한다."""
+    """기동 사전 검사(R9·R10·R16·R18). 오라클 없는 루프·명시 정지 상태의 무단 재개·읽을 수 없는
+    체크포인트·공유 체크아웃 대상을 거부한다."""
     if not os.path.isfile(cfg.spec):
         return False, "스펙 파일이 없습니다: %s" % cfg.spec
     with open(cfg.spec, encoding="utf-8", errors="replace") as f:
@@ -353,6 +434,9 @@ def startup_guard(cfg):
     _, state_error = load_state(cfg)
     if state_error:
         return False, state_error
+    worktree_error = worktree_guard(cfg)
+    if worktree_error:
+        return False, worktree_error
     return True, "ok"
 
 
