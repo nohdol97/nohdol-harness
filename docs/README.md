@@ -67,6 +67,7 @@
 | [2026-07-22-gate-reminder-hook](specs/2026-07-22-gate-reminder-hook.md) | 구현됨 | `.agents/hooks/gate-reminder.py` | 028 |
 | [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
 | [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
+| [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 초안 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 
