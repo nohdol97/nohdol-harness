@@ -59,6 +59,9 @@ SAFE_ALLOW = [
     "Bash(npm test:*)", "Bash(npm run test:*)", "Bash(npm run build:*)", "Bash(npm run lint:*)",
     "Bash(pnpm test:*)", "Bash(pnpm run test:*)",
     "Bash(pytest:*)", "Bash(python3 -m pytest:*)",
+    # venv 러너: 새 worktree(R18)에 venv 를 만들어 쓰는 것이 이 워크스페이스의 표준 형태다.
+    # `-m pytest`·`pytest` 까지 범위를 좁혀 R3 의 bare 인터프리터 금지를 지킨다.
+    "Bash(.venv/bin/python -m pytest:*)", "Bash(.venv/bin/pytest:*)",
     "Bash(go test:*)", "Bash(go build:*)", "Bash(cargo test:*)", "Bash(cargo build:*)",
     "Bash(ls:*)", "Bash(cat:*)", "Bash(mkdir:*)",
 ]
