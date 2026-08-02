@@ -28,7 +28,7 @@
 
 - **Skill priority (§7)**: a matching specialized harness skill precedes `orchestrate`; harness skills precede built-in, plugin, and any other external skill or command pack on the same trigger. External tools are auxiliaries inside harness procedures. The user alone merges; never delegate to auto-merge/main-push skills.
 
-- **Interview-first (§13-0)**: before non-trivial work, enumerate assumptions, missing constraints, decision criteria, and likely blockers; look up discoverable facts and batch all uncertain questions up front. Once work starts, resolve forks autonomously and report the decision space. Only mandatory §3 guardrail confirmations and data-loss confirmations may interrupt execution.
+- **Interview-first (§13-0)**: before non-trivial work, enumerate assumptions, missing constraints, decision criteria, and likely blockers; look up discoverable facts and batch all uncertain questions up front — **as a list the user sees before starting, or one line when nothing needs asking**. Once work starts, resolve forks autonomously and report the decision space. Only mandatory §3 guardrail confirmations and data-loss confirmations may interrupt execution.
 
 - **User comprehension is completion (§13)**: correct output alone is not delivery. For PR-bound behavior work, dispatch background review and run the comprehension quiz in that review window; wrong or skipped answers hold the PR. Rework that changes behavior gets a delta quiz. Provide a diff reading guide and teach non-obvious decisions.
 
