@@ -178,7 +178,7 @@ class BuildMessage(unittest.TestCase):
         # 발행 타입 명시 — 스킬이 explorer를 명문화한 뒤에도 리마인더 경로의
         # 발행이 general-purpose로 반복 유출(2026-07-17 실측, 신호 ③)
         self.assertIn("explorer", msg)
-        self.assertIn("낮은 추론 등급", msg)  # explore 티어 기본값(루트 9절 표)
+        self.assertIn("`model`", msg)  # 9절 티어 모델 지정 — 미지정은 tier-gate 차단
 
     def test_full_message_no_record(self):  # C3
         self.assertIn("기록이 없습니다", hook.build_message("full", None, None))
@@ -190,7 +190,7 @@ class BuildMessage(unittest.TestCase):
         self.assertIn("첫 응답에서", msg)
         self.assertIn("서브에이전트", msg)
         self.assertIn("explorer", msg)  # 발행 타입 명시(C1과 동일 근거)
-        self.assertIn("낮은 추론 등급", msg)  # explore 티어 기본값(루트 9절 표)
+        self.assertIn("`model`", msg)  # 9절 티어 모델 지정 — 미지정은 tier-gate 차단
 
     def test_silent_when_fresh(self):  # C4 재개정(2026-07-16) — 기한 전엔 무출력(노이즈 제거)
         self.assertIsNone(hook.build_message(None, 3, 0))

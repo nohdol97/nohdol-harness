@@ -20,6 +20,15 @@
             "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/gate-reminder.py\" --check; done; exit 0"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/tier-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
+          }
+        ]
       }
     ],
     "SessionStart": [
