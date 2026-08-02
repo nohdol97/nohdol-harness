@@ -13,7 +13,7 @@ tier: design | implement | explore   # model mapping: the table in root AGENTS.m
 ---
 ```
 
-**The CLI does not interpret `tier`** — actual application happens when the orchestrator specifies the `model` parameter per the §9 table at team-member creation (Agent call) time (orchestrate "tier application" rule). Why no concrete model name is pinned in the definition file: model names change over time, but roles do not (§9).
+**The CLI does not interpret `tier`** — actual application happens when the orchestrator specifies the `model` **and reasoning-effort** parameters per the §9 table at team-member creation (Agent call) time (orchestrate "tier application" rule). The §9 table has two columns: model, and effort (explore lowered by default; implement and design at the session default, design never lowered). Why no concrete model name is pinned in the definition file: model names change over time, but roles do not (§9).
 
 ## Codex custom-agent adapter (mandatory for root agents)
 

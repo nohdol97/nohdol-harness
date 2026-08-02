@@ -91,13 +91,17 @@ On a signal below, propose creation/improvement/retirement; apply only after app
 
 Agent frontmatter states a **role tier**, not a model name. Reason: model names change per CLI and time; roles don't. Never pin concrete model names in the harness; **pick from the current lineup of the CLI in use by the criteria below.**
 
-| Tier | Use | Selection criterion (CLI-agnostic) |
-|---|---|---|
-| design | design, verification, review, final judgment | the CLI's **highest-capability (highest-reasoning) model** |
-| implement | implementation, general work | standard (balanced) model |
-| explore | exploration, collection, summary | standard model; lightweight only on explicit user request |
+| Tier | Use | Selection criterion (CLI-agnostic) | Reasoning effort |
+|---|---|---|---|
+| design | design, verification, review, final judgment | the CLI's **highest-capability (highest-reasoning) model** | session default; **never lowered** |
+| implement | implementation, general work | standard (balanced) model | session default; **not lowered** |
+| explore | exploration, collection, summary | standard model; lightweight only on explicit user request | **lowered by default** |
 
-> **Lightweight (cheapest) model ban** (user global policy): absolutely forbidden for verification/review/final confirmation — a false negative forces redoing completed work. Exception only when the user explicitly asks "빠르게/가볍게" (fast/light).
+> **Lightweight (cheapest) model ban** (user global policy): absolutely forbidden for verification/review/final confirmation — a false negative forces redoing completed work. Exception only when the user explicitly asks "빠르게/가볍게" (fast/light). **The effort column is the same ban on a second axis** — lowering reasoning effort for verification, review, or final judgment is forbidden by that rule, not permitted by this table.
+
+**Effort is set per call, not pinned in agent files** — both CLIs take it at dispatch (Claude Code: the Agent tool's `effort`; Codex: `spawn_agent`'s `reasoning_effort`), so the tier stays the durable fact and the value is chosen from whatever grades the CLI in use offers. Name grades relatively (lowered / session default), never as a fixed literal — the same ADR 005 reason that keeps model names out of the harness. **Do not write it into `.codex/agents/*.toml`**: a `model_reasoning_effort` there **overrides the per-call value** instead of defaulting it, which would freeze one grade onto every dispatch of that role (and §11 forbids the key anyway). Why explore is the default-lowered one: its output is collected fact that the next step immediately exercises, so an error surfaces at once and re-collection is cheap, whereas an implement-tier error hardens into code and buys a review round that costs more than the saving.
+
+**Both columns are unenforced — nothing fails when a dispatch ignores them.** No hook matches agent dispatch and integrity-check does not read call parameters, so these are norms carried by the dispatching skill's prose. Measured 2026-08-03 over 37 explorer subagent sessions in this installation's local logs: model was `claude-opus-5` ×19, `claude-opus-4-8` ×6, `claude-fable-5` ×11, `claude-sonnet-5` ×1 — i.e. **25 of 37 ran on a top-capability model the model column never assigned to explore** — and effort was `high` ×33 with 4 unrecorded. **So the explore tier has been running at the maximum of both axes**, and the cost figures cited for this change cannot attribute that overspend to either column alone. Fixing the model column is the same unfinished work, not a separate one; `harness-review` already carries "unapplied tier→model mapping" as a declared-but-unimplemented item.
 
 ## 10. Agent Definition Rules (for metaskill/orchestrate when defining members)
 
