@@ -110,12 +110,26 @@ class ReadProfile(unittest.TestCase):
             self.assertEqual(hook.read_profile(d), "사내")
 
     def test_only_reads_the_profile_section(self):
-        # 다른 절의 산문이 '사내'/'개인'을 언급해도 프로필로 읽지 않는다 —
-        # 실제 REGISTRY.md의 「배포처 이관 경계」 절이 두 단어를 모두 쓴다.
+        # 다른 절의 굵은 라벨을 프로필로 읽지 않는다. **프로필 절을 뒤에 둔다** —
+        # 앞에 두면 파일 전체를 훑어 첫 매치를 잡는 구현도 같은 답을 내므로
+        # 이 테스트가 절 한정을 전혀 고정하지 못한다(독립 검증 2026-08-03 B2:
+        # 절 한정을 제거하는 변이가 36/36 통과로 살아남았다).
         with tempfile.TemporaryDirectory() as d:
-            self._registry(d, "## 설치처 프로필\n\n- **개인** — 수정 가능.\n\n"
-                              "## 배포처 이관 경계\n\n- **사내** 후속 작업은 …\n")
+            self._registry(d, "## 배포처 이관 경계\n\n- **사내** 후속 작업은 …\n\n"
+                              "## 설치처 프로필\n\n- **개인** — 수정 가능.\n")
             self.assertEqual(hook.read_profile(d), "개인")
+
+    def test_section_ends_at_the_next_heading_of_any_level(self):
+        # 프로필 절이 끝난 뒤의 굵은 라벨은 프로필이 아니다. `##`만 절을 닫으면
+        # `#`·`###` 뒤의 라벨을 프로필로 읽는다 — 억제 방향 위양성이라
+        # 그 설치처가 아닌 값으로 일일 점검이 꺼진다(독립 검증 B3).
+        # 프로필 절 자체는 라벨 없이 두어야 이 축이 실제로 발동한다 —
+        # 라벨이 있으면 첫 매치에서 반환해 뒤를 아예 읽지 않는다.
+        for closing in ("# 다른 문서", "### 하위 절"):
+            with tempfile.TemporaryDirectory() as d:
+                self._registry(d, "## 설치처 프로필\n\n아직 기록하지 않았다.\n\n"
+                                  "%s\n\n- **사내** — 여기는 프로필이 아니다\n" % closing)
+                self.assertIsNone(hook.read_profile(d), closing)
 
     def test_missing_file_and_missing_section(self):
         with tempfile.TemporaryDirectory() as d:
@@ -164,6 +178,7 @@ class BuildMessage(unittest.TestCase):
         # 발행 타입 명시 — 스킬이 explorer를 명문화한 뒤에도 리마인더 경로의
         # 발행이 general-purpose로 반복 유출(2026-07-17 실측, 신호 ③)
         self.assertIn("explorer", msg)
+        self.assertIn("낮은 추론 등급", msg)  # explore 티어 기본값(루트 9절 표)
 
     def test_full_message_no_record(self):  # C3
         self.assertIn("기록이 없습니다", hook.build_message("full", None, None))
@@ -175,6 +190,7 @@ class BuildMessage(unittest.TestCase):
         self.assertIn("첫 응답에서", msg)
         self.assertIn("서브에이전트", msg)
         self.assertIn("explorer", msg)  # 발행 타입 명시(C1과 동일 근거)
+        self.assertIn("낮은 추론 등급", msg)  # explore 티어 기본값(루트 9절 표)
 
     def test_silent_when_fresh(self):  # C4 재개정(2026-07-16) — 기한 전엔 무출력(노이즈 제거)
         self.assertIsNone(hook.build_message(None, 3, 0))

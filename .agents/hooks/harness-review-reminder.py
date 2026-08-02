@@ -37,6 +37,7 @@ REGISTRY = "REGISTRY.md"
 PROFILE_HEADING = "## 설치처 프로필"
 CORPORATE = "사내"
 _PROFILE_ITEM = re.compile(r"^\s*[-*]\s*\*\*(개인|사내)\*\*")
+_HEADING = re.compile(r"^#{1,6}\s")
 
 # 경과일의 '오늘'은 한국 표준시(KST, UTC+9 — DST 없음) 기준이다. 컨테이너가
 # UTC면 일일/주간 경계가 사용자 타임존과 하루 어긋난다(2026-07-16 사용자 지적).
@@ -84,7 +85,10 @@ def read_profile(base):
             continue
         if in_fence:
             continue
-        if line.startswith("## "):
+        if _HEADING.match(line):
+            # 어느 레벨의 제목이든 절을 닫는다. `## `만 닫으면 `#`·`###` 뒤의
+            # 굵은 라벨이 프로필로 읽혀, 그 설치처가 아닌 값으로 일일 점검이
+            # 꺼진다 — 억제 방향 위양성이다(독립 검증 2026-08-03 B3).
             in_section = line.strip() == PROFILE_HEADING
             continue
         if in_section:
@@ -116,7 +120,8 @@ def build_message(mode, weekly_days, daily_days):
         return (
             f"[harness-review 리마인더] 주간 전체 점검 — 마지막 전체 점검 {since}. "
             "이 세션의 첫 응답에서 harness-review 점검 서브에이전트를 explorer "
-            "타입으로(general-purpose 아님) 백그라운드 즉시 발행하세요"
+            "타입으로(general-purpose 아님) **낮은 추론 등급으로**(explore 티어 "
+            "기본값 — 루트 9절 표) 백그라운드 즉시 발행하세요"
             "(스킬 '실행 방식' 절 — 메인 루프가 직접 점검하지 않는다). "
             "점검이 도는 동안 사용자 요청을 병행 처리하고, 완료되면 결과(신호·무결성·"
             "제안)를 채팅으로 보고하세요. 마커(_workspace/.harness-review-last·"
@@ -128,7 +133,8 @@ def build_message(mode, weekly_days, daily_days):
         return (
             "[harness-review 리마인더] 일일 경량 점검 — 이 세션의 첫 응답에서 "
             "harness-review 일일 모드(마지막 점검 이후 확장 신호 ①~③ 스캔만) "
-            "서브에이전트를 explorer 타입으로(general-purpose 아님) 백그라운드 "
+            "서브에이전트를 explorer 타입으로(general-purpose 아님) "
+            "**낮은 추론 등급으로**(explore 티어 기본값 — 루트 9절 표) 백그라운드 "
             "즉시 발행하세요(스킬 '실행 방식' 절, "
             "수축·효율 신호와 무결성 점검은 주간의 몫). "
             "사용자 요청은 병행 처리하고, 완료되면 결과를 채팅으로 보고하세요. "
