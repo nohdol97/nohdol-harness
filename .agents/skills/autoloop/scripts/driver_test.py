@@ -693,6 +693,144 @@ class TestC25TestRatchet(DriverTestBase):
             self.assertIn(phrase, verify.lower(), "래칫 판정 문구 누락: %s" % phrase)
 
 
+class TestTestCmdPreflight(DriverTestBase):
+    """R9 계열 — 실행조차 못 하는 `--test-cmd` 로는 기동하지 않는다(실측 2026-08-02).
+
+    `.venv` 는 gitignore 되어 새 worktree(R18)에 구조적으로 없다. 그런 명령으로 기동한 런은
+    매 반복 test=error 를 기록하며 검증 불가능한 반복에 예산을 태웠다($15/반복). 기동자가
+    사용자와 명령을 합의하는 것으로는 잡히지 않는다 — 한 번 실행해 봐야 드러난다."""
+
+    def test_launch_without_test_cmd_is_unchanged(self):
+        # --test-cmd 없는 루프는 이전과 똑같이 기동한다(증거 약화 모드 경고만 — R9)
+        self.assertEqual(driver.test_cmd_guard(self.make_config()), "")
+        ok, reason = driver.startup_guard(self.make_config())
+        self.assertTrue(ok, reason)
+
+    def test_unrunnable_command_is_refused_with_the_reason(self):
+        ok, reason = driver.startup_guard(self.make_config(test_cmd=BROKEN_RUNNER))
+        self.assertFalse(ok, "실행할 수 없는 --test-cmd 인데 기동이 허용됐다")
+        self.assertIn(BROKEN_RUNNER, reason)          # 어떤 명령인지
+        self.assertIn("실행조차", reason)              # 무슨 일이 일어났는지
+        self.assertIn(os.path.realpath(self.tmp), reason)   # 어느 디렉터리에서 안 됐는지
+
+    def test_missing_venv_style_command_is_refused(self):
+        # 실측 사례의 형태 그대로 — gitignore 된 인터프리터 경로는 새 worktree 에 없다
+        ok, reason = driver.startup_guard(
+            self.make_config(test_cmd=".venv/bin/python -m pytest tests/ -q"))
+        self.assertFalse(ok, "대상에 없는 인터프리터 경로인데 기동이 허용됐다")
+        self.assertIn(".venv/bin/python", reason)
+
+    def test_failing_suite_still_launches(self):
+        # red 는 TDD 루프의 정상 출발 상태다 — 여기서 막으면 이 도구의 주 용도가 막힌다.
+        cfg = self.make_config(test_cmd="%s -c 'import sys; sys.exit(1)'" % sys.executable)
+        self.assertEqual(driver.run_test_cmd(cfg)["outcome"], "red")   # 전제: 실제로 red 다
+        ok, reason = driver.startup_guard(cfg)
+        self.assertTrue(ok, "실패하는 테스트(red)로 기동이 거부됐다: %s" % reason)
+
+    def test_passing_suite_launches(self):
+        cfg = self.make_config(test_cmd="%s -c 'import sys; sys.exit(0)'" % sys.executable)
+        ok, reason = driver.startup_guard(cfg)
+        self.assertTrue(ok, reason)
+
+    def test_preflight_uses_the_loop_classifier(self):
+        """사전 검사에 두 번째 분류기를 두면 루프의 것과 드리프트한다 — 같은 경로를 쓴다."""
+        cfg = self.make_config(test_cmd=BROKEN_RUNNER)
+        seen, original = [], driver.run_test_cmd
+        driver.run_test_cmd = lambda c: (seen.append(c.test_cmd), original(c))[1]
+        try:
+            ok, _ = driver.startup_guard(cfg)
+        finally:
+            driver.run_test_cmd = original
+        self.assertFalse(ok)
+        self.assertEqual(seen, [BROKEN_RUNNER], "사전 검사가 run_test_cmd 를 쓰지 않는다")
+        # 루프 쪽도 같은 함수를 지난다(한쪽만 바꾸면 분류가 갈린다)
+        seen.clear()
+        driver.run_test_cmd = lambda c: (seen.append(c.test_cmd), original(c))[1]
+        try:
+            driver.Driver(cfg)._run_test()
+        finally:
+            driver.run_test_cmd = original
+        self.assertEqual(seen, [BROKEN_RUNNER], "루프가 run_test_cmd 를 쓰지 않는다")
+
+
+class TestVerifyPromptCarriesMeasurement(DriverTestBase):
+    """R5·R6 — 읽기 전용 검증 세션에 드라이버 실측을 준다(실측 2026-08-02).
+
+    그 런의 검증 세션은 "pytest 실행이 거부돼 완료 기준 1을 직접 재지 못했다"를 BLOCK 사유로
+    적었다. 드라이버는 그 값을 이미 독립 실행으로 갖고 있었다."""
+
+    def test_measurement_is_stated_as_the_drivers_own(self):
+        verify = driver.build_verify_prompt(self.make_config(),
+                                            {"outcome": "green", "tail": "TAIL-MARKER-42"})
+        self.assertIn("TAIL-MARKER-42", verify)                 # 원시 tail 그대로
+        self.assertIn("GREEN", verify)                          # 분류 라벨
+        low = verify.lower()
+        self.assertIn("driver's own independent measurement", low)
+        self.assertIn("not the implementing session's claim", low)
+
+    def test_all_three_outcomes_are_labelled(self):
+        for outcome, label in [("green", "GREEN"), ("red", "RED"), ("error", "ERROR")]:
+            verify = driver.build_verify_prompt(self.make_config(),
+                                                {"outcome": outcome, "tail": "T-%s" % outcome})
+            self.assertIn(label, verify)
+            self.assertIn("T-%s" % outcome, verify)
+        # error 는 통과도 실패도 아니라는 것이 함께 실린다(R5-1)
+        err = driver.build_verify_prompt(self.make_config(), {"outcome": "error", "tail": "t"})
+        self.assertIn("absence of evidence", err.lower())
+
+    def test_measurement_does_not_settle_criterion_coverage(self):
+        """green 을 커버리지 증거로 읽으면 R17 래칫이 통째로 무력해진다."""
+        verify = driver.build_verify_prompt(self.make_config(),
+                                            {"outcome": "green", "tail": "ok"})
+        self.assertIn("TEST RATCHET CHECK", verify)             # 래칫 검사는 그대로 선다
+        low = verify.lower()
+        self.assertIn("does not settle", low)
+        self.assertIn("proves nothing about", low)
+        self.assertIn("coverage", low)
+        # 자가 실행 금지 — 자기가 만든 결과로 판정하면 독립성이 사라진다
+        self.assertIn("cannot run the suite yourself", low)
+
+    def test_injected_tail_is_marked_as_data(self):
+        # 프로세스 출력 주입이므로 untrusted 봉투가 필요하다(루트 3절·R2⑥과 같은 부류)
+        verify = driver.build_verify_prompt(self.make_config(),
+                                            {"outcome": "red", "tail": "INJECTED"})
+        low = verify.lower()
+        self.assertIn("not user instructions", low)
+        self.assertLess(low.index("not user instructions"), verify.index("INJECTED"))
+
+    def test_absent_test_cmd_says_there_is_no_measurement(self):
+        verify = driver.build_verify_prompt(self.make_config(), None)
+        self.assertIn("no independent measurement", verify.lower())
+        self.assertNotIn("GREEN", verify)     # 없는 측정을 통과로 읽히게 두지 않는다
+
+    def test_verify_session_prompt_carries_the_measured_tail(self):
+        # 경계 통과 확인 — 호출부가 실측을 넘기지 않으면 프롬프트에 tail 이 없다
+        self.write_scenario([
+            {"text": status_text("done", 0)},
+            {"text": verdict_text("PASS")},
+        ])
+        cfg = self.make_config(max_iterations=2, test_cmd=(
+            "%s -c \"print('MEASURED-TAIL-MARKER')\"" % sys.executable))
+        self.assertEqual(driver.Driver(cfg).run(), "done")
+        verify_prompt = self.recorded_prompt(1)
+        self.assertIn("MEASURED-TAIL-MARKER", verify_prompt)
+        self.assertIn("DRIVER-MEASURED TEST RESULT", verify_prompt)
+
+    def test_readonly_allow_is_not_widened(self):
+        """실측을 주는 것이 권한 변경의 대체재다 — 검증 세션은 여전히 러너를 못 쥔다."""
+        self.assertEqual(driver.READONLY_ALLOW, [
+            "Read", "Glob", "Grep",
+            "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)",
+            "Bash(ls:*)", "Bash(cat:*)",
+        ])
+        joined = " ".join(driver.READONLY_ALLOW).lower()
+        for runner in ["pytest", "npm", "pnpm", "go test", "cargo", "python", "make"]:
+            self.assertNotIn(runner, joined)
+        # 사용자 확장 그랜트도 검증 세션에는 실리지 않는다(R3)
+        cfg = self.make_config(allow_extra=["Bash(pytest:*)"])
+        self.assertNotIn("Bash(pytest:*)", driver.build_claude_args(cfg, "p", readonly=True))
+
+
 class TestC27WorktreeGuard(DriverTestBase):
     """R18 — 하위 프로젝트의 공유 체크아웃을 대상으로 한 무인 루프는 기동하지 않는다(ADR 035)."""
 
