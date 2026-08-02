@@ -28,7 +28,7 @@ If the boundary is ambiguous, start solo; if the solo reviewer reports "scope ex
 
 **Agent-call budget**: record the expected reviewer count after choosing applicable perspectives. Preserve correctness/tests and any security·infra perspective required by the target, then omit non-applicable axes. Rework uses the **same reviewer thread** for **delta re-verification** with only the new diff, latest tests, and changed completion criteria. Add another reviewer only for a **new independent risk axis**, an unavailable prior thread, or author/verifier independence. Do not respawn the same perspective merely to obtain a fresh context.
 
-**Review-window quiz (both modes — PR-bound work only)**: right after dispatching the review (solo reviewer or team fan-out, background per item 4 below), run the §13-0 comprehension quiz with the user in the same turn (quiz spec single source: branch-workflow finish 4) — quiz and review in parallel; misalignment surfaces alongside or before the verdict.
+**Review-window quiz (both modes — **sub-project** PR-bound work only; harness changes are exempt on every path, §13)**: right after dispatching the review (solo reviewer or team fan-out, background per item 4 below), run the §13-0 comprehension quiz with the user in the same turn (quiz spec single source: branch-workflow finish 4) — quiz and review in parallel; misalignment surfaces alongside or before the verdict.
 
 ## Team mode — perspective fan-out (delegated to orchestrate)
 
