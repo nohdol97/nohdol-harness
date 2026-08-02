@@ -38,6 +38,16 @@
 3. **어휘를 바꿀 때는 그 문자열을 세는 테스트·완료 기준을 같은 변경에 포함한다.** 문서만 바꾸면 완료 기준이 조용히 깨지거나, 문서가 코드보다 넓게 주장하는 상태가 된다.
 4. **런타임 문자열도 어휘의 일부다.** 문서만 중립화하고 출력 문구를 남기면 같은 개념에 두 어휘가 공존한다.
 
+## 후속 수리 범위 — 2회 BLOCK 뒤 고정 (2026-08-03)
+
+같은 세션의 독립 검증이 두 번 BLOCK을 내어, 남은 수리를 다음 범위로 고정한 뒤 계속한다.
+
+- **현재 값 소비자**: doc-writer와 scaffold는 `이관=배포처`에서 경계를 적용하고, `미확인`은 한 번 질문해 기록하며, `로컬`은 건너뛴다.
+- **현재 산출물 생성기**: harness-install·scaffold·doc-writer의 활성 지시문은 배포 축을 `공용`/`배포처`로만 생성한다. README의 배포처 설정 안내와 설치 스캔의 질문 이름도 이 범위에 든다.
+- **라우팅되는 하위 하네스**: 네 agent-eval 하위 AGENTS.md의 활성 규칙은 같은 축을 쓰고, trace/server의 실패 문자열은 `미구현, 배포처 후속`과 일치한다.
+- **보존 대상**: 설치처 프로필 `개인`/`사내`, 다른 기계의 프로젝트를 이 하네스로 들이는 metaskill의 프로젝트 반입(carry-in), 당시 결정을 기록한 append-only 역사 행은 다른 개념이므로 바꾸지 않는다.
+- **별도 저장소 후속**: agent-eval-onboarding 제품 소스의 설명 문구는 이 루트 하네스 커밋에 섞지 않고 해당 저장소의 branch-workflow PR로 처리한다.
+
 ## 영향
 
 - `metaskill` scaffold §1.1이 이 분할을 지시한다 — 신규 반입 대상 프로젝트는 처음부터 이 형태로 생성된다.
@@ -45,3 +55,4 @@
 - `REGISTRY.md`의 **이관 축도 함께 중립화한다**(사용자 결정): 절 이름 「사내 반입 경계」 → **「배포처 이관 경계」**, 레지스트리 컬럼 `반입` → **`이관`**, 값 `사내` → **`배포처`**(`로컬`·`미확인`은 유지). 이 컬럼은 §7 2항 정지가 읽는 **게이트 입력**이라 값을 읽는 전 지점을 같은 변경에 넣었다 — `AGENTS.md`·`AGENTS.ko.md`, metaskill, scaffold, doc-writer 템플릿, harness-install. **설치처 프로필 축(`개인`/`사내`)은 건드리지 않는다** — 그건 하네스 편집 권한을 정하는 별개 축이고(§5·ADR 012), 같은 글자를 쓴다는 이유로 함께 바꾸면 프로필 게이트가 깨진다.
 - **metaskill의 "carry-in(프로젝트 반입) 시나리오" 이름은 유지한다** — 프로젝트를 *이 하네스로* 들여오는 작업이라 이관 축과 다른 개념이다. 다만 그 이름을 근거로 프로젝트 저장소에 옛 어휘가 되살아나는 것을 막으려고, 시나리오 본문에 두 축을 구분하는 문장을 넣었다.
 - ADR 006의 "프로젝트 저장소에 하네스 파일을 두지 않는다"는 **유효하다.** `docs/ownership.md`는 하네스 파일이 아니라 평범한 프로젝트 문서이며, 이 ADR이 그 구분을 명시한다.
+- 2026-08-03 후속 수리는 `.agents/skills/doc-writer/references/templates.md`, `.agents/skills/metaskill/references/scaffold.md`, `.agents/skills/harness-install/SKILL.md`, `.agents/skills/metaskill/SKILL.md`, `AGENTS.ko.md`, `.agents/skills/README.ko.md`, `docs/harness-changelog.md`, `.agents/projects/{agent-eval-gate,agent-eval-onboarding,agent-eval-trace,agent-eval-server}/AGENTS.md`(미추적), `_workspace/harness-ops-log.md`(미추적)에 영향을 준다.
