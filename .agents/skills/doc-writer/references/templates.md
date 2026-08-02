@@ -21,7 +21,7 @@ Filename: `docs/specs/YYYY-MM-DD-<제목>.md`
 <이 작업이 끝나면 참이 되는 문장들. 측정 가능하게>
 
 ## 비목표
-<이번에 의도적으로 하지 않는 것 — 범위 방어선. 반입 대상이면 "(사내에서 후속 진행)"을 제목에 달고 사내 후속 항목을 여기에 열거한다>
+<이번에 의도적으로 하지 않는 것 — 범위 방어선. 반입 대상이면 "(배포처에서 후속 진행)"을 제목에 달고 사내 후속 항목을 여기에 열거한다>
 
 ## 요구사항
 <기능·비기능 요구사항. 번호 목록 R1, R2, ... (테스트가 이 번호를 참조한다)>
@@ -50,13 +50,13 @@ Check: can every completion criterion be turned into a test as-is / is there a n
 
 **Fires when REGISTRY.md has a 「사내 반입 경계」 section AND the target project's 반입 column reads `사내`** — the project is built here and carried into a corporate environment for follow-up work. **Read both signals, in that order.** No section means this install site has no corporate carry-in, so skip silently no matter what the column says (a column value surviving a section's removal is stale, not authoritative). Section present but column `미확인` — ask the user once, write the answer back to the registry row, then proceed on the answer; `로컬` skips. **Exception: a row registered as a category bundle** (see the registry's 등록 규약) may hold `미확인` deliberately because its projects differ; write the answer to the sub-harness's per-project table instead of flattening the bundle row. With both signals positive, the three handover principles recorded in that section are not optional prose — they must be visible in these existing sections. **Add no new sections** (the fixed structure above still governs); place them as follows:
 
-- **비목표** — retitle to `## 비목표 (사내에서 후속 진행)` and enumerate the corporate follow-up items. Naming them in the spec is what keeps unattended sessions (autoloop) from re-deciding the boundary every iteration; boundaries stated only in chat do not survive a context reset.
+- **비목표** — retitle to `## 비목표 (배포처에서 후속 진행)` and enumerate the corporate follow-up items. Naming them in the spec is what keeps unattended sessions (autoloop) from re-deciding the boundary every iteration; boundaries stated only in chat do not survive a context reset.
 - **인터페이스 / 설계 개요** — define the cut as an **adapter boundary**: the interface plus a contract test asserting that every implementation returns the same result shape. Exclusion alone forces a redesign on the corporate side, so the seam is the deliverable, not the omission.
-- **완료 기준** — two criteria, both **countable**, in the same `"~하면 ~된다"` form the section already requires. Existence-shaped wording (`체크리스트가 있다`) is not usable: an empty heading satisfies it, and an unattended session (autoloop) will write exactly that, since its only mechanical gate is the presence of a 완료 기준 section. Bind them to something with a number instead — ① every item enumerated in 비목표 has a matching entry in **`docs/carry-in.md`의 반입 체크리스트** (**item counts match**, so the criterion fails while any item is missing) ② running each corporate follow-up path prints the "미구현, 사내 후속" notice and exits non-zero (**one case per path**) rather than silently no-op. Both counts derive from the 비목표 enumeration, so an empty enumeration makes them vacuous — that state means the 반입 classification is wrong, not that the criteria are met: a project with no corporate follow-up item is `로컬`, so fix the registry row rather than shipping two criteria that count to zero.
+- **완료 기준** — two criteria, both **countable**, in the same `"~하면 ~된다"` form the section already requires. Existence-shaped wording (`체크리스트가 있다`) is not usable: an empty heading satisfies it, and an unattended session (autoloop) will write exactly that, since its only mechanical gate is the presence of a 완료 기준 section. Bind them to something with a number instead — ① every item enumerated in 비목표 has a matching entry in **`docs/site-setup.md`의 반입 체크리스트** (**item counts match**, so the criterion fails while any item is missing) ② running each corporate follow-up path prints the "미구현, 사내 후속" notice and exits non-zero (**one case per path**) rather than silently no-op. Both counts derive from the 비목표 enumeration, so an empty enumeration makes them vacuous — that state means the 반입 classification is wrong, not that the criteria are met: a project with no corporate follow-up item is `로컬`, so fix the registry row rather than shipping two criteria that count to zero.
 
-  **Why the path is fixed at `docs/carry-in.md`**: criterion ① only works if the thing being counted has a known location. Let each project choose, and every spec must carry the path — and the ones that omit it leave the criterion silently unresolvable. **Why not README** is in 3A's corresponding note: that section is maintained by the corporate session, so keeping it in README splits one file's ownership across two machines.
+  **Why the path is fixed at `docs/site-setup.md`**: criterion ① only works if the thing being counted has a known location. Let each project choose, and every spec must carry the path — and the ones that omit it leave the criterion silently unresolvable. **Why not README** is in 3A's corresponding note: that section is maintained by the corporate session, so keeping it in README splits one file's ownership across two machines.
 
-  **The spec must also say the document gets created, and keep the heading fixed.** `docs/carry-in.md` is not produced by any other template, so a spec that only counts against it counts against a file nobody was told to write. State its creation as a **requirement** (an R-number in 요구사항) — **never as a 비목표 item**: 비목표 holds what is deliberately *not* done here, creating the document is done here, and criterion ① counts 비목표 items against the checklist, so an entry there would offset the count by one against the very file it lists. Keep the heading exactly `## 사내 반입 체크리스트` — criterion ① locates the list by that heading, so a rename breaks the count the same way a missing file does.
+  **The spec must also say the document gets created, and keep the heading fixed.** `docs/site-setup.md` is not produced by any other template, so a spec that only counts against it counts against a file nobody was told to write. State its creation as a **requirement** (an R-number in 요구사항) — **never as a 비목표 item**: 비목표 holds what is deliberately *not* done here, creating the document is done here, and criterion ① counts 비목표 items against the checklist, so an entry there would offset the count by one against the very file it lists. Keep the heading exactly `## 배포처 설정 체크리스트` — criterion ① locates the list by that heading, so a rename breaks the count the same way a missing file does.
 
 Keep company-identifying values out of the spec text: hostnames, internal URLs, cluster or namespace names, internal app names, org or team names, account IDs. Public product and technology names (k8s, ArgoCD, OIDC) are **not** restricted — the axis cannot be stated without them, and a name every company uses identifies none. The test is one sentence: *does this string point at our company's instance of the thing?* The spec is committed and leaves the repository (root AGENTS.md §3).
 
@@ -148,7 +148,7 @@ Check: does every finding have evidence / is the Limits section honest.
 
 ## 참고
 
-<조건부. 더 깊은 문서로의 링크 — 스펙·런북·ADR·`docs/carry-in.md`. 내용 복사 금지, 링크만>
+<조건부. 더 깊은 문서로의 링크 — 스펙·런북·ADR·`docs/site-setup.md`. 내용 복사 금지, 링크만>
 ```
 
 **Mandatory sections** (always present): 제목·태그라인, 이게 뭔가, 시작하기, 사용법, 동작 방식.
@@ -164,11 +164,11 @@ Check: does every finding have evidence / is the Limits section honest.
 | 로드맵 | 다음 작업이 스펙 또는 이슈로 존재한다 | 구두 아이디어를 적으면 약속으로 읽히고 지켜지지 않는다 |
 | 기여 | 본인 외 기여자를 받을 저장소다 | 받을 생각이 없는 절차는 유지되지 않는다 |
 | 라이선스 | LICENSE 파일이 저장소에 있다 | 파일 없이 섹션만 두면 미정 상태가 정해진 것처럼 보인다 |
-| 참고 | 링크할 더 깊은 문서(스펙·런북·ADR·`docs/carry-in.md`)가 있다 | 링크 없는 링크 섹션 |
+| 참고 | 링크할 더 깊은 문서(스펙·런북·ADR·`docs/site-setup.md`)가 있다 | 링크 없는 링크 섹션 |
 
 **These are the only sections exempt from the "해당 없음 + 사유" rule** (SKILL.md procedure step 3). Mandatory sections are not exempt — an inapplicable mandatory section means 3A is the wrong template, not that the section may be dropped.
 
-**사내 반입 체크리스트는 README에 두지 않는다 — `docs/carry-in.md`가 그 자리다** (스펙 템플릿 1번의 사내 반입 절이 정본). 이 절은 사내(inside) 세션이 유지하는 내용이라 README에 두면 **한 파일의 일부는 outside가, 일부는 inside가 소유**하게 되고, 그 상태가 바로 소유권 경계 문서가 막으려는 충돌 표면이다. 파일을 나누면 그 분할 자체가 사라진다. 같은 이유로 사내 CI 연동·사내 후속 비목표 서술도 그 문서로 간다. README에는 `## 참고`의 링크 한 줄만 남긴다. **이미 README에 둔 프로젝트를 찾아다니며 고치지 않는다** — 위의 "지금부터 쓰거나 개정하는 README에 적용" 원칙이 그대로 적용된다(판단 단위는 파일의 나이가 아니라 작성 행위).
+**배포처 설정 체크리스트는 README에 두지 않는다 — `docs/site-setup.md`가 그 자리다** (스펙 템플릿 1번의 사내 반입 절이 정본). 이 절은 사내(inside) 세션이 유지하는 내용이라 README에 두면 **한 파일의 일부는 outside가, 일부는 inside가 소유**하게 되고, 그 상태가 바로 소유권 경계 문서가 막으려는 충돌 표면이다. 파일을 나누면 그 분할 자체가 사라진다. 같은 이유로 사내 CI 연동·사내 후속 비목표 서술도 그 문서로 간다. README에는 `## 참고`의 링크 한 줄만 남긴다. **이미 README에 둔 프로젝트를 찾아다니며 고치지 않는다** — 위의 "지금부터 쓰거나 개정하는 README에 적용" 원칙이 그대로 적용된다(판단 단위는 파일의 나이가 아니라 작성 행위).
 
 **뱃지 규칙** (max 4, one line):
 
