@@ -24,7 +24,7 @@
 
 실행: python3 driver.py --spec <경로> [--project DIR] [--test-cmd CMD] [--max-iterations N]
                         [--stall-limit N] [--max-cost-usd X] [--work-name SLUG]
-테스트: python3 driver_test.py (수정 시 반드시 통과 — C1~C12)
+테스트: python3 driver_test.py (수정 시 반드시 통과 — C1~C29)
 """
 import argparse
 import dataclasses

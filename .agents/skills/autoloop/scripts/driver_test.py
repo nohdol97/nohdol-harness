@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""autoloop driver 회귀 테스트 — 스펙 docs/specs/2026-07-19-autoloop-driver.md 완료 기준(C1~C12).
+"""autoloop driver 회귀 테스트 — 스펙 docs/specs/2026-07-19-autoloop-driver.md 완료 기준(C1~C29).
 
 실행: python3 .agents/skills/autoloop/scripts/driver_test.py
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다. 실제 claude CLI를 호출하지 않는다
