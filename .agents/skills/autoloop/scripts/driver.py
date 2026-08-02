@@ -79,6 +79,7 @@ VALID_STATUS = {"done", "continue", "blocked"}
 JSON_FENCE = re.compile(r"```json\s*\n(.*?)\n\s*```", re.DOTALL)
 
 STATE_FILE = "state.json"      # R16 실행 위치 체크포인트
+TEST_TIMEOUT = 1800            # 테스트 명령 1회 상한(초) — 초과는 R5-1 `error`(kind=timeout)
 TEST_OUTCOMES = ("green", "red", "error")   # R5-1 — error 는 "실행조차 못 함"만을 뜻한다
 # 재기동 시 이어받아야 하는 실행 상태와 그 기본값. 노트(carryover.md)가 나르는 서술 상태와
 # 달리 이건 게이트가 읽는 값이라, 하나라도 리셋되면 그 게이트가 재기동으로 우회된다.
@@ -445,12 +446,18 @@ def run_test_cmd(cfg):
         return None
     try:
         proc = subprocess.run(cfg.test_cmd, shell=True, cwd=cfg.project,
-                              capture_output=True, text=True, timeout=1800)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return {"outcome": "error", "tail": "test runner error: %s" % e}
+                              capture_output=True, text=True, timeout=TEST_TIMEOUT)
+    except subprocess.TimeoutExpired as e:
+        # `kind` 는 드라이버가 **확실히 아는 사실**(자기 subprocess 가 어떤 식으로 실패했는지)이지
+        # 러너 출력 문자열을 해석한 추정이 아니다(R5-1). 타임아웃은 실행은 된 것이라 처방이
+        # 다르므로 갈라 둔다 — 없는 러너 처방을 30분 기다린 사용자에게 내밀지 않기 위해서다.
+        return {"outcome": "error", "kind": "timeout",
+                "tail": "test runner timed out after %ds: %s" % (TEST_TIMEOUT, e)}
+    except OSError as e:
+        return {"outcome": "error", "kind": "unrunnable", "tail": "test runner error: %s" % e}
     tail = (proc.stdout + proc.stderr)[-2000:]
     if proc.returncode in (126, 127):
-        return {"outcome": "error",
+        return {"outcome": "error", "kind": "unrunnable",
                 "tail": "test runner not runnable (shell exit %d): %s" % (proc.returncode, tail)}
     return {"outcome": "green" if proc.returncode == 0 else "red", "tail": tail}
 
@@ -473,6 +480,16 @@ def test_cmd_guard(cfg):
     result = run_test_cmd(cfg)
     if result["outcome"] != "error":
         return ""
+    if result.get("kind") == "timeout":
+        # 실행조차 못 한 것이 아니라 끝나지 않은 것이다 — 증거가 없다는 결론은 같지만 처방이
+        # 다르다. 30분을 기다린 사용자에게 `.venv` 부재 처방을 내미는 것은 오답이다.
+        return (
+            "--test-cmd 가 제한 시간(%d초) 안에 끝나지 않았습니다 — 명령: %s / 대상 디렉터리: %s\n"
+            "  사유: %s\n"
+            "명령은 실행됐지만 완료되지 않았으므로 완료를 판정할 증거가 없다는 점은 같습니다"
+            "(R5-1 `error`). 루프를 돌리면 **매 반복 같은 시간을 기다린 뒤 같은 자리에 섭니다** — "
+            "스위트 범위를 좁히거나(스펙이 겨냥하는 테스트만) 느린 원인을 먼저 해소한 뒤 기동하세요."
+            % (TEST_TIMEOUT, cfg.test_cmd, os.path.realpath(cfg.project), result["tail"][:500]))
     return (
         "--test-cmd 를 실행조차 하지 못했습니다 — 명령: %s / 대상 디렉터리: %s\n  사유: %s\n"
         "이대로 기동하면 매 반복이 test=error 로 기록돼 완료를 판정할 증거가 없는 채 예산만 "

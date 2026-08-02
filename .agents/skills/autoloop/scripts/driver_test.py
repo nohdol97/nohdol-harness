@@ -707,11 +707,18 @@ class TestTestCmdPreflight(DriverTestBase):
         self.assertTrue(ok, reason)
 
     def test_unrunnable_command_is_refused_with_the_reason(self):
-        ok, reason = driver.startup_guard(self.make_config(test_cmd=BROKEN_RUNNER))
+        cfg = self.make_config(test_cmd=BROKEN_RUNNER)
+        ok, reason = driver.startup_guard(cfg)
         self.assertFalse(ok, "실행할 수 없는 --test-cmd 인데 기동이 허용됐다")
         self.assertIn(BROKEN_RUNNER, reason)          # 어떤 명령인지
         self.assertIn("실행조차", reason)              # 무슨 일이 일어났는지
         self.assertIn(os.path.realpath(self.tmp), reason)   # 어느 디렉터리에서 안 됐는지
+        # **실패 사유 자체**가 실린다 — 앞의 "실행조차"는 템플릿 산문이라 사유를 빼도 남는다.
+        # 분류기가 만든 사유 문자열로 대조해야 이 하위 절이 실제로 고정된다(독립 검증 F1).
+        measured = driver.run_test_cmd(cfg)
+        self.assertIn(measured["tail"][:120], reason,
+                      "거부 메시지가 분류기의 실패 사유를 나르지 않는다")
+        self.assertIn("127", reason)                  # 셸이 돌려준 실제 종료 코드
 
     def test_missing_venv_style_command_is_refused(self):
         # 실측 사례의 형태 그대로 — gitignore 된 인터프리터 경로는 새 worktree 에 없다
@@ -731,6 +738,90 @@ class TestTestCmdPreflight(DriverTestBase):
         cfg = self.make_config(test_cmd="%s -c 'import sys; sys.exit(0)'" % sys.executable)
         ok, reason = driver.startup_guard(cfg)
         self.assertTrue(ok, reason)
+
+    def test_check_runs_last_so_a_refused_launch_never_executes_it(self):
+        """순서는 비용 문제가 아니라 안전 속성이다(독립 검증 F3).
+
+        검사가 앞에 오면, 거부될 대상에서 **사용자가 준 임의의 셸 명령이 먼저 실행된다** —
+        STOP 이 걸린 작업이든 `worktree_guard` 가 거부할 공유 체크아웃이든 마찬가지고,
+        그 거부들은 정확히 그 실행을 막으려고 있는 것이다."""
+        marker = "preflight-must-not-run"
+        # ① 이른 거부(STOP) — 명시적으로 멈춘 작업에서 명령이 돌면 안 된다
+        os.makedirs(self.workdir, exist_ok=True)
+        stop = os.path.join(self.workdir, "STOP")
+        open(stop, "w").write("")
+        ok, _ = driver.startup_guard(self.make_config(test_cmd="touch %s" % marker))
+        self.assertFalse(ok)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, marker)),
+                         "STOP 으로 거부되는 기동인데 테스트 명령이 먼저 실행됐다")
+        os.remove(stop)
+        # ② 직전 거부(R18 공유 체크아웃) — 남의 체크아웃에서 임의 명령을 돌리면 안 된다
+        repo = os.path.join(self.tmp, "shared-repo")
+        os.makedirs(repo)
+        for args in (["init", "-q", repo],
+                     ["-C", repo, "commit", "-q", "--allow-empty", "-m", "init"]):
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t"] + args,
+                           capture_output=True, text=True, check=True)
+        ok, _ = driver.startup_guard(
+            self.make_config(project=repo, test_cmd="touch %s" % marker))
+        self.assertFalse(ok)
+        self.assertFalse(os.path.exists(os.path.join(repo, marker)),
+                         "worktree 게이트가 거부할 저장소인데 테스트 명령이 먼저 실행됐다")
+
+    def test_check_runs_in_the_target_directory_not_the_launch_directory(self):
+        """대상 디렉터리에서 돌지 않으면 검사가 의미를 잃는다 — 잡으려는 실패가 정확히
+        '사용자 체크아웃에서는 돌고 대상에서는 안 되는 명령'이기 때문이다."""
+        project = os.path.join(self.tmp, "target")
+        launch = os.path.join(self.tmp, "launch")
+        os.makedirs(project)
+        os.makedirs(launch)
+        cfg = self.make_config(project=project, cwd=launch, test_cmd="touch preflight-ran-here")
+        ok, reason = driver.startup_guard(cfg)
+        self.assertTrue(ok, reason)
+        self.assertTrue(os.path.exists(os.path.join(project, "preflight-ran-here")),
+                        "대상 디렉터리에서 실행되지 않았다")
+        self.assertFalse(os.path.exists(os.path.join(launch, "preflight-ran-here")),
+                         "기동 디렉터리에서 실행됐다 — 대상이 아니라 런처를 검사한 셈이다")
+
+    def test_timeout_is_classified_error_under_the_declared_limit(self):
+        """타임아웃 갈래는 실행이 불가능해 실제로 재현할 수 없다 — 경계를 모킹해 고정한다."""
+        cfg = self.make_config(test_cmd="sleep 999999")
+        seen, original = {}, driver.subprocess.run
+
+        def fake_run(*args, **kwargs):
+            seen.update(kwargs)
+            raise driver.subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout"))
+
+        driver.subprocess.run = fake_run
+        try:
+            result = driver.run_test_cmd(cfg)
+        finally:
+            driver.subprocess.run = original
+        self.assertEqual(result["outcome"], "error")      # 통과도 실패도 아니다(R5-1)
+        self.assertEqual(result["kind"], "timeout")       # 실행 불가와 갈린다
+        self.assertEqual(seen.get("timeout"), driver.TEST_TIMEOUT,
+                         "선언된 상한이 실제로 subprocess 에 걸리지 않는다")
+
+    def test_timeout_refusal_does_not_read_like_a_missing_runner(self):
+        """30분을 기다린 사용자에게 '실행조차 못 했다 / `.venv` 를 확인하라'는 오답이다.
+
+        명령 자체는 **즉시 끝나는 것**을 쓴다 — 여기서 검사하는 것은 메시지 갈래지 대기가
+        아니고, 실제로 안 끝나는 명령을 쓰면 이 패치를 우회하는 변이가 걸렸을 때 테스트가
+        실패하는 대신 영원히 매달린다(멈춘 스위트는 판정을 주지 못한다)."""
+        cfg = self.make_config(test_cmd="%s -c 'pass'" % sys.executable)
+        original = driver.run_test_cmd
+        driver.run_test_cmd = lambda c: {
+            "outcome": "error", "kind": "timeout",
+            "tail": "test runner timed out after 1800s: TAIL-TIMEOUT-MARK"}
+        try:
+            ok, reason = driver.startup_guard(cfg)
+        finally:
+            driver.run_test_cmd = original
+        self.assertFalse(ok, "타임아웃인데 기동이 허용됐다")
+        self.assertIn("제한 시간", reason)
+        self.assertIn("TAIL-TIMEOUT-MARK", reason)        # 사유는 이쪽 갈래에서도 실린다
+        self.assertNotIn(".venv", reason)                 # 없는 러너 처방을 붙이지 않는다
+        self.assertNotIn("실행조차", reason)
 
     def test_preflight_uses_the_loop_classifier(self):
         """사전 검사에 두 번째 분류기를 두면 루프의 것과 드리프트한다 — 같은 경로를 쓴다."""
