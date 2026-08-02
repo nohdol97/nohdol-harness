@@ -123,6 +123,24 @@ class ReadProfile(unittest.TestCase):
             self._registry(d, "# REGISTRY\n\n## 프로젝트 레지스트리\n\n표…\n")
             self.assertIsNone(hook.read_profile(d))  # 절 부재
 
+    def test_label_mismatch_is_unknown(self):
+        # C14의 '라벨 불일치' 갈래 — 절은 있으나 굵은 라벨 목록 형식이 아니면
+        # 미상이고, 미상은 억제하지 않는다.
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "## 설치처 프로필\n\n사내 설치처입니다.\n")
+            self.assertIsNone(hook.read_profile(d))
+            self._registry(d, "## 설치처 프로필\n\n- 사내 — 굵은 라벨이 아님\n")
+            self.assertIsNone(hook.read_profile(d))
+
+    def test_fenced_example_is_not_the_profile(self):
+        # 코드 펜스 안의 예시를 프로필로 읽으면 그 설치처가 아닌 값으로 일일이
+        # 꺼진다(억제 방향 위양성 — 독립 검증 2026-08-03 F4).
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "# REGISTRY\n\n예시 형식:\n\n```markdown\n"
+                              "## 설치처 프로필\n\n- **사내** — 예시일 뿐\n```\n\n"
+                              "## 설치처 프로필\n\n- **개인** — 실제 값\n")
+            self.assertEqual(hook.read_profile(d), "개인")
+
     def test_unreadable_registry(self):
         with tempfile.TemporaryDirectory() as d:
             self._registry(d, "## 설치처 프로필\n\n- **사내** — 금지\n")
@@ -264,6 +282,20 @@ class MainFlow(unittest.TestCase):
             with mock.patch("builtins.open", side_effect=PermissionError):
                 self.assertIsNone(hook.read_marker(d, hook.WEEKLY_MARKER))
                 rc, out = run_main_in(d)
+            self.assertEqual(rc, 0)
+            self.assertIn("기록이 없습니다", out)  # 침묵이 아니라 전체 모드 유도
+
+    def test_c10_invalid_utf8_marker_treated_as_no_record(self):
+        # C10의 인코딩 갈래 — 마커가 UTF-8이 아니면 UnicodeDecodeError가
+        # main까지 새고 fail-open이 삼켜 리마인더가 통째로 침묵했다. R2가 고정한
+        # 실패 방향은 침묵이 아니라 점검 유도다(독립 검증 2026-08-03 F6 재현).
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "_workspace"), exist_ok=True)
+            with open(os.path.join(d, hook.WEEKLY_MARKER), "wb") as f:
+                f.write(b"\xff\xfe invalid")
+            self.assertIsNone(hook.days_since(
+                hook.read_marker(d, hook.WEEKLY_MARKER), hook.today_kst()))
+            rc, out = run_main_in(d)
             self.assertEqual(rc, 0)
             self.assertIn("기록이 없습니다", out)  # 침묵이 아니라 전체 모드 유도
 

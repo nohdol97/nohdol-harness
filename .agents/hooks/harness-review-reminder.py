@@ -74,7 +74,16 @@ def read_profile(base):
         # 리마인더가 통째로 침묵한다(마커 읽기의 HOOK-F6과 같은 실패 형태).
         return None
     in_section = False
+    in_fence = False
     for line in lines:
+        if line.lstrip().startswith("```"):
+            # 코드 펜스 안의 예시는 절이 아니다 — 이 파일에는 REGISTRY.md 형식을
+            # 보여주는 예시가 들어갈 수 있고, 그것을 프로필로 읽으면 그 설치처가
+            # 아닌 값으로 일일 점검이 꺼진다(억제 방향 위양성).
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
         if line.startswith("## "):
             in_section = line.strip() == PROFILE_HEADING
             continue
@@ -135,11 +144,13 @@ def build_message(mode, weekly_days, daily_days):
 def read_marker(base, relpath):
     path = os.path.join(base, relpath)
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             return f.read()
-    except OSError:
-        # 부재·읽기 실패(권한 등) 모두 "기록 없음"(R2) — 실패 방향은 침묵이 아니라
-        # 점검 유도다. 예외가 main까지 새면 fail-open이 삼켜 리마인더가 영구 침묵한다.
+    except Exception:
+        # 부재·읽기 실패(권한 등)·손상 모두 "기록 없음"(R2) — 실패 방향은 침묵이
+        # 아니라 점검 유도다. 예외가 main까지 새면 fail-open이 삼켜 리마인더가
+        # 영구 침묵한다. `except OSError`로는 UTF-8이 아닌 마커의
+        # UnicodeDecodeError를 놓쳤다(독립 검증 2026-08-03 F6 — 재현 확인).
         return None
 
 
