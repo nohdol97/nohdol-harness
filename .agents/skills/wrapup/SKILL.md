@@ -63,7 +63,7 @@ Invoke the judged target's skill as-is (no duplicate implementation): carryover 
 
 ### 5. Sweep subproject worktrees (delegated — `branch-workflow` owns the rule)
 
-Subproject work runs in worktrees under `project/.worktrees/`, and finished ones would otherwise pile up unnoticed. **Run `branch-workflow`'s "Worktree cleanup" section against every worktree this session's projects hold** — that skill is the single source for the merge measurement, the removal conditions, the command order, and the §3 batch confirmation. **Do not restate those conditions here**; a second copy drifts from the original and this skill re-implements nothing (core constraint above).
+Subproject work runs in worktrees under `project/.worktrees/`, and finished ones would otherwise pile up unnoticed. **Run `branch-workflow`'s "Worktree cleanup" section against every worktree this session's projects hold** — that skill is the single source for the merge measurement, the removal conditions, and the command order. A worktree whose GitHub PR is freshly measured `state: "MERGED"` and whose non-force removal succeeds is removed automatically **without a cleanup question**; fallback and local-only paths retain that source's confirmation boundary. **Do not restate the underlying checks here**; a second copy drifts from the original and this skill re-implements nothing (core constraint above).
 
 Placement is deliberate: cleanup runs **after** step 4's saving, so anything worth keeping is already in a carryover note or an issue before a directory is removed. The order is belt-and-braces rather than the actual guard — a worktree with unsaved work fails the removal check on its own.
 

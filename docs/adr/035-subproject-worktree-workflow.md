@@ -20,7 +20,7 @@
 2. **위치는 `project/.worktrees/<프로젝트>/<브랜치>/`.**
 3. **세션 cwd는 루트에 그대로 둔다.** worktree는 절대경로로만 접근한다(`git -C <worktree>`).
 4. **생성은 `origin/main`에서 직접 분기**한다 — `worktree add <절대경로> -b <type>/<설명> --no-track origin/main`. main 체크아웃을 갱신하거나 전환하지 않는다.
-5. **정리 판정의 정본은 `branch-workflow`**, `wrapup`은 세션 스윕 시점에 그리로 위임한다. 제거 조건은 ① `gh pr view --repo <owner/repo>`로 머지 실측 ② `git worktree remove`가 `--force` 없이 성공, 그리고 §3 사용자 확인 1회.
+5. **정리 판정의 정본은 `branch-workflow`**, `wrapup`은 세션 스윕 시점에 그리로 위임한다. 제거 조건은 ① `gh pr view --repo <owner/repo>`로 머지 실측 ② `git worktree remove`가 `--force` 없이 성공. 둘 다 통과하면 확인 없이 자동 정리하고, 하나라도 실패·판정 불가이면 남긴다.
 6. **서브에이전트에 위임할 때는 발행 프롬프트에 worktree 절대경로를 담는다** — `orchestrate`의 7요소 CONTEXT에 「작업 위치」를 추가해 규칙의 자리를 만들었다.
 
 ## 사유
@@ -35,13 +35,13 @@
 
 **ADR 022의 worktree 기각과 충돌하지 않는다.** 그때 기각한 것은 superpowers의 `using-git-worktrees` 스킬이었고, 기각 근거는 "Claude Code 네이티브 격리(Agent `isolation`)로 충분하다"였다 — 즉 **병렬 에이전트 격리** 축의 판단이다. 이번 것은 병렬이 아니라 단일 작업의 브랜치 격리이고, 네이티브 `isolation: worktree`는 발행 1회 동안만 사는 임시 worktree라 피처 브랜치를 며칠 쥐는 용도로 쓸 수 없다. 지식 소스 조회(§7 8항, 실시 2026-07-29)에서 얻은 축도 같은 방향이었다 — 수집된 3건이 모두 worktree를 **병렬 실행 격리**로 쓰고 있어, 이번 도입이 그 주류 용법과 다른 축임을 확인했다(큐레이션 노트는 근거가 아니므로 판단에만 반영, 인용 없음 — 사용 계약 1·2항). 그래서 두 종류는 공존하며, 스킬 본문에 "한쪽 규칙으로 다른 쪽을 정리하지 않는다"를 명시했다.
 
-**`gh`에 `--repo`가 붙는 이유(독립 검증 F1).** `gh`는 cwd로 대상 저장소를 정하는데 이 설계의 cwd는 루트 하네스다. 한정자 없이 부르면 하위 프로젝트 브랜치를 **루트 저장소에서** 찾게 되어, 없으면 폴백으로 조용히 내려가 정리가 영영 일어나지 않고, 브랜치 이름이 겹치면 하네스 PR의 `MERGED`를 돌려줘 미머지 작업에 `branch -D`를 승인한다. cwd를 옮기지 않기로 한 결정(위)이 만든 부작용이며, 값을 `git -C project/<이름> remote get-url origin`에서 뽑게 해 해소했다. `gh pr create`도 같은 이유로 한정한다.
+**`gh`에 `--repo`가 붙는 이유(독립 검증 F1).** `gh`는 cwd로 대상 저장소를 정하는데 이 설계의 cwd는 루트 하네스다. 한정자 없이 부르면 하위 프로젝트 브랜치를 **루트 저장소에서** 찾게 되어, 없으면 폴백으로 조용히 내려가 정리가 영영 일어나지 않고, 브랜치 이름이 겹치면 하네스 PR의 `MERGED`를 돌려줘 미머지 하위 프로젝트 worktree 자동 제거를 승인한다. cwd를 옮기지 않기로 한 결정(위)이 만든 부작용이며, 값을 `git -C project/<이름> remote get-url origin`에서 뽑게 해 해소했다. `gh pr create`도 같은 이유로 한정한다.
 
 **`--no-track`이 필요한 이유(검증 F4).** `-b <브랜치> origin/main`은 새 브랜치의 upstream을 `origin/main`으로 잡는다(실측: `## chore/x...origin/main`). 그러면 worktree에서 `git status`가 "behind"라며 `git pull`을 권하고, 그 권유를 따르면 main이 피처 브랜치로 머지된다 — 이 스킬이 rebase로 지키려는 이력을 정확히 반대로 만든다.
 
 **정리 판정을 `gh pr view` 1순위로 둔 이유는 실측 결과다.** 초안은 `git branch -r --contains`를 1순위로 적었으나, 실측(2026-07-29)에서 두 오판이 드러났다 — squash·rebase 머지는 커밋이 새로 쓰여 **머지된 브랜치가 미머지로 읽히고**(안 지우는 쪽이라 안전하지만, squash 머지 저장소는 이 경로로 영영 정리되지 않는다), 자기 커밋이 없는 브랜치는 tip이 곧 base라 **항상 머지로 읽힌다**. `gh pr view`는 PR 상태를 읽으므로 머지 방식과 무관하다. 폴백은 남기되 두 한계를 본문에 적었다.
 
-**`worktree remove`의 거부가 데이터 손실 검사인 이유.** 미커밋·미추적 파일이 있으면 `--force` 없이는 exit 128로 거부한다(실측). 규칙이 판단하는 대신 git이 기계적으로 막으므로, "손실 없음"이 믿음이 아니라 명령 결과가 된다 — metaskill 공통 규칙 11~13이 택한 설계 방향과 같다. 그럼에도 §3 확인을 남긴 것은 하위 규칙이 §3을 완화할 수 없기 때문이며(§2), 확인은 배치 1회라 절차 비용이 라운드로 늘지 않는다.
+**`worktree remove`의 거부가 데이터 손실 검사인 이유.** 미커밋·미추적 파일이 있으면 `--force` 없이는 exit 128로 거부한다(실측). 규칙이 판단하는 대신 git이 기계적으로 막으므로, "손실 없음"이 믿음이 아니라 명령 결과가 된다 — metaskill 공통 규칙 11~13이 택한 설계 방향과 같다. PR 머지 실측까지 통과한 worktree에는 고유한 미저장 상태가 없으므로, 이 정확한 경로를 §3의 파괴 작업이 아니라 **검증된 정리**로 분류한다. 따라서 `wrapup`은 확인 없이 제거하고, 어느 검사든 실패하면 보존한다(2026-08-02 사용자 결정).
 
 **정본을 `branch-workflow`에 둔 이유.** `wrapup`은 스스로를 "얇은 오케스트레이터 — 저장·적용 로직을 재구현하지 않는다"로 규정한다. 브랜치의 생애주기를 쥔 쪽이 `branch-workflow`이므로 판정 규칙이 거기 살고, `wrapup`은 세션 전체 스윕 시점에 호출만 한다. 두 곳에 조건을 적으면 사본이 원본과 어긋난다.
 
@@ -56,6 +56,7 @@
 - `.agents/skills/README.ko.md` — branch-workflow·wrapup·carryover 절 갱신
 - `docs/README.md` — MOC 행 추가
 - `project/.worktrees/` — 신설 디렉토리 규약(gitignore 상속, 파일 커밋 없음)
+- **2026-08-02 자동 정리 개정 영향**: `AGENTS.md` §3, `AGENTS.ko.md`, `.agents/skills/branch-workflow/SKILL.md`, `.agents/skills/wrapup/SKILL.md`, `.agents/skills/README.ko.md`, `docs/harness-changelog.md`, `_workspace/harness-ops-log.md`, `_workspace/wrapup-auto-cleanup/` — 완료 PR의 무질문 경로와 fallback·강제 삭제 보존 경계를 동기화하고 검증·운영 기록을 남김
 
 ## 대안과 기각 사유
 
