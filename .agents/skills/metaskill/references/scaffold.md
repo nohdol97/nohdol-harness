@@ -16,11 +16,11 @@ Minimum items to confirm:
 
 Read documents such as README before asking about role/purpose (observation first). **Do not ask about related projects** — they get updated when projects are woven together in real work (root AGENTS.md §1).
 
-### 1.1 Carry-in question (ask once, first — only when REGISTRY.md has a 「사내 반입 경계」 section)
+### 1.1 Carry-in question (ask once, first — only when REGISTRY.md has a 「배포처 이관 경계」 section)
 
-One question: *"이 프로젝트, 사내로 가져가서 후속 작업할 건가요?"* The answer goes into the REGISTRY.md registry row's 반입 column (`사내` / `로컬`), and never defaults — an unasked project is recorded `미확인`, because guessing `로컬` for a carry-in project yields a spec with no boundary and the error only surfaces on the corporate side.
+One question: *"이 프로젝트, 다른 곳(배포처)으로 이관해서 후속 작업할 건가요?"* The answer goes into the REGISTRY.md registry row's 이관 column (`배포처` / `로컬`), and never defaults — an unasked project is recorded `미확인`, because guessing `로컬` for a carry-in project yields a spec with no boundary and the error only surfaces on the corporate side.
 
-**This question ranks above the deployment-method item and rewrites it.** On `사내`, deployment target, CI/CD, and auth are by definition decided against corporate state that cannot be seen from here, so do not press the user for them — record deployment as "사내 후속(미결정)" and treat the guardrail scope as local-execution only. Asking both without this ordering either duplicates the question or produces a contradictory pair (deployment `k8s` + carry-in `사내`) with no rule saying which wins. On `로컬`, ask the deployment question as usual.
+**This question ranks above the deployment-method item and rewrites it.** On `사내`, deployment target, CI/CD, and auth are by definition decided against corporate state that cannot be seen from here, so do not press the user for them — record deployment as "배포처 후속(미결정)" and treat the guardrail scope as local-execution only. Asking both without this ordering either duplicates the question or produces a contradictory pair (deployment `k8s` + carry-in `사내`) with no rule saying which wins. On `로컬`, ask the deployment question as usual.
 
 If the section is absent from REGISTRY.md, skip this step silently — it is install-site-specific (an install site with no corporate carry-in should not be asked about one). Do not create the section here; `harness-install` owns it.
 
@@ -86,11 +86,11 @@ Candidates are a starting point, not the answer — at creation time, check the 
 
 Add a row to the root REGISTRY.md project registry:
 
-| Name | Path | Stack | Role | Related projects | Harness | 반입 |
+| Name | Path | Stack | Role | Related projects | Harness | 이관 |
 |---|---|---|---|---|---|---|
 | web | `project/web/` | Next.js | user web (based on README observation) | 미기록 | ✅ | 로컬 |
 
-Related projects start as "미기록" (unrecorded) — the session that weaves them together in real work updates it (root AGENTS.md §1). The 반입 column carries the step-1.1 answer (`사내` / `로컬`), or `미확인` when the section does not exist and the question was skipped — never a guess.
+Related projects start as "미기록" (unrecorded) — the session that weaves them together in real work updates it (root AGENTS.md §1). The 이관 column carries the step-1.1 answer (`배포처` / `로컬`), or `미확인` when the section does not exist and the question was skipped — never a guess.
 
 ## 5. Wrap-up
 
