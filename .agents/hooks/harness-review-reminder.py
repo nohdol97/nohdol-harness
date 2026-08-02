@@ -16,6 +16,7 @@
 """
 import datetime
 import os
+import re
 import sys
 
 try:
@@ -29,6 +30,13 @@ WEEKLY_DAYS = 7
 DAILY_DAYS = 1
 WEEKLY_MARKER = os.path.join("_workspace", ".harness-review-last")
 DAILY_MARKER = os.path.join("_workspace", ".harness-review-daily-last")
+
+# 설치처 프로필(§5·ADR 012)의 단일 출처는 REGISTRY.md다. 미추적 파일이라
+# 사내 설치처에서도 이 판정 입력만은 그 기계가 쥔다.
+REGISTRY = "REGISTRY.md"
+PROFILE_HEADING = "## 설치처 프로필"
+CORPORATE = "사내"
+_PROFILE_ITEM = re.compile(r"^\s*[-*]\s*\*\*(개인|사내)\*\*")
 
 # 경과일의 '오늘'은 한국 표준시(KST, UTC+9 — DST 없음) 기준이다. 컨테이너가
 # UTC면 일일/주간 경계가 사용자 타임존과 하루 어긋난다(2026-07-16 사용자 지적).
@@ -51,11 +59,44 @@ def days_since(marker_content, today):
     return (today - last).days
 
 
-def decide_mode(weekly_days, daily_days):
+def read_profile(base):
+    """REGISTRY.md 「설치처 프로필」 절의 값('개인'/'사내'). 미상은 None(R8).
+
+    절 안의 굵은 라벨 목록 항목만 읽는다 — 다른 절의 산문도 두 단어를 쓰므로
+    전체 검색은 엉뚱한 절을 프로필로 읽는다. 어떤 실패도 None이며, 미상은
+    억제하지 않는 방향이다(decide_mode 주석 참고).
+    """
+    try:
+        with open(os.path.join(base, REGISTRY), encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+    except Exception:
+        # 부재·권한·손상 모두 미상. 여기서 예외가 새면 fail-open이 삼켜
+        # 리마인더가 통째로 침묵한다(마커 읽기의 HOOK-F6과 같은 실패 형태).
+        return None
+    in_section = False
+    for line in lines:
+        if line.startswith("## "):
+            in_section = line.strip() == PROFILE_HEADING
+            continue
+        if in_section:
+            m = _PROFILE_ITEM.match(line)
+            if m:
+                return m.group(1)
+    return None
+
+
+def decide_mode(weekly_days, daily_days, profile=None):
     """경과일 → 실행 모드(R3): 'full' > 'daily' > None(침묵). 기록 없음은 경과로 취급."""
     if weekly_days is None or weekly_days >= WEEKLY_DAYS:
         return "full"
     if daily_days is None or daily_days >= DAILY_DAYS:
+        # R8 — 사내 설치처는 추적 하네스 파일의 수정·커밋·푸시가 금지(§5·ADR 012)라
+        # 일일이 찾은 확장 신호 ①~③을 그 기계에서 적용할 수 없다. 주간은 남긴다:
+        # 무결성 점검(심볼릭 링크·Codex 어댑터 드리프트)은 하네스를 고치지 않아도
+        # 즉시 값이 있다. 프로필 미상은 억제하지 않는다 — 억제 방향으로 fail하면
+        # 개인 설치처에서 판독이 한 번 어긋난 순간 일일 점검이 영구 침묵한다(R2와 같은 논리).
+        if profile == CORPORATE:
+            return None
         return "daily"
     return None
 
@@ -109,7 +150,8 @@ def main():
         today = today_kst()
         weekly_days = days_since(read_marker(base, WEEKLY_MARKER), today)
         daily_days = days_since(read_marker(base, DAILY_MARKER), today)
-        msg = build_message(decide_mode(weekly_days, daily_days), weekly_days, daily_days)
+        mode = decide_mode(weekly_days, daily_days, read_profile(base))
+        msg = build_message(mode, weekly_days, daily_days)
         if msg:
             print(msg)
     except Exception:

@@ -74,7 +74,7 @@ The harness reaches infrastructure (k8s, AWS), so mistake blast radius exceeds t
 
 ## 8. Evolution Triggers (automation judgment rules)
 
-On a signal below, propose creation/improvement/retirement; apply only after approval via metaskill. `harness-review` runs daily light (①–③) and weekly full (adds ④ + integrity). SessionStart markers `.harness-review-daily-last`/`.harness-review-last` trigger 1/7-day runs.
+On a signal below, propose creation/improvement/retirement; apply only after approval via metaskill. `harness-review` runs daily light (①–③) and weekly full (adds ④ + integrity). SessionStart markers `.harness-review-daily-last`/`.harness-review-last` trigger 1/7-day runs. **On a `사내` profile the automatic daily run is off** — that site may not edit tracked harness files (§5), so daily findings only queue; weekly stays on because its integrity checks pay off without editing. An explicit user request still runs either mode.
 
 | Signal | Criterion |
 |---|---|

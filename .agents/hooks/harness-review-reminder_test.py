@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""harness-review-reminder 훅 회귀 테스트 — 스펙 완료 기준 C1~C7.
+"""harness-review-reminder 훅 회귀 테스트 — 스펙 완료 기준 C1~C14.
 
 스펙: docs/specs/2026-07-14-harness-review-reminder-hook.md
 """
@@ -65,6 +65,69 @@ class DecideMode(unittest.TestCase):
     def test_all_fresh_silent(self):  # C4
         self.assertIsNone(hook.decide_mode(3, 0))
         self.assertIsNone(hook.decide_mode(0, 0))
+
+    def test_c11_corporate_profile_suppresses_daily(self):
+        # C11 — 사내 설치처는 하네스 수정·커밋·푸시가 금지(§5·ADR 012)라
+        # 일일 점검이 찾은 확장 신호를 적용할 수 없다. 탐지만 하는 회차의
+        # 비용($1.95/회 실측)을 없앤다.
+        self.assertIsNone(hook.decide_mode(3, 1, "사내"))
+        self.assertIsNone(hook.decide_mode(3, None, "사내"))
+
+    def test_c12_corporate_profile_keeps_weekly(self):
+        # C12 — 주간은 억제하지 않는다. 무결성 점검(심볼릭 링크·Codex 어댑터
+        # 드리프트)은 하네스를 고치지 않아도 사내에서 즉시 값이 있다.
+        self.assertEqual(hook.decide_mode(7, 1, "사내"), "full")
+        self.assertEqual(hook.decide_mode(None, None, "사내"), "full")
+
+    def test_c13_personal_profile_unchanged(self):
+        # C13 — 개인 프로필은 기존 동작 그대로.
+        self.assertEqual(hook.decide_mode(3, 1, "개인"), "daily")
+        self.assertEqual(hook.decide_mode(7, 1, "개인"), "full")
+
+    def test_c14_unknown_profile_fails_open_to_daily(self):
+        # C14 — 프로필 미상(REGISTRY.md 부재·절 부재·판독 실패)은 점검 유도다.
+        # 억제 방향으로 fail하면 개인 설치처에서 판독이 한 번 어긋난 순간
+        # 일일 점검이 영구 침묵한다(R2 실패 방향과 같은 논리).
+        self.assertEqual(hook.decide_mode(3, 1, None), "daily")
+        self.assertEqual(hook.decide_mode(3, 1, "미상값"), "daily")
+
+
+class ReadProfile(unittest.TestCase):
+    def _registry(self, tmpdir, content):
+        with open(os.path.join(tmpdir, hook.REGISTRY), "w", encoding="utf-8") as f:
+            f.write(content)
+
+    def test_personal(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "# REGISTRY\n\n## 설치처 프로필\n\n"
+                              "- **개인** — 하네스 파일 수정·커밋·푸시 가능.\n")
+            self.assertEqual(hook.read_profile(d), "개인")
+
+    def test_corporate(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "# REGISTRY\n\n## 설치처 프로필\n\n"
+                              "- **사내** — 하네스 수정·푸시 금지, 개선은 대기 큐\n")
+            self.assertEqual(hook.read_profile(d), "사내")
+
+    def test_only_reads_the_profile_section(self):
+        # 다른 절의 산문이 '사내'/'개인'을 언급해도 프로필로 읽지 않는다 —
+        # 실제 REGISTRY.md의 「배포처 이관 경계」 절이 두 단어를 모두 쓴다.
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "## 설치처 프로필\n\n- **개인** — 수정 가능.\n\n"
+                              "## 배포처 이관 경계\n\n- **사내** 후속 작업은 …\n")
+            self.assertEqual(hook.read_profile(d), "개인")
+
+    def test_missing_file_and_missing_section(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(hook.read_profile(d))  # REGISTRY.md 부재
+            self._registry(d, "# REGISTRY\n\n## 프로젝트 레지스트리\n\n표…\n")
+            self.assertIsNone(hook.read_profile(d))  # 절 부재
+
+    def test_unreadable_registry(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "## 설치처 프로필\n\n- **사내** — 금지\n")
+            with mock.patch("builtins.open", side_effect=PermissionError):
+                self.assertIsNone(hook.read_profile(d))
 
 
 class BuildMessage(unittest.TestCase):
@@ -148,6 +211,41 @@ class MainFlow(unittest.TestCase):
             rc, out = run_main_in(d)
             self.assertEqual(rc, 0)
             self.assertEqual(out, "")
+
+    def _profile(self, tmpdir, value):
+        with open(os.path.join(tmpdir, hook.REGISTRY), "w", encoding="utf-8") as f:
+            f.write("# REGISTRY\n\n## 설치처 프로필\n\n- **%s** — …\n" % value)
+
+    def test_c11_main_corporate_daily_silent(self):
+        with tempfile.TemporaryDirectory() as d:
+            recent = (hook.today_kst() - datetime.timedelta(days=2)).isoformat()
+            yesterday = (hook.today_kst() - datetime.timedelta(days=1)).isoformat()
+            self._write(d, hook.WEEKLY_MARKER, recent)
+            self._write(d, hook.DAILY_MARKER, yesterday)
+            self._profile(d, "사내")
+            rc, out = run_main_in(d)
+            self.assertEqual(rc, 0)
+            self.assertEqual(out, "")  # 억제 — 안내 줄도 남기지 않는다(2026-07-16 노이즈 결정)
+
+    def test_c12_main_corporate_weekly_still_fires(self):
+        with tempfile.TemporaryDirectory() as d:
+            old = (hook.today_kst() - datetime.timedelta(days=8)).isoformat()
+            self._write(d, hook.WEEKLY_MARKER, old)
+            self._write(d, hook.DAILY_MARKER, hook.today_kst().isoformat())
+            self._profile(d, "사내")
+            rc, out = run_main_in(d)
+            self.assertEqual(rc, 0)
+            self.assertIn("전체", out)
+
+    def test_c14_main_no_registry_daily_fires(self):
+        with tempfile.TemporaryDirectory() as d:
+            recent = (hook.today_kst() - datetime.timedelta(days=2)).isoformat()
+            yesterday = (hook.today_kst() - datetime.timedelta(days=1)).isoformat()
+            self._write(d, hook.WEEKLY_MARKER, recent)
+            self._write(d, hook.DAILY_MARKER, yesterday)
+            rc, out = run_main_in(d)  # REGISTRY.md 없음
+            self.assertEqual(rc, 0)
+            self.assertIn("일일 경량", out)
 
     def test_c5_garbage_weekly_marker_full(self):
         with tempfile.TemporaryDirectory() as d:
