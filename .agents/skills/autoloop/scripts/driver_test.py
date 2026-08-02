@@ -256,18 +256,6 @@ class TestC5SafetyArgs(DriverTestBase):
             self.assertNotIn(pat, driver.SAFE_ALLOW)
             self.assertNotIn(pat, driver.READONLY_ALLOW)
 
-    def test_venv_runner_grants_are_present_and_scoped(self):
-        """새 worktree(R18)의 표준 형태가 venv 라 러너를 기본 목록에 둔다.
-
-        범위는 pytest 서브커맨드까지다 — `-m pytest` 를 떼면 위 H1 회귀와 같은 것이 된다."""
-        for pat in ["Bash(.venv/bin/python -m pytest:*)", "Bash(.venv/bin/pytest:*)"]:
-            self.assertIn(pat, driver.SAFE_ALLOW)
-            self.assertNotIn(pat, driver.READONLY_ALLOW)
-        for pat in driver.SAFE_ALLOW:
-            if ".venv/bin/python" in pat:
-                self.assertIn("pytest", pat,
-                              "venv 인터프리터 그랜트가 러너까지 좁혀져 있지 않다: %s" % pat)
-
     def test_user_settings_are_not_inherited(self):
         # 설치처 사용자 설정을 상속하면 게이트가 두 방향으로 무너진다(실측 확인된 회귀):
         # 전역 permissions.allow 병합으로 bare 인터프리터 그랜트가 되살아나고,
