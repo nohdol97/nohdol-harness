@@ -16,28 +16,26 @@
 """
 import datetime
 import os
-import re
 import sys
 
 try:
-    # stdio UTF-8 재구성의 단일 원본(스펙 2026-07-15-hooks-common-bootstrap).
-    from _common import utf8_stdio
+    # stdio UTF-8 재구성과 설치처 프로필 판독의 단일 원본
+    # (스펙 2026-07-15-hooks-common-bootstrap). 프로필 판독기는 review-gate와
+    # 공유하므로 _common에 있다(ADR 038) — 여기서는 이름만 다시 노출한다.
+    from _common import CORPORATE, read_profile, utf8_stdio
 except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fail-open)
+    CORPORATE = "사내"
+
     def utf8_stdio():
         pass
+
+    def read_profile(base):
+        return None  # 미상 — 일일 점검을 억제하지 않는 방향
 
 WEEKLY_DAYS = 7
 DAILY_DAYS = 1
 WEEKLY_MARKER = os.path.join("_workspace", ".harness-review-last")
 DAILY_MARKER = os.path.join("_workspace", ".harness-review-daily-last")
-
-# 설치처 프로필(§5·ADR 012)의 단일 출처는 REGISTRY.md다. 미추적 파일이라
-# 사내 설치처에서도 이 판정 입력만은 그 기계가 쥔다.
-REGISTRY = "REGISTRY.md"
-PROFILE_HEADING = "## 설치처 프로필"
-CORPORATE = "사내"
-_PROFILE_ITEM = re.compile(r"^\s*[-*]\s*\*\*(개인|사내)\*\*")
-_HEADING = re.compile(r"^#{1,6}\s")
 
 # 경과일의 '오늘'은 한국 표준시(KST, UTC+9 — DST 없음) 기준이다. 컨테이너가
 # UTC면 일일/주간 경계가 사용자 타임존과 하루 어긋난다(2026-07-16 사용자 지적).
@@ -58,44 +56,6 @@ def days_since(marker_content, today):
     except ValueError:
         return None
     return (today - last).days
-
-
-def read_profile(base):
-    """REGISTRY.md 「설치처 프로필」 절의 값('개인'/'사내'). 미상은 None(R8).
-
-    절 안의 굵은 라벨 목록 항목만 읽는다 — 다른 절의 산문도 두 단어를 쓰므로
-    전체 검색은 엉뚱한 절을 프로필로 읽는다. 어떤 실패도 None이며, 미상은
-    억제하지 않는 방향이다(decide_mode 주석 참고).
-    """
-    try:
-        with open(os.path.join(base, REGISTRY), encoding="utf-8", errors="replace") as f:
-            lines = f.read().splitlines()
-    except Exception:
-        # 부재·권한·손상 모두 미상. 여기서 예외가 새면 fail-open이 삼켜
-        # 리마인더가 통째로 침묵한다(마커 읽기의 HOOK-F6과 같은 실패 형태).
-        return None
-    in_section = False
-    in_fence = False
-    for line in lines:
-        if line.lstrip().startswith("```"):
-            # 코드 펜스 안의 예시는 절이 아니다 — 이 파일에는 REGISTRY.md 형식을
-            # 보여주는 예시가 들어갈 수 있고, 그것을 프로필로 읽으면 그 설치처가
-            # 아닌 값으로 일일 점검이 꺼진다(억제 방향 위양성).
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        if _HEADING.match(line):
-            # 어느 레벨의 제목이든 절을 닫는다. `## `만 닫으면 `#`·`###` 뒤의
-            # 굵은 라벨이 프로필로 읽혀, 그 설치처가 아닌 값으로 일일 점검이
-            # 꺼진다 — 억제 방향 위양성이다(독립 검증 2026-08-03 B3).
-            in_section = line.strip() == PROFILE_HEADING
-            continue
-        if in_section:
-            m = _PROFILE_ITEM.match(line)
-            if m:
-                return m.group(1)
-    return None
 
 
 def decide_mode(weekly_days, daily_days, profile=None):

@@ -44,6 +44,11 @@ HOOK_FILES = [
     ("agentsview_daemon_hook", "agentsview-daemon.py"),
     ("harness_review_reminder_hook", "harness-review-reminder.py"),
     ("worklog_reminder_hook", "worklog-reminder.py"),
+    # 발행 게이트 2종도 _common 소비자다. tier-gate는 ADR 037 때 이 목록에
+    # 들어오지 않아 C3·C4(공통 사용·유실 폴백)가 검사되지 않고 있었고,
+    # review-gate가 같은 계층에 붙으면서 같은 구멍이 둘이 됐다(독립 검증 F6).
+    ("tier_gate_hook", "tier-gate.py"),
+    ("review_gate_hook", "review-gate.py"),
 ]
 
 

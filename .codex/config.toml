@@ -29,6 +29,13 @@ matcher = "Agent|Task|spawn_agent"
 type = "command"
 command = "f=\"$PWD/.agents/hooks/tier-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
 
+# review-gate — 사내 프로필에서 검증 목적 발행 차단(ADR 038). 같은 매처를
+# 공유하므로 tier-gate 옆에 붙인다. 매처가 어긋나면 발화하지 않을 뿐이고,
+# 이 훅의 fail-open은 "검증이 돌아간다" 방향이라 미발화의 피해가 없다.
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "f=\"$PWD/.agents/hooks/review-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
+
 [[hooks.SessionStart]]
 matcher = "startup|resume|clear"
 

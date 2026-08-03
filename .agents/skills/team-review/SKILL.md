@@ -26,6 +26,13 @@ Count the target's (diff·PR·spec document·harness change) changed files and r
 
 If the boundary is ambiguous, start solo; if the solo reviewer reports "scope exceeded", promote to team.
 
+**Install-site gate (before mode selection — `사내` profile only)**: where REGISTRY.md's 「설치처 프로필」 records `사내`, verification-purpose dispatch is off (ADR 038 — contract single source: orchestrate's Verification-mandatory rule). Which branch you take depends on **how this skill was reached**, and the two are not the same situation:
+
+- **Routed here automatically** — from orchestrate's verification phase, a branch-workflow finish, or any other skill's review step: do not dispatch. Say in one line that the profile exempted it, and hand the target back to the caller, whose own exemption clause defines the self-verification and the record that replace this skill.
+- **The user asked for a review** (in their own words, this session): run normally, both modes. The cost is approved at the point of asking, so put `[review-ok]` in each reviewer and integrator prompt. **Only the `reviewer` type is hook-blocked without it** — on integrator the marker buys no passage, it records that a person asked, which is why it is owed all the same. **Never add it on the routed path**: that record is the exemption's only enforcement, and attaching it to a dispatch nobody requested empties it.
+
+Neither branch touches the perspective axes or the integration criteria below — this gate decides whether reviewers are dispatched at all, not how they judge.
+
 **Agent-call budget**: record the expected reviewer count after choosing applicable perspectives. Preserve correctness/tests and any security·infra perspective required by the target, then omit non-applicable axes. Rework uses the **same reviewer thread** for **delta re-verification** with only the new diff, latest tests, and changed completion criteria. Add another reviewer only for a **new independent risk axis**, an unavailable prior thread, or author/verifier independence. Do not respawn the same perspective merely to obtain a fresh context.
 
 **Review-window quiz (both modes — **sub-project** PR-bound work only; harness changes are exempt on every path, §13)**: right after dispatching the review (solo reviewer or team fan-out, background per item 4 below), run the §13-0 comprehension quiz with the user in the same turn (quiz spec single source: branch-workflow finish 4) — quiz and review in parallel; misalignment surfaces alongside or before the verdict.

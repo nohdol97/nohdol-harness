@@ -41,7 +41,7 @@ Regardless of outcome, write a `docs/proposals/YYYY-MM-DD-<tool>-<review|adoptio
 - **harness-install section**: add a default-install (or offered) step under §3 of harness-install. **The §3 runtime-egress mitigation must live HERE, in the executed doc — not only in the proposal** (runtime egress happens when the user later runs the tool, so the actionable install doc is the carrier — §12; real case: a real adopted-tool F1 finding — changelog 2026-07-25). Note the marketplace-blocked fallback for `/plugin` tools on corporate networks.
 - **Routing**: if the tool exposes auto-triggering skills, decide auto-route vs **direct-invocation-only** (the default for token-heavy or egress-sensitive tools) and state it in the CLAUDE.md routing anchor + §7 precedence — the enforcement is a documented model-followed policy (external global frontmatter is not edited, §11).
 - **Boundary encoding**: if the tool produces an artifact the model might over-trust (a cached code graph, etc.), state "not harness-agent ground truth" not only in the main-loop docs but in the `explorer`/`architect` definitions that would actually use it (subagents don't inherit CLAUDE.md).
-- **Verify**: a normative harness change → independent `reviewer` verification (background dispatch) before commit.
+- **Verify**: a normative harness change → independent `reviewer` verification (background dispatch) before commit. On a `사내` profile that dispatch is exempted and replaced by recorded self-verification (ADR 038; contract single source: orchestrate's Verification-mandatory rule).
 
 ### 6. Korean views + completion
 

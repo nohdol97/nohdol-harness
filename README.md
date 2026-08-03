@@ -33,7 +33,7 @@ nohdol-harness/
 │   │   ├── carryover/       # 세션 이월 노트 (슬래시 전용) — 남길 작업 선택 → _workspace 로컬 md, 다음 세션 재개 (work-tracker와 공존)
 │   │   ├── autoloop/        # 자율 멀티세션 루프 발사대 — 세션 외부 드라이버(scripts/driver.py)가 headless claude -p 반복 기동, 게이트 3종(안전·검증·정지) (ADR 025)
 │   │   └── wrapup/          # clear 전 마무리 관문 (슬래시 전용) — 세션 작업 훑기 → 개선 신호 포착·제안(harness-review 상보) → 범위로 저장 대상 판단해 work-tracker/carryover 위임(로컬 무확인·work-tracker 등록만 직전 확인) → worktree 정리 → 접촉한 프로젝트 체크아웃 ff → /clear 안내 (얇은 오케스트레이터)
-│   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), integrity-check.py (구조 무결성 결정론 점검 — harness-review 주간용, ADR 026), gate-reminder.py (진단→구현 전환점의 orchestrate 게이트 상기 — 세션당 1회 차단, ADR 028), tier-gate.py (서브에이전트 발행에 9절 티어 모델 지정 강제 — 미지정은 세션 모델 상속이라 표가 적용되지 않는다, 스펙 2026-08-03), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성, 스펙 2026-07-15)
+│   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), integrity-check.py (구조 무결성 결정론 점검 — harness-review 주간용, ADR 026), gate-reminder.py (진단→구현 전환점의 orchestrate 게이트 상기 — 세션당 1회 차단, ADR 028), tier-gate.py (서브에이전트 발행에 9절 티어 모델 지정 강제 — 미지정은 세션 모델 상속이라 표가 적용되지 않는다, 스펙 2026-08-03), review-gate.py (사내 프로필에서 `reviewer` 발행 차단 — 대체는 메인 루프 자체 검증+면제 기록, 명시 요청은 `[review-ok]`로 통과. 규칙은 리뷰 fan-in `integrator`·infra-specialist 리뷰 모드까지 끄지만 그 둘은 비리뷰 용도가 있어 타입으로 막지 않는다, ADR 038), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성 + 설치처 프로필 판독, 스펙 2026-07-15)
 │   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + secret-gate.py (형식 확정 자격증명 패턴 커밋 차단, 도구 무관 — ADR 023) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
 │   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
 ├── .claude/               # Claude Code 호환 계층 — .agents/ 에이전트·스킬 심링크 + settings.json 세션 훅 등록
@@ -54,7 +54,7 @@ nohdol-harness/
 ## 동작 방식
 
 1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스(`.agents/projects/<이름>/AGENTS.md`)를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md) 하위 프로젝트 하네스는 전부 이 워크스페이스에서 중앙 관리하며, 프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다.
-2. **구현·다단계 작업**은 `orchestrate`의 팀 필요성 판정(Phase 0-1)을 거친다 — 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 규모에 맞게 정하고, 구현이 포함되면 reviewer 독립 검증을 반드시 포함한다. 팀은 표준 로스터 7종(explorer·architect·troubleshooter·implementer·infra-specialist·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
+2. **구현·다단계 작업**은 `orchestrate`의 팀 필요성 판정(Phase 0-1)을 거친다 — 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 규모에 맞게 정하고, 구현이 포함되면 reviewer 독립 검증을 반드시 포함한다(`사내` 프로필만 예외 — 메인 루프 자체 검증+면제 기록으로 대체, ADR 038). 팀은 표준 로스터 7종(explorer·architect·troubleshooter·implementer·infra-specialist·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
 3. **새 프로젝트**는 "프로젝트 새로 만들어줘"라고 지시하면 `metaskill`이 인터뷰 → 스캐폴딩 → 하네스 생성 → 레지스트리 등록까지 수행한다.
 4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절). TDD는 전역 `core.hooksPath`의 git commit-msg 훅(`tdd-gate`)이 강제한다 — 코드 변경에 테스트가 없으면 커밋이 차단되며, Claude Code·Codex·수동 커밋 등 **도구와 무관**하게 걸린다(ADR 014·015).
 5. **작업 추적**: 세션을 넘는 작업은 `work-tracker`가 프로젝트 저장소의 GitHub Issues에 상태(태스크·진행 로그)를 영속화한다 — "이어서 하자"로 재개한다 (AGENTS.md 14절). 세션이 미커밋 작업을 남긴 채 닫히면 다음 세션 시작 시 `worklog-reminder` 훅이 진행 로그·재개를 환기한다(claude-mem 착안, ADR 018).

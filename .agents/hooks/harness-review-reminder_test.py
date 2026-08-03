@@ -19,6 +19,11 @@ _spec = importlib.util.spec_from_file_location(
 hook = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hook)
 
+# 프로필 판독기는 review-gate와 공유하므로 _common이 원본이다(ADR 038).
+# 이 스위트는 훅이 재노출한 이름(hook.read_profile)으로 계속 판정한다 — 이관
+# 후에도 리마인더가 프로필을 읽는지가 검사 대상이기 때문이다(스펙 C11).
+import _common  # noqa: E402
+
 TODAY = datetime.date(2026, 7, 14)
 
 
@@ -94,7 +99,7 @@ class DecideMode(unittest.TestCase):
 
 class ReadProfile(unittest.TestCase):
     def _registry(self, tmpdir, content):
-        with open(os.path.join(tmpdir, hook.REGISTRY), "w", encoding="utf-8") as f:
+        with open(os.path.join(tmpdir, _common.REGISTRY), "w", encoding="utf-8") as f:
             f.write(content)
 
     def test_personal(self):
@@ -247,7 +252,7 @@ class MainFlow(unittest.TestCase):
             self.assertEqual(out, "")
 
     def _profile(self, tmpdir, value):
-        with open(os.path.join(tmpdir, hook.REGISTRY), "w", encoding="utf-8") as f:
+        with open(os.path.join(tmpdir, _common.REGISTRY), "w", encoding="utf-8") as f:
             f.write("# REGISTRY\n\n## 설치처 프로필\n\n- **%s** — …\n" % value)
 
     def test_c11_main_corporate_daily_silent(self):

@@ -84,6 +84,14 @@ def make_good_fixture(root):
           'matcher = "apply_patch"\n'
           "[[hooks.PreToolUse.hooks]]\n"
           'type = "command"\ncommand = "python3 .agents/hooks/gate-reminder.py --check"\n\n'
+          # 발행 게이트 2종(ADR 037·038) — R18이 `Agent` 매처 블록을 보게 된 뒤
+          # 정상 픽스처도 이것을 갖고 있어야 한다.
+          "[[hooks.PreToolUse]]\n"
+          'matcher = "Agent|Task|spawn_agent"\n'
+          "[[hooks.PreToolUse.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/tier-gate.py"\n'
+          "[[hooks.PreToolUse.hooks]]\n"
+          'type = "command"\ncommand = "python3 .agents/hooks/review-gate.py"\n\n'
           "[[hooks.PostToolUse]]\n"
           'matcher = "Bash|shell|local_shell"\n'
           "[[hooks.PostToolUse.hooks]]\n"
@@ -485,6 +493,25 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("FAIL R18", out)
         self.assertIn("matcher", out)
+
+    def test_codex_config_missing_dispatch_gates_fails(self):
+        """R18: 발행 게이트 등록을 통째로 지우면 FAIL한다.
+
+        이 항목이 없던 동안 `Agent` 매처 블록 전체를 삭제해도 R18이 PASS였다
+        (독립 검증 2026-08-03 F6). ADR 037 때 생겨 ADR 038로 둘이 됐으므로,
+        회귀를 잡는 것은 이 케이스 하나다.
+        """
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        start = text.index('[[hooks.PreToolUse]]\nmatcher = "Agent|Task|spawn_agent"')
+        end = text.index("[[hooks.PostToolUse]]")
+        write(path, text[:start] + text[end:])
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("tier-gate.py", out)
+        self.assertIn("review-gate.py", out)
 
     def test_codex_config_wrong_command_fails(self):
         """R18: handler가 실제 스크립트·mode를 잃으면 FAIL한다."""

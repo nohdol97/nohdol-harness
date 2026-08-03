@@ -374,7 +374,10 @@ CODEX_DOC_MAX = 65_536
 CODEX_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse"}
 CODEX_HOOK_MATCHERS = {
     "SessionStart": {"startup", "resume", "clear"},
-    "PreToolUse": {"apply_patch"},
+    # 발행 게이트 2종은 `Agent` 매처에 걸린다. 이 항목이 없던 동안 두 등록을
+    # 통째로 지워도 R18이 PASS였다(독립 검증 2026-08-03 F6 — ADR 037 때 생겨
+    # ADR 038로 둘이 됐다). `spawn_agent`는 Codex 도구명 미실측이라 넣지 않는다.
+    "PreToolUse": {"apply_patch", "Agent"},
     "PostToolUse": {"Bash", "shell", "local_shell"},
 }
 CODEX_HOOK_COMMANDS = {
@@ -383,7 +386,11 @@ CODEX_HOOK_COMMANDS = {
         ("harness-review-reminder.py",),
         ("worklog-reminder.py",),
     ],
-    "PreToolUse": [("gate-reminder.py", "--check")],
+    "PreToolUse": [
+        ("gate-reminder.py", "--check"),
+        ("tier-gate.py",),
+        ("review-gate.py",),
+    ],
     "PostToolUse": [("gate-reminder.py", "--record")],
 }
 
