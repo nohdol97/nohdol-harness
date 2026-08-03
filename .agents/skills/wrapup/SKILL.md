@@ -69,7 +69,36 @@ Placement is deliberate: cleanup runs **after** step 4's saving, so anything wor
 
 If no worktree exists, say nothing (an empty cleanup report is noise). Report survivors in one line with their reason — they are the next session's starting points.
 
-### 6. Guide `/clear` + next-session start prompt
+### 6. Fast-forward the projects this session touched
+
+Worktrees are gone, so the `project/<name>/` checkouts are the only copies left — and **nothing updates them.** `branch-workflow`'s start procedure stopped pulling them when work moved into worktrees, and it says so itself while prescribing a fetch before any read. That prescription is the fallback, not the fix: it fires inside whatever future session happens to read, and a dispatched agent that never opened `branch-workflow` does not carry it. Correcting the state here removes the condition instead of relying on the next reader to remember.
+
+**Scope: the projects this session touched** — committed, or merely surveyed. This is a cost boundary, not a safety claim: an untouched project can still go stale when the user merges an open PR elsewhere, and `branch-workflow` routes read-only work to that same checkout without creating a worktree. Widening the scope to every registered project would put a fetch round-trip per project into every wrap-up, which is the trade this boundary takes.
+
+For each, from the harness root:
+
+```bash
+git -C project/<name> fetch origin
+git -C project/<name> merge --ff-only origin/main
+```
+
+**Only for a checkout on `main`.** The command names `origin/main` but merges into whatever branch is checked out, and measured (git 2.39.5) a checkout parked on a leftover feature branch with no commits of its own is **fast-forwarded onto `origin/main`, silently moving that branch pointer** — which `branch-workflow` promises to leave untouched. Nothing is lost (ff keeps the old tip reachable), but it is not this step's business to move someone's branch. Read the branch first (`git -C project/<name> symbolic-ref --short HEAD`); anything other than `main`, including a detached HEAD, is reported and skipped. A repository with no `origin`, or whose default branch is not `main`, fails on its own and lands in the same skipped report.
+
+**Let `--ff-only` do the judging — do not pre-gate on a dirty tree.** Measured (git 2.39.5): it exits 128 *"Not possible to fast-forward, aborting"* when the branch has diverged; it **succeeds** when unrelated files are dirty, leaving those changes untouched; and it aborts, preserving local edits, when the update would overwrite a dirty file. A `git status` pre-check is a blunter judgment layered over a precise one — it skips the safe case that git would have taken. **No variant of this can lose committed or uncommitted work**, which is why it needs no §3 confirmation.
+
+Report each outcome in one line — advanced (with the short hashes), already current, or skipped with git's reason. **Never reach for a plain `merge` or a `reset --hard` to force one through**: a refusal means there is local state here that the remote does not have, which is a report, not an obstacle.
+
+**"Nothing to leave" in step 3 does not skip this step** — a session that committed, pushed, and merged everything is exactly the one whose checkout is now furthest behind.
+
+**This reduces how often the stale-read condition exists; it does not close it.** Say it that way rather than calling the remainder covered — the premise of this whole step is that `branch-workflow`'s fetch-before-read did not reach a dispatched agent, so handing the residual back to that same prescription would describe as guarded the exact reader class that already failed. Three gaps, and none of them is small:
+
+1. **A PR merged after wrap-up.** The step pulls only what is already merged, so it cannot advance a checkout whose PR the user merges later. The worktree survives step 5 for the same reason, and both settle at the next wrap-up.
+2. **Sessions that never run this skill.** `/wrapup` is slash-invoked only and deliberately outside auto-routing, so every session the user ends without typing it leaves the checkouts exactly as they were.
+3. **A project this session did not touch**, made stale by a merge elsewhere and then read read-only next session — the scope boundary above, restated as what it costs.
+
+Fetch-before-read remains the only guard in all three windows, which is precisely why **a dispatch that will read a checkout must carry the fetch instruction in its own prompt** — a subagent never loads `branch-workflow` on its own.
+
+### 7. Guide `/clear` + next-session start prompt
 
 When saving/proposing is done, along with a wrap-up summary, **guide the user to type `/clear`** (the skill does not run clear on their behalf — core constraint 1 above). Then **present the "next-session start prompt" as a copyable code block** — so the user does not have to reconstruct the resume path (`/carryover 재개` · "이어서 하자") from memory, wrapup produces the sentence that, pasted into a new session, starts the resume (2026-07-21 user request). Generation rules per save target:
 
@@ -105,3 +134,4 @@ The prompt is **in Korean** (a sentence the user types — root §15), and the t
 | Save-target judgment | Confusion between work-tracker and carryover, asked every time | Auto-judged by scope (local saves unconfirmed, only work-tracker confirmed just before), asking back only when ambiguous |
 | Duplicate implementation | Wrap-up/apply logic improvised every time | Reuses existing skills (work-tracker·carryover·metaskill·branch-workflow) |
 | Worktrees | Finished ones accumulate; work inside them is invisible to a root `git status` and gets swept up as "nothing to leave" | Enumerated during the sweep, removed only after a measured merge check |
+| Project checkouts | Left behind indefinitely once worktrees took over; a later read-only survey reports the stale tree as current | A touched checkout on `main` is caught up at wrap-up, so the stale-read window narrows to the three gaps step 6 names |

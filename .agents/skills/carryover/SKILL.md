@@ -53,7 +53,7 @@ Keep only the work the user picks from this session as a local note.
 4. **Write the file**: write to `_workspace/carryover/backlog/YYYY-MM-DD-<topic-slug>.md` using the template below. Get the date with `date +%F` (no guessing). Create `backlog/` if missing.
    - If a same-day same-topic file already exists, do not overwrite — append a session-delimited section or add `-2` to the slug (prevents losing previously carried-over content).
 
-5. **Report**: tell the user the written file path, and **present the next session's start prompt as a copy-paste code block** (same format as wrapup step 6 — same experience in standalone invocation): `/carryover 재개 — <주제슬러그> 노트. 첫 행동: <first item of "In progress · Next">`. Take the "first action" verbatim from the note (do not invent it).
+5. **Report**: tell the user the written file path, and **present the next session's start prompt as a copy-paste code block** (same format as wrapup's `/clear` guidance step — same experience in standalone invocation): `/carryover 재개 — <주제슬러그> 노트. 첫 행동: <first item of "In progress · Next">`. Take the "first action" verbatim from the note (do not invent it).
 
 ### Note template (skeleton for resuming)
 

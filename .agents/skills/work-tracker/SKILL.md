@@ -63,7 +63,7 @@ EOF
 
 At the same time, update the task checkboxes in the body (`gh issue edit`). Among `_workspace/` intermediate artifacts, conclusions the next session needs are **summarized and moved into a comment** — the originals are not preserved. When moving, **exclude anything marked `<private>…</private>`** (sensitive paths, internal URLs, personal information — root AGENTS.md §3 guardrail). Issues/comments are external artifacts that persist outside the repository, so uphold this exclusion together with the secrets prohibition (guardrail §3).
 
-After recording, **present the next-session start prompt as a copy-paste code block** (same format as wrapup step 6 and carryover save mode — the same experience even when invoked standalone): `이어서 하자 — #<번호> <이슈 제목>. 첫 행동: <방금 남긴 진행 로그의 "다음" 항목>`. Take the "첫 행동" (first action) verbatim from the progress log (do not invent it — if they diverge, there are two resume points).
+After recording, **present the next-session start prompt as a copy-paste code block** (same format as wrapup's `/clear` guidance step and carryover save mode — the same experience even when invoked standalone): `이어서 하자 — #<번호> <이슈 제목>. 첫 행동: <방금 남긴 진행 로그의 "다음" 항목>`. Take the "첫 행동" (first action) verbatim from the progress log (do not invent it — if they diverge, there are two resume points).
 
 ## Flow 3 — Resume ("이어서 하자", "하던 작업 뭐였지")
 
