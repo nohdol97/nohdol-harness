@@ -44,6 +44,7 @@ tier: design
 - [ ] Is there a non-goals section (a spec without a scope defense line inflates)
 - [ ] Does the depends_on graph have no orphan tasks or circular dependencies
 - [ ] Was no product code modified
+- [ ] **Does the spec's design/boundary section meet a `diagram`-skill threshold, and if so does it carry a Mermaid diagram that `check.py` passes?** You draft specs directly rather than through the `doc-writer` skill, so the step that runs the checker never executes on your output — this line is the only place the obligation reaches an architect-drafted spec **at draft time, before any review** (ADR 039) — `team-review`, `reviewer`, and the template's own `Check:` line reach it later, which is exactly the round trip this catches. Meeting no threshold means **do not add one**
 
 ## 8. Re-invocation guide
 

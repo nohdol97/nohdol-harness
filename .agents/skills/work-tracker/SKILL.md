@@ -29,6 +29,10 @@ gh issue create --title "<간결한 작업명>" --label epic --body "$(cat <<'EO
 ## 스펙
 <docs/specs/... 경로 또는 "스펙 작성 예정(13절)">
 
+## 흐름
+<이 작업이 임계값을 넘는 구조를 담으면 **Mermaid 다이어그램을 넣는다**(`diagram` 스킬 1절이 정본) — ⓐ 행위자 2인 이상 + 메시지 3개 이상이고 그중 하나는 직전의 단순 응답이 아님 ⓑ 상태 3개 이상 + '다음'이 아닌 전이 ⓒ 결정 2개 이상(이 축은 임계값만으로 갈리지 않으므로 결정 기준을 함께 적용한다 — 관계 둘 이상을 동시에 들고 있어야 하는가) ⓓ 구성요소 4개 이상 + 관계 3개 이상이며 선형 사슬이 아님.
+어느 것도 못 넘으면 이 절을 "해당 없음 — <사유>"로 남긴다. 맨 형태(행위자·분기가 있다는 것만)로는 발동하지 않는다 — 임계값이 없으면 모든 이슈가 다이어그램을 지게 되고 그건 소음이다>
+
 ## 태스크
 - [ ] <완료 기준 단위의 태스크 1>
 - [ ] <태스크 2>
@@ -41,6 +45,7 @@ EOF
 
 (The issue title/body are user-read external artifacts — keep them in Korean per root §15; the template above is the literal text to use.)
 
+- **The 흐름 section is where the diagram obligation is held for an issue** — no review ever sees an issue body (it is created at registration, before any review exists), so registration is the only step that can withhold it: **do not create the issue while a met threshold has no diagram, or while the section is blank**. `해당 없음` plus a reason is a complete answer; an empty section is not. Reason it exists at all — an issue is read by a session that arrives with no context, sometimes weeks later, and rebuilding an ordered exchange from prose is the single most expensive part of a resume. Where the firing condition applies, the diagram is not decoration; where it does not, `해당 없음` plus a reason is the correct content (a diagram restating the 태스크 checklist costs attention and adds nothing). **Issue bodies cannot reference repository-relative images**, so a diagram past the node threshold gets split rather than rendered to a file (`diagram` skill §2).
 - Split tasks **by the spec's completion-criterion (C-number) units** (§13 SDD) — each checkbox must correspond to one verifiable state change so the resume point is unambiguous.
 - For code work, continue into the `branch-workflow` start procedure, and reference the issue number in the branch name/commits (e.g. `feat/login-oauth` + commit body `#12`).
 - **Never write secrets/credentials into the issue body** (guardrail §3) — issues are external artifacts that persist outside the repository (on GitHub) as well.

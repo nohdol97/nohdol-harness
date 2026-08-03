@@ -27,7 +27,10 @@ Filename: `docs/specs/YYYY-MM-DD-<제목>.md`
 <기능·비기능 요구사항. 번호 목록 R1, R2, ... (테스트가 이 번호를 참조한다)>
 
 ## 인터페이스 / 설계 개요
-<API·데이터 구조·화면 등 바뀌는 경계면. 상세 설계가 아니라 경계만>
+<API·데이터 구조·화면 등 바뀌는 경계면. 상세 설계가 아니라 경계만.
+**다이어그램 발동 조건 — 임계값을 넘는 것이 하나라도 있으면 Mermaid 다이어그램을 넣는다**(`diagram` 스킬 1절이 정본): ⓐ 행위자 2인 이상 + **메시지 3개 이상**, 그중 하나는 직전 것의 단순 응답이 아님 → `sequenceDiagram` ⓑ **상태 3개 이상** + '다음'이 아닌 전이 하나 이상(되돌아가는 루프, 둘이 도달하는 상태, 이른 종료) → `stateDiagram-v2` ⓒ **결정 2개 이상**, 또는 각 갈래가 2단계 이상 이어지는 결정 하나 → `flowchart` ⓓ **구성요소 4개 이상 + 그들 사이 관계 3개 이상이며 그 관계가 단일 선형 사슬이 아님** → `flowchart`(사슬은 N개면 관계가 항상 N−1개라 개수로는 못 거른다 — `A → B → C → D`는 한 문장이다).
+**임계값이 곧 규칙이다** — 행위자·상태·분기·구성요소라는 맨 형태는 어느 기술 문서에나 있어서, 임계값 없는 조건은 전부에 발동하고 소음을 의무화한다(실측: 임계값 없던 초안이 이 저장소의 관할 절 전부에 발동했다).
+**어느 것도 못 넘으면 넣지 않는다.** 애매하면 결정 기준은 하나다 — *이 절이 답하려는 질문에 답하려면 읽는 사람이 관계 둘 이상을 동시에 들고 있어야 하는가.* 한 문장으로 손실 없이 다시 쓸 수 있으면 그리지 않는다. **다른 형식으로 이미 그려진 다이어그램(ASCII 등)이 있으면 충족된 것**이며, Mermaid 전환은 그 파일을 다음에 손댈 때 한다>
 
 ## 완료 기준 (테스트 가능한 형태)
 <체크리스트. 각 항목이 곧 테스트 케이스가 된다 — "~하면 ~된다" 형식, 요구사항 번호 참조>
@@ -42,7 +45,7 @@ Filename: `docs/specs/YYYY-MM-DD-<제목>.md`
 |---|---|---|---|
 ```
 
-Check: can every completion criterion be turned into a test as-is / is there a non-goals section / are the requirements numbered.
+Check: can every completion criterion be turned into a test as-is / is there a non-goals section / are the requirements numbered / **if the 설계 개요 firing condition applies, is the diagram there and does `check.py` pass on it**.
 
 **A completion criterion that mentions documentation must name which document gets what, not just the filename.** `README가 갱신된다` names a file and nothing else, so whoever receives it satisfies it by **copying reference detail into README** — the state 3A forbids ("내용 복사 금지, 링크만"), reached through a criterion that reports as met. Name the layer instead: **reference detail** (config keys, field schemas, metric values, behavioral rules) goes to the reference document under `docs/`, and **README gets a one-line entry plus a link**. When a metric's direction, threshold, or determinism changes, name the metrics reference too.
 
@@ -236,7 +239,8 @@ Title: commit-convention format `type(프로젝트스코프): 요약` (root AGEN
 <이 PR이 무엇을 왜 바꾸는가 — 3줄 이내. 리뷰어가 이것만 읽고 diff를 열 수 있게>
 
 ## 변경 내용
-<번호 목록 = diff 읽기 가이드(§13-0 사용자 성장): 파일 나열이 아니라 변경 단위를 **읽어야 할 순서로** 나열하고, 각 항목에 **왜 이 부분이 중요한지 한 줄**을 붙인다 — 사용자가 순서대로 읽고 이해하도록>
+<번호 목록 = diff 읽기 가이드(§13-0 사용자 성장): 파일 나열이 아니라 변경 단위를 **읽어야 할 순서로** 나열하고, 각 항목에 **왜 이 부분이 중요한지 한 줄**을 붙인다 — 사용자가 순서대로 읽고 이해하도록.
+**다이어그램 발동 조건과 임계값은 스펙 템플릿과 같다**(`diagram` 스킬 1절 정본) — 이 변경이 순서·상태·분기·구조 중 하나를 **임계값을 넘겨** 바꿨으면 Mermaid로 그린다. **PR 본문은 저장소 상대 경로 이미지를 못 걸므로** 15노드를 넘으면 SVG로 escalate하지 말고 **다이어그램을 쪼갠다**>
 
 ## 연결
 - 스펙: <`docs/specs/...` 경로. 없으면 "해당 없음 — <사유: 사소한 수정 등>">

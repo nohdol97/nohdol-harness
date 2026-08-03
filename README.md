@@ -22,6 +22,7 @@ nohdol-harness/
 │   │   ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
 │   │   ├── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
 │   │   ├── doc-writer/      # 일관 형식 문서 작성 (스펙·리포트·README·런북·PR 본문 템플릿)
+│   │   ├── diagram/         # 문서가 다이어그램을 빚졌는지 내용으로 판정 + Mermaid 작성·사전 체커 (스펙·PR 본문·이슈에서 필수 발동, nohdol-study 하네스 포팅 — ADR 039)
 │   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
 │   │   ├── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
 │   │   ├── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)

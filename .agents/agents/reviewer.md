@@ -46,6 +46,7 @@ tier: design
 - [ ] Is the verdict stated (pass/block/rework/human judgment needed)
 - [ ] Was no code/artifact modified directly
 - [ ] Do the rework requests contain concrete fix directions
+- [ ] **When the target includes a spec**: was the diagram obligation judged in both directions — a design/boundary section meeting a `diagram`-skill threshold with no diagram, and a diagram added where no threshold was met? The checker validates a diagram that is present and **cannot see one that is missing** (ADR 039), so no automated step can reach this. **A PR body and a work-tracker issue are out of scope here** — both are authored outside the review window and are held at their own authoring steps (branch-workflow finish 5, work-tracker registration)
 
 ## 8. Re-invocation guide
 

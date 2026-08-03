@@ -34,6 +34,31 @@
 | R6 | 프로필 판독은 `_common.read_profile` 단일 원본을 쓴다. 파서를 복제하지 않는다 |
 | R7 | 등록 shim은 훅 파일 부재 시 통과한다(`[ -r "$f" ] \|\| exit 0`) — tier-gate가 독립 검증 F2에서 받은 지적과 같은 형태 |
 
+## 3-1. 판정 경로
+
+```mermaid
+sequenceDiagram
+    participant S as 세션(발행)
+    participant H as review-gate
+    participant R as REGISTRY.md
+    participant A as 서브에이전트
+
+    S->>H: PreToolUse(tool_input)
+    alt tool_name이 Agent/Task가 아니거나 subagent_type이 reviewer가 아님
+        H-->>A: 통과 (R1 관장 밖)
+    else 프롬프트에 [review-ok]
+        H-->>A: 통과 (R3 — 사용자 명시 요청)
+    else
+        H->>R: 「설치처 프로필」 판독
+        R-->>H: 개인 / 사내 / 미상
+        alt 사내
+            H-->>S: exit 2 + 대체 절차·우회법 (R4)
+        else 개인·미상·판독 실패
+            H-->>A: 통과 (R5 — fail-open은 "검증이 돌아간다" 방향)
+        end
+    end
+```
+
 ## 4. 판정 범위의 한계 (명시)
 
 **훅은 규칙보다 좁고, 그것이 설계다.** 규칙(ADR 038)이 끄는 것은 "검증 목적 발행"이라는 **의도**인데, 훅이 볼 수 있는 것은 `subagent_type`이라는 **타입**뿐이다. 두 축이 1:1인 타입은 `reviewer` 하나이므로 훅은 그 하나만 막는다.
@@ -71,3 +96,4 @@
 |---|---|---|---|
 | 2026-08-03 | 초안 작성 및 구현 | 전체 | 사내 설치처의 reviewer 비용이 감당되지 않는다는 사용자 판정. 규칙 분기만으로는 발행 시점에 강제되지 않아 tier-gate와 같은 형태의 훅으로 처리(사용자 선택 — 인터뷰 4문항 전부 권장안) |
 | 2026-08-03 | 독립 검증 BLOCK 반영 — 차단 대상에서 `integrator` 제거(R1·C2·C5), 4절을 과잉·과소·우회 세 축으로 재작성, C1을 리터럴 exit 2로 고정, `Task` 갈래 신설, 변이 5종 확인 기록 | R1, 4절, C1·C2·C5, 훅·테스트 | **검증자 2인이 독립적으로 같은 must-fix**를 냈다 — `integrator`는 리뷰 fan-in 전용이 아니라 `project-status` 2절(상태 fan-in)과 orchestrate 골조 ⑤에도 쓰여, 타입 차단이 사내에서 그 스킬을 죽이고 정당한 우회도 없었다. 훅 주석이 "리뷰 리포트 fan-in 전용"이라 단언한 것은 `project-status`를 열지 않고 쓴 성격 규정(공통 규칙 14ⓑ)이다. 그 밖에 코드 축 검증이 `BLOCK_EXIT`를 0·1로 바꾸는 변이와 `Task` 제거 변이가 스위트를 통과함을 실증했다 |
+| 2026-08-03 | 「3-1. 판정 경로」 시퀀스 다이어그램 추가 | 3-1절(신설) | ADR 039 다이어그램 의무의 **첫 적용**이자 자기 사례 검증 — 이 스펙은 세션·훅·REGISTRY·서브에이전트가 순서대로 주고받고 조건에 따라 결과가 갈리므로 발동 조건 ⓐ·ⓒ에 걸린다. 규칙이 자기 근거에 발동하지 않으면 엉뚱한 것을 키로 잡은 것이다 |
