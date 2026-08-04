@@ -645,6 +645,37 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertIn("agents", out)
 
 
+class TestLightweightSection(unittest.TestCase):
+    """R20 (ADR 040) — tier-gate의 판정 입력이 gitignore 대상이라 상태를 드러낸다."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="integrity-r20-")
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+        make_good_fixture(self.root)
+
+    def test_section_with_entries_passes(self):
+        write(os.path.join(self.root, "REGISTRY.md"),
+              "# r\n\n## 경량 모델 (설명)\n\n- **haiku** — 최저가\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0, out)
+        self.assertIn("PASS R20", out)
+
+    def test_missing_section_skips_not_fails(self):
+        # 절을 안 채운 설치처는 결함이 아니라 설계된 상태다(harness-install이 그
+        # 결과를 사용자에게 말한다). FAIL이면 새 설치처가 무결성 실패로 시작한다.
+        write(os.path.join(self.root, "REGISTRY.md"), "# r\n\n## 설치처 프로필\n\n- **개인** — x\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 0, out)
+        self.assertIn("SKIP R20", out)
+        self.assertNotIn("FAIL R20", out)
+
+    def test_section_emptied_is_visible(self):
+        # 항목만 지워도(절 제목은 남겨도) 게이트는 잠든다 — 그 상태가 출력에 뜬다.
+        write(os.path.join(self.root, "REGISTRY.md"), "# r\n\n## 경량 모델\n\n설명뿐\n")
+        _, out = run_check(self.root)
+        self.assertIn("SKIP R20", out)
+
+
 if __name__ == "__main__":
     utf8_stdio()
     unittest.main(verbosity=2)

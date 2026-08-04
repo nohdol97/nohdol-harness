@@ -86,5 +86,52 @@ class TestHooksUseCommon(unittest.TestCase):
                 self.assertIsNot(hook.utf8_stdio, common.utf8_stdio)
 
 
+class TestRegistryReaders(unittest.TestCase):
+    """C6~C9 (R4, ADR 040) — 두 판독기가 절 파서를 공유하고 절 밖을 읽지 않는다."""
+
+    @contextlib.contextmanager
+    def registry(self, body):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "REGISTRY.md"), "w", encoding="utf-8") as f:
+                f.write(body)
+            yield d
+
+    def test_c6_lightweight_read_from_its_own_section(self):  # C6
+        with self.registry(
+            "## 설치처 프로필\n\n- **개인** — 설명\n\n"
+            "## 경량 모델 (9절 판정 입력)\n\n- **haiku** — 최저가\n- **nano** — 가상\n"
+        ) as d:
+            self.assertEqual(common.read_lightweight_models(d), {"haiku", "nano"})
+            self.assertEqual(common.read_profile(d), "개인")  # 서로 섞이지 않는다
+
+    def test_c7_absent_or_empty_section_is_empty_set(self):  # C7
+        for body in ("## 설치처 프로필\n\n- **사내** — 설명\n",
+                     "## 경량 모델\n\n설명만 있고 항목이 없다\n"):
+            with self.registry(body) as d:
+                self.assertEqual(common.read_lightweight_models(d), set())
+        with self.registry("") as d:  # 파일은 있으나 빈 경우
+            self.assertEqual(common.read_lightweight_models(d), set())
+        self.assertEqual(common.read_lightweight_models("/nonexistent"), set())
+
+    def test_c8_prose_outside_the_section_is_not_read(self):  # C8
+        # 절 밖의 굵은 라벨과 코드 펜스 안의 예시는 판정 입력이 아니다 — 전체
+        # 검색이면 다른 절의 산문이 경량 목록으로 읽힌다.
+        with self.registry(
+            "## 다른 절\n\n- **haiku** — 여기 있는 것은 목록이 아니다\n\n"
+            "## 경량 모델\n\n```\n- **fenced** — 예시일 뿐\n```\n\n- **real** — 실제 항목\n"
+        ) as d:
+            self.assertEqual(common.read_lightweight_models(d), {"real"})
+
+    def test_c9_heading_accepts_a_parenthetical(self):  # C9
+        # 프로필 절은 정확 일치라 설명을 붙이면 조용히 미상이 된다(그래서
+        # harness-install이 형식을 문서로 못박아야 했다). 경량 절은 접두 매칭이라
+        # 설명을 붙여도 읽히고, 낱말 경계 덕에 다른 절을 삼키지도 않는다.
+        with self.registry("## 경량 모델 (9절 경량 금지의 판정 입력)\n\n- **haiku** — x\n") as d:
+            self.assertEqual(common.read_lightweight_models(d), {"haiku"})
+        with self.registry("## 경량 모델링 도구\n\n- **haiku** — 다른 절이다\n") as d:
+            self.assertEqual(common.read_lightweight_models(d), set())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -6,7 +6,7 @@ harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립�
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
 첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 32KB
 안전 예산(R14)·항상-온 문서의 ADR 참조 실재(R15)·한글 뷰 드리프트(R16·R17,
-ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19).
+ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19)·경량 목록 상태(R20).
 심링크 불가 설치처는 R1·R2를 SKIP한다(R11).
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
@@ -33,10 +33,13 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 
 sys.path.insert(0, HERE)
 try:
-    from _common import utf8_stdio
+    from _common import read_lightweight_models, utf8_stdio
 except Exception:
     def utf8_stdio():
         pass
+
+    def read_lightweight_models(base):
+        return set()  # 판독기 유실 — R20은 SKIP으로 떨어진다
 
 CLAUDE_ALLOWLIST = {"settings.json", "settings.local.json", "agents", "skills"}
 GITIGNORE_REQUIRED = ["_workspace/", "project/", "REGISTRY.md",
@@ -573,11 +576,35 @@ def check_korean_readme_views(root):
     return out
 
 
+def check_lightweight_section(root):
+    """R20: REGISTRY.md 「경량 모델」 절의 상태를 주간 점검 출력에 드러낸다(ADR 040).
+
+    이 절은 `tier-gate`의 유일한 판정 입력인데 **gitignore 대상**이라, 지워지거나
+    비어도 `git status`에 흔적이 없고 게이트는 조용히 잠든다(독립 검증 2026-08-04
+    F9). `review-gate`의 프로필 판독은 미상이 '검증을 돌린다'로 떨어져 안전하지만
+    이쪽 fail-open은 '금지가 안 걸린다'로 떨어진다 — 그래서 상태를 눈에 보이게 한다.
+
+    **FAIL로 만들지 않는다.** 절을 안 채운 설치처는 결함이 아니라 설계된 상태이고
+    (`harness-install`이 그 결과를 사용자에게 말한다), FAIL이면 새 설치처가 무결성
+    실패로 시작한다. SKIP은 "이 설치처에서 게이트가 잠들어 있다"를 뜻한다.
+    """
+    try:
+        names = read_lightweight_models(root)
+    except Exception as exc:
+        return [("R20 lightweight list", FAIL, "read failed: %s" % exc)]
+    if not names:
+        return [("R20 lightweight list", SKIP,
+                 "REGISTRY.md has no 「경량 모델」 entries — tier-gate never fires here "
+                 "(fill it via harness-install, or accept the gate is off; ADR 040)")]
+    return [("R20 lightweight list", PASS, "%d entrie(s)" % len(names))]
+
+
 CHECKS = [check_symlinks, check_claude_intrusion, check_skill_frontmatter,
           check_always_on_budget,
           check_agent_frontmatter, check_codex_agent_adapters, check_moc,
           check_claude_md, check_gitignore, check_agents_budget, check_adr_refs,
-          check_agents_kr_view, check_korean_readme_views, check_codex_config]
+          check_agents_kr_view, check_korean_readme_views, check_codex_config,
+          check_lightweight_section]
 
 
 def run(root):

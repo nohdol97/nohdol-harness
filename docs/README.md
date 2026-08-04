@@ -46,9 +46,10 @@
 | [034](adr/034-vault-write-delegation.md) | 2026-07-28 | 활성 | vault 쓰기 경로 신설(`vault-write`)과 노트 계약 정본의 참조 위임 — 사본 없이 `nohdol-study` references를 런타임 참조, 부재 시 정지, index/log/hot 기록 필수 |
 | [035](adr/035-subproject-worktree-workflow.md) | 2026-07-29 | 활성 | 하위 프로젝트 쓰기 작업의 worktree 선행 생성(`project/.worktrees/`, `origin/main` 직접 분기, 세션 cwd는 루트 유지)과 머지 실측 기반 정리 — 정본은 `branch-workflow`, `wrapup`이 위임 |
 | [036](adr/036-ownership-boundary-placement-and-vocabulary.md) | 2026-08-02 | 활성 | 소유권 경계를 둘로 분할 — 규칙(영역 표·중단 게이트)은 프로젝트 저장소에 중립 어휘(`공용`/`배포처`)로, 역할 배정만 하위 하네스에. `carry-in.md` → `site-setup.md` |
-| [037](adr/037-tier-gate-dispatch-enforcement.md) | 2026-08-03 | 활성 | 티어 매핑의 실행 계층 승격 — 발행 시 `model` 미지정 차단(`tier-gate`), 값 판정 없음·`inherit`는 미지정 동치·fail-open |
+| [037](adr/037-tier-gate-dispatch-enforcement.md) | 2026-08-03 | **대체됨 → 040** | 티어 매핑의 실행 계층 승격 — 발행 시 `model` 미지정 차단(`tier-gate`), 값 판정 없음·`inherit`는 미지정 동치·fail-open. **판정 방향이 뒤집혔다**(발행 지점 강제라는 결정은 040이 유지) |
 | [038](adr/038-corporate-profile-verification-exemption.md) | 2026-08-03 | 활성 | 사내 프로필의 검증 목적 발행 면제 — reviewer·관점 팬아웃·리뷰 fan-in integrator·infra-specialist 리뷰 모드를 끄고 메인 루프 자체 검증+면제 기록으로 대체, 명시 요청은 실행. 훅(`review-gate`)이 막는 것은 `reviewer` 타입 하나 |
 | [039](adr/039-diagram-obligation-and-skill-port.md) | 2026-08-03 | 활성 | 다이어그램 의무의 **임계값 기반** 발동 조건 + `diagram` 스킬 nohdol-study 포팅 — 스펙·PR 본문·work-tracker 이슈에서 필수(임계값을 넘을 때만), 그 외 권고. 붙잡는 단계는 둘로 갈린다: **품질**은 doc-writer 자체 검증의 체커, **의무**는 유형별(스펙=team-review·reviewer·architect / PR 본문=branch-workflow 마무리 5 / 이슈=work-tracker 등록) |
+| [040](adr/040-tier-gate-inversion-lightweight-ban.md) | 2026-08-04 | 활성 | `tier-gate` 판정 반전(037 대체) — 미지정(=세션 모델 상속)은 통과, REGISTRY.md 「경량 모델」 절이 나열한 등급 지정만 차단. 우회는 `[light-ok]`. 모델명은 코드가 아니라 그 미추적 절에 두어 ADR 005 유지 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -61,7 +62,7 @@
 | [2026-07-13-tdd-gate-hook](specs/2026-07-13-tdd-gate-hook.md) | 구현됨 | `.agents/githooks/tdd-gate.py` | 008·014·015 |
 | [2026-07-14-agentsview-daemon-hook](specs/2026-07-14-agentsview-daemon-hook.md) | 구현됨 | `.agents/hooks/agentsview-daemon.py` | — |
 | [2026-07-14-harness-review-reminder-hook](specs/2026-07-14-harness-review-reminder-hook.md) | 구현됨 | `.agents/hooks/harness-review-reminder.py` | 013·019 |
-| [2026-07-15-hooks-common-bootstrap](specs/2026-07-15-hooks-common-bootstrap.md) | 구현됨 | `.agents/hooks/_common.py` | — |
+| [2026-07-15-hooks-common-bootstrap](specs/2026-07-15-hooks-common-bootstrap.md) | 구현됨 | `.agents/hooks/_common.py` | 040(REGISTRY 절 판독기 2종) |
 | [2026-07-16-worklog-reminder-hook](specs/2026-07-16-worklog-reminder-hook.md) | 구현됨 | `.agents/hooks/worklog-reminder.py` | 018·019 |
 | [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
 | [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 구현됨 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
@@ -70,7 +71,7 @@
 | [2026-07-22-gate-reminder-hook](specs/2026-07-22-gate-reminder-hook.md) | 구현됨 | `.agents/hooks/gate-reminder.py` | 028 |
 | [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
 | [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
-| [2026-08-03-tier-gate-hook](specs/2026-08-03-tier-gate-hook.md) | 구현됨 | `.agents/hooks/tier-gate.py` | 037 |
+| [2026-08-03-tier-gate-hook](specs/2026-08-03-tier-gate-hook.md) | 구현됨(040으로 개정) | `.agents/hooks/tier-gate.py` | 037·040 |
 | [2026-08-03-review-gate-hook](specs/2026-08-03-review-gate-hook.md) | 구현됨 | `.agents/hooks/review-gate.py` | 038 |
 | [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 초안 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 
