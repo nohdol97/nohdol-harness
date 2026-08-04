@@ -31,10 +31,11 @@ matcher = "Agent|Task|spawn_agent"
 type = "command"
 command = "f=\"$PWD/.agents/hooks/tier-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
 
-# dispatch-gate — 사내 프로필에서 서브에이전트 발행 차단(ADR 042, 038 확장).
-# 같은 매처를
-# 공유하므로 tier-gate 옆에 붙인다. 매처가 어긋나면 발화하지 않을 뿐이고,
-# 이 훅의 fail-open은 "검증이 돌아간다" 방향이라 미발화의 피해가 없다.
+# dispatch-gate — 사내 프로필에서 서브에이전트 발행 차단(ADR 042, ADR 038 확장).
+# 같은 매처를 공유하므로 tier-gate 옆에 붙인다. 매처가 어긋나면 발화하지 않을
+# 뿐이고, 이 훅의 fail-open은 "발행이 돌아간다" 방향이라 개인 설치처의 동작을
+# 건드리지 않는다. 단 사내에서는 미발화가 곧 차단 해제이므로, 등록 유실은
+# 무결성 R18이 붙잡는다.
 [[hooks.PreToolUse.hooks]]
 type = "command"
 command = "f=\"$PWD/.agents/hooks/dispatch-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"

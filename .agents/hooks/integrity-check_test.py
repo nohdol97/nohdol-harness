@@ -5,6 +5,7 @@
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다(git init 포함, 픽스처 내부에서만).
 """
 import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -101,7 +102,27 @@ def make_good_fixture(root):
     os.makedirs(claude, exist_ok=True)
     os.symlink("../.agents/agents", os.path.join(claude, "agents"))
     os.symlink("../.agents/skills", os.path.join(claude, "skills"))
-    write(os.path.join(claude, "settings.json"), "{}\n")
+    # R21 — Claude 쪽 훅 등록. Codex 등록과 짝이며, 한쪽만 있으면 그 런타임에서
+    # 게이트가 조용히 안 걸린다(ADR 042). 예전엔 `{}`라 등록 유실을 재현조차
+    # 할 수 없었다.
+    write(os.path.join(claude, "settings.json"), json.dumps({
+        "hooks": {
+            "SessionStart": [{"hooks": [
+                {"type": "command", "command": "python3 .agents/hooks/agentsview-daemon.py"},
+                {"type": "command", "command": "python3 .agents/hooks/harness-review-reminder.py"},
+                {"type": "command", "command": "python3 .agents/hooks/worklog-reminder.py"},
+            ]}],
+            "PreToolUse": [
+                {"matcher": "Edit|Write", "hooks": [
+                    {"type": "command", "command": "python3 .agents/hooks/gate-reminder.py --check"}]},
+                {"matcher": "Agent", "hooks": [
+                    {"type": "command", "command": "python3 .agents/hooks/tier-gate.py"},
+                    {"type": "command", "command": "python3 .agents/hooks/dispatch-gate.py"}]},
+            ],
+            "PostToolUse": [{"matcher": "Bash", "hooks": [
+                {"type": "command", "command": "python3 .agents/hooks/gate-reminder.py --record"}]}],
+        }
+    }, ensure_ascii=False, indent=2) + "\n")
     # CLAUDE.md / AGENTS.md
     write(os.path.join(root, "CLAUDE.md"), "@AGENTS.md\n\n# CLAUDE.md\n")
     write(os.path.join(root, "AGENTS.md"), "# AGENTS.md\n")
@@ -512,6 +533,30 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertIn("FAIL R18", out)
         self.assertIn("tier-gate.py", out)
         self.assertIn("dispatch-gate.py", out)
+
+    def test_claude_settings_missing_dispatch_gate_fails(self):
+        """R21: `.claude/settings.json`에서 발행 게이트 등록이 사라지면 FAIL한다.
+
+        R18은 Codex 쪽만 봐서, Claude 쪽 등록을 지워도 무결성 출력이 바이트
+        단위로 동일했다(독립 검증 2026-08-04 C-03 실측). ADR 042 이후 그 유실은
+        사내에서 발행 차단이 통째로 꺼지는 것을 뜻한다.
+        """
+        path = os.path.join(self.root, ".claude/settings.json")
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        for entry in data["hooks"]["PreToolUse"]:
+            entry["hooks"] = [h for h in entry["hooks"]
+                              if "dispatch-gate" not in h.get("command", "")]
+        write(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R21", out)
+        self.assertIn("dispatch-gate.py", out)
+
+    def test_claude_settings_intact_passes_r21(self):
+        code, out = run_check(self.root)
+        self.assertIn("PASS R21 Claude hooks dispatch-gate.py", out)
+        self.assertIn("PASS R21 Claude hooks tier-gate.py", out)
 
     def test_codex_config_wrong_command_fails(self):
         """R18: handler가 실제 스크립트·mode를 잃으면 FAIL한다."""

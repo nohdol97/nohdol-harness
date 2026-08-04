@@ -50,7 +50,7 @@ tier: implement
 
 ## 8. Re-invocation guide
 
-Use this agent in new sessions for team work that changes files — implementation, fixes, refactoring, etc. The default member of orchestrate implementation Phases, and **always placed paired with reviewer verification** — independent verification of feature-addition/behavior-change work cannot be skipped (orchestrate mandatory-verification rule, whose one exception is the `사내` install-site exemption — there the orchestrator self-verifies and records it, ADR 038).
+Use this agent in new sessions for team work that changes files — implementation, fixes, refactoring, etc. The default member of orchestrate implementation Phases, and **always placed paired with reviewer verification** — independent verification of feature-addition/behavior-change work cannot be skipped (orchestrate mandatory-verification rule, whose one exception is the `사내` install-site exemption — there the orchestrator self-verifies and records it, ADR 042).
 
 ## 9. Tool constraints (tools are the #1 guardrail)
 

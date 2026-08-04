@@ -47,6 +47,11 @@ CORPORATE_REGISTRY = """# 레지스트리
 BLOCKED_AGENTS = (
     "reviewer", "implementer", "explorer", "troubleshooter",
     "architect", "integrator", "general-purpose", "Explore", "claude",
+    # **면제 이름은 동등 비교여야 한다.** R8이 우회 표식을 없앤 뒤로
+    # `infra-specialist`는 사내에서 통과를 사는 **유일한 문자열**인데,
+    # 긍정형만으로는 부분 문자열·접두 비교로 바꾸는 변이가 스위트를 통과한다
+    # (독립 검증 C-01 실측: 그 변이 아래 `infra-specialist-lite`가 exit 0).
+    "infra-specialist-lite", "my-infra-specialist", "infra-specialists",
 )
 
 

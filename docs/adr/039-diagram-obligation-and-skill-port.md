@@ -1,7 +1,7 @@
 # ADR 039 — 다이어그램 의무의 발동 조건과 `diagram` 스킬 포팅
 
 - **날짜**: 2026-08-03
-- **상태**: 활성
+- **상태**: 활성 (**단계 번호 주의**: 아래 본문의 「branch-workflow 마무리 5」는 작성 시점 번호다. [ADR 041](041-comprehension-quiz-removal.md)이 마무리 4단계(이해도 퀴즈)를 삭제해 **PR 생성이 마무리 4로 당겨졌다** — 붙잡는 단계는 그대로 PR 생성 단계이며, 현재 번호는 `docs/README.md` 인덱스와 `branch-workflow` 본문을 따른다.)
 - **관련**: AGENTS.md 13절(SDD·문서), ADR 017(ponytail 포팅 선례), ADR 030(영어 우선·한글 뷰), ADR 034(study 하네스 연계), `diagram` 스킬, `doc-writer`·`work-tracker`
 
 ## 변경 내용

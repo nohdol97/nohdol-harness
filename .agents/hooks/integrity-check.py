@@ -19,6 +19,7 @@ ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19
 import argparse
 import ast
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -383,6 +384,16 @@ CODEX_HOOK_MATCHERS = {
     "PreToolUse": {"apply_patch", "Agent"},
     "PostToolUse": {"Bash", "shell", "local_shell"},
 }
+# Claude 쪽 필수 등록(R21). Codex 목록과 일부러 따로 둔다 — 두 런타임의
+# 이벤트·매처 규약이 다르고, 한쪽을 다른 쪽에서 유도하면 어느 한쪽이 바뀔 때
+# 검사가 조용히 헐거워진다.
+CLAUDE_HOOK_COMMANDS = {
+    "SessionStart": ["agentsview-daemon.py", "harness-review-reminder.py",
+                     "worklog-reminder.py"],
+    "PreToolUse": ["gate-reminder.py", "tier-gate.py", "dispatch-gate.py"],
+    "PostToolUse": ["gate-reminder.py"],
+}
+
 CODEX_HOOK_COMMANDS = {
     "SessionStart": [
         ("agentsview-daemon.py",),
@@ -599,12 +610,49 @@ def check_lightweight_section(root):
     return [("R20 lightweight list", PASS, "%d entrie(s)" % len(names))]
 
 
+def check_claude_hook_registrations(root):
+    """R21: `.claude/settings.json`의 세션 훅 등록이 살아 있는지 검사한다(ADR 042).
+
+    R18은 `.codex/config.toml`만 본다. 그래서 **Claude 쪽 등록을 지워도 무결성이
+    바이트 단위로 동일했다** — 9개 스위트도 전부 초록이다(독립 검증 2026-08-04
+    C-03 실측). ADR 037·038 때는 그 유실의 대가가 "게이트 하나가 안 걸린다"였지만,
+    ADR 042 이후로는 **사내에서 발행 차단이 통째로 꺼지는 것**이다. 조용히 사라질
+    수 있는 판정 장치는 무결성이 이름을 불러 줘야 한다(R18·R20과 같은 이유).
+
+    커맨드 문자열 전체를 고정하지는 않는다 — shim은 인터프리터 탐색 형태가 바뀔
+    수 있고, 여기서 잡으려는 것은 **등록의 유실**이지 표기 변화가 아니다.
+    """
+    path = os.path.join(root, ".claude", "settings.json")
+    if not os.path.exists(path):
+        return [("R21 Claude hooks", FAIL, ".claude/settings.json missing")]
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        return [("R21 Claude hooks", FAIL, "invalid JSON: %s" % e)]
+    hooks = (data or {}).get("hooks")
+    if not isinstance(hooks, dict):
+        return [("R21 Claude hooks", FAIL, "no 'hooks' object")]
+    out = []
+    for event, required in CLAUDE_HOOK_COMMANDS.items():
+        blob = repr(hooks.get(event, []))
+        for script in required:
+            label = "R21 Claude hooks %s" % script
+            if script in blob:
+                out.append((label, PASS, ""))
+            else:
+                out.append((label, FAIL,
+                            "not registered under %s in .claude/settings.json — "
+                            "the hook silently stops firing (ADR 042)" % event))
+    return out or [("R21 Claude hooks", PASS, "")]
+
+
 CHECKS = [check_symlinks, check_claude_intrusion, check_skill_frontmatter,
           check_always_on_budget,
           check_agent_frontmatter, check_codex_agent_adapters, check_moc,
           check_claude_md, check_gitignore, check_agents_budget, check_adr_refs,
           check_agents_kr_view, check_korean_readme_views, check_codex_config,
-          check_lightweight_section]
+          check_lightweight_section, check_claude_hook_registrations]
 
 
 def run(root):

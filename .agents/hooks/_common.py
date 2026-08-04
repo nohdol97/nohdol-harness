@@ -24,7 +24,6 @@ import sys
 # 목록을 읽는다. 사본을 두면 아래 주석이 기록한 독립 검증 수정(코드 펜스·제목
 # 레벨)을 그만큼 따로 반영해야 한다(이 파일의 존재 이유).
 REGISTRY = "REGISTRY.md"
-PROFILE_HEADING = "## 설치처 프로필"
 CORPORATE = "사내"
 _PROFILE_VALUES = ("개인", CORPORATE)
 # 굵은 라벨이 목록 항목의 **첫 내용**일 때만 잡는다 — `- 프로필: **사내**`처럼
@@ -37,6 +36,11 @@ _HEADING = re.compile(r"^#{1,6}\s")
 # 문서로 막아야 했던 이유) 제목 접두만 보되, 낱말 경계를 요구해 다른 절을
 # 삼키지 않게 한다.
 _LIGHTWEIGHT_HEADING = re.compile(r"^#{1,6}\s+경량 모델(\s|$)")
+# 프로필 절도 같은 함정을 가진다. 정확 일치를 요구하던 동안 `## 설치처 프로필
+# (ADR 012)`처럼 괄호 설명을 단 것만으로 절이 조용히 미상이 됐고, ADR 042
+# 이후로는 그 미상이 곧 **발행 차단 해제**다(reviewer 하나가 아니라 전 역할).
+# 그래서 경량 절과 같은 접두+낱말경계 판정으로 맞춘다(독립 검증 C-04 실측).
+_PROFILE_HEADING_RE = re.compile(r"^#{1,6}\s+설치처 프로필(\s|$)")
 
 
 def _section_items(base, matches_heading):
@@ -83,7 +87,7 @@ def read_profile(base):
     굵은 라벨이 두 값 중 하나일 때만 인정한다 — 절 안의 다른 굵은 항목
     (기계 대수 등)이 프로필로 읽히면 안 된다.
     """
-    for item in _section_items(base, lambda h: h == PROFILE_HEADING):
+    for item in _section_items(base, lambda h: bool(_PROFILE_HEADING_RE.match(h))):
         if item in _PROFILE_VALUES:
             return item
     return None

@@ -85,6 +85,26 @@ class TestHooksUseCommon(unittest.TestCase):
                 hook.utf8_stdio()  # 폴백 no-op — 로드·호출 모두 예외 없어야 한다
                 self.assertIsNot(hook.utf8_stdio, common.utf8_stdio)
 
+    def test_c4b_fallback_profile_reader_never_reports_corporate(self):  # C4b (ADR 042)
+        """`_common` 유실 시의 폴백 `read_profile`은 항상 미상을 돌려준다.
+
+        폴백이 `사내`를 돌려주면 **개인 설치처에서 발행이 막힌다** — 게이트의
+        비목표("개인 설치처의 동작은 한 바이트도 바뀌지 않는다")를 정면으로
+        어기는 방향이다. C4가 `utf8_stdio`만 확인해 이 갈래에 커버리지가 0이었고
+        (독립 검증 C-02), `CORPORATE`를 돌려주는 변이가 스위트를 통과했다.
+        """
+        for name, filename in HOOK_FILES:
+            if "gate" not in filename:
+                continue  # 프로필을 읽는 것은 발행 게이트 2종뿐이다
+            with self.subTest(hook=filename):
+                hook = load_module(name + "_no_common_profile", filename,
+                                   block_common=True)
+                reader = getattr(hook, "read_profile", None)
+                if reader is None:
+                    continue  # tier-gate는 프로필을 읽지 않는다
+                self.assertIsNone(reader("/nonexistent"))
+                self.assertNotEqual(reader("/nonexistent"), hook.CORPORATE)
+
 
 class TestRegistryReaders(unittest.TestCase):
     """C6~C9 (R4, ADR 040) — 두 판독기가 절 파서를 공유하고 절 밖을 읽지 않는다."""
@@ -123,10 +143,23 @@ class TestRegistryReaders(unittest.TestCase):
         ) as d:
             self.assertEqual(common.read_lightweight_models(d), {"real"})
 
+    def test_c9b_profile_heading_accepts_a_parenthetical(self):  # C9b (ADR 042)
+        """프로필 절 제목도 접두+낱말경계로 읽는다 — 정확 일치로 되돌리면 여기서 죽는다.
+
+        ADR 042 전까지 이 절은 정확 일치였고, `## 설치처 프로필 (ADR 012)`처럼
+        괄호 설명을 다는 것만으로 조용히 미상이 됐다. 그때는 미상의 대가가
+        `reviewer` 하나가 다시 도는 것이었지만, 지금은 **발행 차단 전체가
+        꺼지는 것**이다(독립 검증 C-04가 실측으로 재현). 그래서 경량 절과
+        같은 판정으로 맞췄고, 이 케이스가 그 동작을 붙잡는다.
+        """
+        with self.registry("## 설치처 프로필 (ADR 012)\n\n- **사내** — x\n") as d:
+            self.assertEqual(common.read_profile(d), "사내")
+        with self.registry("## 설치처 프로필별 메모\n\n- **사내** — 다른 절이다\n") as d:
+            self.assertIsNone(common.read_profile(d))
+
     def test_c9_heading_accepts_a_parenthetical(self):  # C9
-        # 프로필 절은 정확 일치라 설명을 붙이면 조용히 미상이 된다(그래서
-        # harness-install이 형식을 문서로 못박아야 했다). 경량 절은 접두 매칭이라
-        # 설명을 붙여도 읽히고, 낱말 경계 덕에 다른 절을 삼키지도 않는다.
+        # 두 절이 이제 같은 판정을 쓴다. 경량 절은 접두 매칭이라 설명을 붙여도
+        # 읽히고, 낱말 경계 덕에 다른 절을 삼키지도 않는다.
         with self.registry("## 경량 모델 (9절 경량 금지의 판정 입력)\n\n- **haiku** — x\n") as d:
             self.assertEqual(common.read_lightweight_models(d), {"haiku"})
         with self.registry("## 경량 모델링 도구\n\n- **haiku** — 다른 절이다\n") as d:
