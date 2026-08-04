@@ -392,7 +392,7 @@ CODEX_HOOK_COMMANDS = {
     "PreToolUse": [
         ("gate-reminder.py", "--check"),
         ("tier-gate.py",),
-        ("review-gate.py",),
+        ("dispatch-gate.py",),
     ],
     "PostToolUse": [("gate-reminder.py", "--record")],
 }
@@ -581,7 +581,7 @@ def check_lightweight_section(root):
 
     이 절은 `tier-gate`의 유일한 판정 입력인데 **gitignore 대상**이라, 지워지거나
     비어도 `git status`에 흔적이 없고 게이트는 조용히 잠든다(독립 검증 2026-08-04
-    F9). `review-gate`의 프로필 판독은 미상이 '검증을 돌린다'로 떨어져 안전하지만
+    F9). `dispatch-gate`의 프로필 판독은 미상이 '발행이 돌아간다'로 떨어져 안전하지만
     이쪽 fail-open은 '금지가 안 걸린다'로 떨어진다 — 그래서 상태를 눈에 보이게 한다.
 
     **FAIL로 만들지 않는다.** 절을 안 채운 설치처는 결함이 아니라 설계된 상태이고

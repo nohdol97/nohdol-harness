@@ -47,10 +47,11 @@
 | [035](adr/035-subproject-worktree-workflow.md) | 2026-07-29 | 활성 | 하위 프로젝트 쓰기 작업의 worktree 선행 생성(`project/.worktrees/`, `origin/main` 직접 분기, 세션 cwd는 루트 유지)과 머지 실측 기반 정리 — 정본은 `branch-workflow`, `wrapup`이 위임 |
 | [036](adr/036-ownership-boundary-placement-and-vocabulary.md) | 2026-08-02 | 활성 | 소유권 경계를 둘로 분할 — 규칙(영역 표·중단 게이트)은 프로젝트 저장소에 중립 어휘(`공용`/`배포처`)로, 역할 배정만 하위 하네스에. `carry-in.md` → `site-setup.md` |
 | [037](adr/037-tier-gate-dispatch-enforcement.md) | 2026-08-03 | **대체됨 → 040** | 티어 매핑의 실행 계층 승격 — 발행 시 `model` 미지정 차단(`tier-gate`), 값 판정 없음·`inherit`는 미지정 동치·fail-open. **판정 방향이 뒤집혔다**(발행 지점 강제라는 결정은 040이 유지) |
-| [038](adr/038-corporate-profile-verification-exemption.md) | 2026-08-03 | 활성 | 사내 프로필의 검증 목적 발행 면제 — reviewer·관점 팬아웃·리뷰 fan-in integrator·infra-specialist 리뷰 모드를 끄고 메인 루프 자체 검증+면제 기록으로 대체, 명시 요청은 실행. 훅(`review-gate`)이 막는 것은 `reviewer` 타입 하나 |
+| [038](adr/038-corporate-profile-verification-exemption.md) | 2026-08-03 | **부분 대체(→042)** | 사내 프로필의 검증 목적 발행 면제 — reviewer·관점 팬아웃·리뷰 fan-in integrator·infra-specialist 리뷰 모드를 끄고 메인 루프 자체 검증+면제 기록으로 대체, 명시 요청은 실행. 훅(`review-gate`)이 막는 것은 `reviewer` 타입 하나 |
 | [039](adr/039-diagram-obligation-and-skill-port.md) | 2026-08-03 | 활성 | 다이어그램 의무의 **임계값 기반** 발동 조건 + `diagram` 스킬 nohdol-study 포팅 — 스펙·PR 본문·work-tracker 이슈에서 필수(임계값을 넘을 때만), 그 외 권고. 붙잡는 단계는 둘로 갈린다: **품질**은 doc-writer 자체 검증의 체커, **의무**는 유형별(스펙=team-review·reviewer·architect / PR 본문=branch-workflow 마무리 4 / 이슈=work-tracker 등록) |
 | [040](adr/040-tier-gate-inversion-lightweight-ban.md) | 2026-08-04 | 활성 | `tier-gate` 판정 반전(037 대체) — 미지정(=세션 모델 상속)은 통과, REGISTRY.md 「경량 모델」 절이 나열한 등급 지정만 차단. 우회는 `[light-ok]`. 모델명은 코드가 아니라 그 미추적 절에 두어 ADR 005 유지 |
 | [041](adr/041-comprehension-quiz-removal.md) | 2026-08-04 | 활성 | **PR 전 이해도 퀴즈 게이트 제거** — `branch-workflow` 마무리 4단계(퀴즈 스펙 단일 원본)를 삭제하고 그것을 실행시키던 `orchestrate`·`team-review`의 리뷰 창 퀴즈 문단, 5절 루트 원격 PR 사이클의 면제 괄호, 13-0의 퀴즈 회수 문구를 함께 걷어냈다. 이후 단계는 4(PR 생성)·5(머지)로 당겨진다. 13절 서두의 「사용자 이해는 완료의 요건」과 그 리포트 의무(결정 갈림길 교습 + diff 읽기 가이드)는 유지하되, **이제 무엇도 그것을 붙잡지 않는다는 사실을 조항 안에 명시**해 점검이 이를 결함으로 재개봉하지 않게 했다. 사용자 판정(2026-08-04) + 실측: 9일 사이 퀴즈 장치 자체를 주제로 한 이력 행 7건, 그중 4건이 사용자 지적·결정발 수리다 |
+| [042](adr/042-corporate-profile-dispatch-block.md) | 2026-08-04 | 활성 | **사내 프로필에서 서브에이전트 발행 전면 차단**(038 범위 확장) — 검증 축만 끄던 것을 **역할 무관 발행 축 전체**로 넓혔다: 빌드 측·모든 `integrator` 용도·로스터 밖 타입·`subagent_type` 미지정까지 포함하고, `infra-specialist` 하나만 통과(비용이 아니라 블라스트 반경으로 판정하는 축 — 7절 5항 admission 선확인). **우회 표식 폐기**(`[review-ok]`). `orchestrate` 판정은 항상 「직접 수행」으로 수렴하고, 팬아웃이 절차인 스킬(`project-status`·`team-review`·`harness-review`)은 정지가 아니라 **메인 루프 순차 수행으로 저하**한다. 훅 개명 `review-gate.py` → `dispatch-gate.py` |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -73,7 +74,7 @@
 | [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
 | [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
 | [2026-08-03-tier-gate-hook](specs/2026-08-03-tier-gate-hook.md) | 구현됨(040으로 개정) | `.agents/hooks/tier-gate.py` | 037·040 |
-| [2026-08-03-review-gate-hook](specs/2026-08-03-review-gate-hook.md) | 구현됨 | `.agents/hooks/review-gate.py` | 038 |
+| [2026-08-04-dispatch-gate-hook](specs/2026-08-04-dispatch-gate-hook.md) | 구현됨 | `.agents/hooks/dispatch-gate.py` | 038·042 |
 | [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 초안 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`

@@ -90,7 +90,7 @@ class Blocking(unittest.TestCase):
     def test_c13_block_exit_is_literal_two(self):
         # C13 — PreToolUse에서 차단을 뜻하는 값은 2뿐이다. 0·1로 바뀌면 게이트가
         # 조용히 무력해지므로 상수를 통해서가 아니라 리터럴로 고정한다
-        # (독립 검증 2026-08-03이 review-gate에서 같은 변이를 지적했다).
+        # (독립 검증 2026-08-03이 그 훅에서 같은 변이를 지적했다).
         self.assertEqual(hook.BLOCK_EXIT, 2)
         with fixture() as d:
             rc, _ = run(payload("collector", model="haiku"), d)

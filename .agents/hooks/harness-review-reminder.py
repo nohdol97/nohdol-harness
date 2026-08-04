@@ -20,8 +20,8 @@ import sys
 
 try:
     # stdio UTF-8 재구성과 설치처 프로필 판독의 단일 원본
-    # (스펙 2026-07-15-hooks-common-bootstrap). 프로필 판독기는 review-gate와
-    # 공유하므로 _common에 있다(ADR 038) — 여기서는 이름만 다시 노출한다.
+    # (스펙 2026-07-15-hooks-common-bootstrap). 프로필 판독기는 dispatch-gate와
+    # 공유하므로 _common에 있다(ADR 038·042) — 여기서는 이름만 다시 노출한다.
     from _common import CORPORATE, read_profile, utf8_stdio
 except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fail-open)
     CORPORATE = "사내"

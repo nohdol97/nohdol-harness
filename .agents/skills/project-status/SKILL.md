@@ -19,6 +19,8 @@ In a multi-project management harness, "what state is everything in right now" i
 
 ### Phase 1 — Parallel collection (**execution mode:** subagents)
 
+> **`사내` profile — collection runs sequentially in the main loop instead** (ADR 042; contract single source: orchestrate's Install-site exemption). Dispatch is blocked at the call there and no override marker exists, so the fan-out below is unreachable. **The skill still runs and still produces the report**: walk the registry rows one at a time, collect the same four fixed items per row, and write them straight into the Phase 2 sections — the intermediate `phase1_explorer-<project>_status.md` artifacts have no author, so skip them and keep the final report only. Say in the report that collection ran without fan-out; the coverage is the same but the wall-clock and the context cost are not, so a large registry may need the run split across turns.
+
 Deploy one explorer per registry row in parallel (orchestrate mode B, cap 10–20 — **dispatch all of them simultaneously in one turn**, the mode-B simultaneous-dispatch rule). Fixed collection items for each explorer:
 
 1. git state: whether it is an independent repository, branch, uncommitted changes, 3 most recent commits
@@ -29,6 +31,8 @@ Deploy one explorer per registry row in parallel (orchestrate mode B, cap 10–2
 Output: `phase1_explorer-<project>_status.md`
 
 ### Phase 2 — Integration (**execution mode:** integrator solo)
+
+> **`사내` profile — the main loop merges** (same clause as Phase 1). This fan-in is not a review, so ADR 038 left it alone; ADR 042 blocks it anyway, because it blocks the dispatch rather than the purpose.
 
 The integrator merges per the gate principles, but since this skill's final report is a status report, the sections are fixed as follows:
 

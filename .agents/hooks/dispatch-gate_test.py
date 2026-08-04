@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""review-gate 훅 회귀 테스트 — 스펙 완료 기준 C1~C10(C11은 리마인더 스위트).
+"""dispatch-gate 훅 회귀 테스트 — 스펙 완료 기준 C1~C11(C12는 리마인더 스위트).
 
-스펙: docs/specs/2026-08-03-review-gate-hook.md
+스펙: docs/specs/2026-08-04-dispatch-gate-hook.md
 """
 import contextlib
 import importlib.util
@@ -17,7 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)  # 훅이 `from _common import ...`을 하므로 경로가 필요하다
 _spec = importlib.util.spec_from_file_location(
-    "review_gate_hook", os.path.join(HERE, "review-gate.py")
+    "dispatch_gate_hook", os.path.join(HERE, "dispatch-gate.py")
 )
 hook = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hook)
@@ -41,6 +41,13 @@ CORPORATE_REGISTRY = """# 레지스트리
 
 ## 경로 규약
 """
+
+# 이 하네스가 실제로 발행하는 역할 전량 + 로스터 밖 타입. `infra-specialist`만
+# 빠져 있고, 그 하나는 C6이 반대 방향으로 고정한다.
+BLOCKED_AGENTS = (
+    "reviewer", "implementer", "explorer", "troubleshooter",
+    "architect", "integrator", "general-purpose", "Explore", "claude",
+)
 
 
 def base_with(registry_text):
@@ -73,21 +80,20 @@ def run(raw, base=None):
 
 class Gate(unittest.TestCase):
     def test_c1_corporate_blocks_reviewer(self):
-        # C1 — 사용자가 지목한 비용 축. 차단 메시지는 대체 절차를 알려야 한다.
+        # C1 — 초판이 막던 축은 그대로 막힌다. 차단 메시지는 대체 절차를 알려야 한다.
         # **종료 코드는 리터럴 2로 못박는다** — PreToolUse가 키로 삼는 값이
         # 그것이라, 상수에만 대고 비교하면 BLOCK_EXIT를 0이나 1로 바꾸는 변이가
-        # 스위트를 통과한다(독립 검증 F3 — 실제로 두 변이가 살아남았다).
+        # 스위트를 통과한다(ADR 038 독립 검증 F3 — 실제로 두 변이가 살아남았다).
         with base_with(CORPORATE_REGISTRY) as d:
             rc, err = run(payload("reviewer"), d)
         self.assertEqual(rc, 2)
         self.assertEqual(rc, hook.BLOCK_EXIT)
         self.assertIn("reviewer", err)
-        self.assertIn("038", err)          # 계약 문서를 가리켜야 한다
-        self.assertIn(hook.OVERRIDE, err)  # 우회 방법도 함께
+        self.assertIn("042", err)  # 계약 문서를 가리켜야 한다
 
     def test_c2_task_tool_name_also_blocks(self):
         # C2 — matcher가 "Task"로도 발화하므로 그 갈래도 판정한다. AGENT_TOOLS를
-        # ("Agent",)로 줄이는 변이가 통과하던 구멍이다(독립 검증 F4).
+        # ("Agent",)로 줄이는 변이가 통과하던 구멍이다(ADR 038 독립 검증 F4).
         with base_with(CORPORATE_REGISTRY) as d:
             rc, _ = run(payload("reviewer", tool_name="Task"), d)
         self.assertEqual(rc, 2)
@@ -95,40 +101,37 @@ class Gate(unittest.TestCase):
     def test_c3_personal_passes(self):
         # 개인 설치처의 동작은 한 바이트도 바뀌지 않는다.
         with base_with(PERSONAL_REGISTRY) as d:
-            rc, err = run(payload("reviewer"), d)
-            self.assertEqual(rc, 0)
-            self.assertEqual(err, "")
+            for agent in BLOCKED_AGENTS:
+                rc, err = run(payload(agent), d)
+                self.assertEqual(rc, 0, agent)
+                self.assertEqual(err, "", agent)
 
     def test_c4_missing_registry_passes(self):
-        # 미상은 차단하지 않는다 — fail-open의 방향이 "검증이 돌아간다"이다.
+        # 미상은 차단하지 않는다 — fail-open의 방향이 "발행이 돌아간다"이다.
         with base_with(None) as d:
             rc, err = run(payload("reviewer"), d)
         self.assertEqual(rc, 0)
         self.assertEqual(err, "")
 
-    def test_c5_non_reviewer_types_pass(self):
-        # 빌드 측은 사용자가 지목한 비용 축이 아니다 — 구현 위임까지 끊으면
-        # orchestrate의 3파일 위임 규칙이 무너진다.
-        #
-        # **`integrator`가 여기 있는 것이 이 테스트의 핵심이다.** 규칙은 리뷰
-        # 리포트 fan-in을 끄지만 훅은 타입으로 막지 않는다 — 같은 타입이
-        # `project-status` Phase 2의 상태 fan-in에도 쓰여, 타입 차단은 그 스킬을
-        # 사내에서 통째로 죽인다(정당한 우회도 없다). 독립 검증 2인이 각각
-        # 지적했고, 이 케이스가 그 축소를 고정한다.
+    def test_c5_every_role_blocks(self):
+        # C5 — **초판에서 뒤집힌 케이스다.** 판정 축이 "어느 역할인가"에서
+        # "발행인가"로 바뀌었으므로 빌드 측·fan-in·로스터 밖이 전부 막힌다.
+        # EXEMPT_AGENTS에 역할을 하나라도 더 넣는 변이가 여기서 죽는다.
         with base_with(CORPORATE_REGISTRY) as d:
-            for agent in ("integrator", "implementer", "explorer",
-                          "infra-specialist", "troubleshooter", "architect",
-                          "general-purpose"):
+            for agent in BLOCKED_AGENTS:
                 rc, err = run(payload(agent), d)
-                self.assertEqual(rc, 0, agent)
-                self.assertEqual(err, "", agent)
+                self.assertEqual(rc, 2, agent)
+                self.assertIn("dispatch-gate", err, agent)
 
-    def test_c6_override_marker_passes(self):
-        # 사용자 명시 요청 — 비용을 그 자리에서 승인한 상태다(8절 선례).
+    def test_c6_infra_specialist_is_the_only_exemption(self):
+        # C6 — 비용이 아니라 블라스트 반경으로 판정하는 유일한 축(7절 5항
+        # admission 선확인). 대소문자·여백 변형도 같은 값으로 읽혀야 한다.
         with base_with(CORPORATE_REGISTRY) as d:
-            rc, err = run(payload("reviewer", prompt="Verify the diff. [review-ok]"), d)
-        self.assertEqual(rc, 0)
-        self.assertEqual(err, "")
+            for form in ("infra-specialist", "  infra-specialist  ",
+                         "Infra-Specialist"):
+                rc, err = run(payload(form), d)
+                self.assertEqual(rc, 0, form)
+                self.assertEqual(err, "", form)
 
     def test_c7_other_tools_pass(self):
         with base_with(CORPORATE_REGISTRY) as d:
@@ -136,9 +139,11 @@ class Gate(unittest.TestCase):
         self.assertEqual(rc, 0)
 
     def test_c8_malformed_stdin_fails_open(self):
+        # 형식 자체가 성립하지 않는 입력만 여기 남는다. `tool_input`이 빈 dict인
+        # 경우는 **형식 불명이 아니라 타입 미지정 발행**이므로 C9b가 가져갔다.
         with base_with(CORPORATE_REGISTRY) as d:
             for raw in ("", "not json", "[]", '{"tool_input": null}',
-                        '{"tool_name": "Agent", "tool_input": {}}'):
+                        '{"tool_name": "Agent", "tool_input": []}'):
                 rc, err = run(raw, d)
                 self.assertEqual(rc, 0, raw)
                 self.assertEqual(err, "", raw)
@@ -150,12 +155,29 @@ class Gate(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(err, "")
 
-    def test_c9b_non_string_subagent_type_passes(self):
+    def test_c9b_missing_or_non_string_type_still_blocks(self):
+        # C9b — **초판에서 뒤집힌 두 번째 케이스.** 타입 미지정은 기본 에이전트로
+        # 떨어질 뿐 비용은 그대로다. 미지정을 통과시키던 초판의 분기를 되살리는
+        # 변이가 여기서 죽는다. 메시지는 빈 타입명을 그대로 노출하지 않는다.
         with base_with(CORPORATE_REGISTRY) as d:
+            rc, err = run(payload(None), d)
+            self.assertEqual(rc, 2)
+            self.assertIn("타입 미지정", err)
             rc, _ = run(payload(subagent_type=123), d)
-            self.assertEqual(rc, 0)
-            rc, _ = run(payload(None), d)
-            self.assertEqual(rc, 0)
+            self.assertEqual(rc, 2)
+            rc, _ = run('{"tool_name": "Agent", "tool_input": {}}', d)
+            self.assertEqual(rc, 2)
+
+    def test_c11_no_override_marker_exists(self):
+        # C11 — 사용자 결정 2026-08-04 "사내에선 예외 없음". 초판의 `[review-ok]`는
+        # 폐기됐고, **되살리는 변이를 이 케이스가 잡는다** — 상수 부재만 보면
+        # 이름을 바꿔 되살리는 변이가 통과하므로 동작으로도 확인한다.
+        self.assertFalse(hasattr(hook, "OVERRIDE"))
+        with base_with(CORPORATE_REGISTRY) as d:
+            for marker in ("[review-ok]", "[agent-ok]", "[dispatch-ok]",
+                           "[light-ok]", "[no-test]"):
+                rc, _ = run(payload("reviewer", prompt="Verify. " + marker), d)
+                self.assertEqual(rc, 2, marker)
 
 
 class SharedProfileReader(unittest.TestCase):

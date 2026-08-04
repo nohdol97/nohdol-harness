@@ -91,7 +91,7 @@ def make_good_fixture(root):
           "[[hooks.PreToolUse.hooks]]\n"
           'type = "command"\ncommand = "python3 .agents/hooks/tier-gate.py"\n'
           "[[hooks.PreToolUse.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/review-gate.py"\n\n'
+          'type = "command"\ncommand = "python3 .agents/hooks/dispatch-gate.py"\n\n'
           "[[hooks.PostToolUse]]\n"
           'matcher = "Bash|shell|local_shell"\n'
           "[[hooks.PostToolUse.hooks]]\n"
@@ -511,7 +511,7 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("FAIL R18", out)
         self.assertIn("tier-gate.py", out)
-        self.assertIn("review-gate.py", out)
+        self.assertIn("dispatch-gate.py", out)
 
     def test_codex_config_wrong_command_fails(self):
         """R18: handler가 실제 스크립트·mode를 잃으면 FAIL한다."""

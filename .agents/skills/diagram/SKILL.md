@@ -56,7 +56,7 @@ So in `flowchart` and `graph`, write every label with quotes:
 
 ```mermaid
 flowchart LR
-  GATE["review-gate (PreToolUse)"] --> READ["REGISTRY.md 프로필 판독"]
+  GATE["dispatch-gate (PreToolUse)"] --> READ["REGISTRY.md 프로필 판독"]
   subgraph HOOKS["발행 게이트"]
     TIER["tier-gate"]
   end

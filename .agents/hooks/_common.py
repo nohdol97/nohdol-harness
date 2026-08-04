@@ -20,7 +20,7 @@ import sys
 # 설치처 판정 입력(§5·ADR 012·ADR 040)의 단일 출처는 REGISTRY.md다. 미추적
 # 파일이라 사내 설치처에서도 이 입력만은 그 기계가 쥔다. 판독기가 여기 있는
 # 이유는 소비자가 셋이기 때문이다 — harness-review-reminder(일일 점검 억제)와
-# review-gate(검증 발행 차단)가 프로필을, tier-gate(경량 발행 차단)가 경량
+# dispatch-gate(발행 차단)가 프로필을, tier-gate(경량 발행 차단)가 경량
 # 목록을 읽는다. 사본을 두면 아래 주석이 기록한 독립 검증 수정(코드 펜스·제목
 # 레벨)을 그만큼 따로 반영해야 한다(이 파일의 존재 이유).
 REGISTRY = "REGISTRY.md"
