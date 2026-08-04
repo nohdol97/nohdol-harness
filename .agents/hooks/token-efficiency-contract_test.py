@@ -65,8 +65,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
                        "`rtk`", "targeted ranges/filters",
                        "raw or tee-preserved output", "1–2 sentences",
                        "result, key evidence, and unverified scope",
-                       "safety decisions", "failure analysis",
-                       "comprehension quiz"):
+                       "safety decisions", "failure analysis"):
             self.assertIn(phrase, text)
 
     def test_team_review_reuses_same_reviewer_for_delta(self):
@@ -140,7 +139,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
                        "team-review", "metaskill", "Interview-first",
                        "comprehension", "QA/test-and-fix", "design → `architect`",
                        "mandatory §3 guardrail confirmations",
-                       "wrong or skipped answers hold the PR"):
+                       "diff reading guide"):
             self.assertIn(phrase, text)
 
     def test_budget_preserves_mandatory_safety_verification(self):
