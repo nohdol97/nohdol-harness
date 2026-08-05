@@ -499,6 +499,33 @@ def test_cmd_guard(cfg):
         % (cfg.test_cmd, os.path.realpath(cfg.project), result["tail"][:500]))
 
 
+def harness_root():
+    """이 드라이버가 놓인 하네스 저장소의 루트(REGISTRY.md 가 있는 자리).
+
+    `harness_repo_common_dir()` 와 같은 고정점을 쓴다 — 기동 위치로 정하면 하위 프로젝트
+    안에서 띄웠을 때 엉뚱한 디렉터리를 루트로 읽는다(그 함수의 주석이 적은 F1 함정과 같다)."""
+    return os.path.realpath(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "..", ".."))
+
+
+def install_profile():
+    """REGISTRY.md 「설치처 프로필」 값('개인'/'사내'). 판독 불가·부재는 None.
+
+    **판정 원본은 훅과 같은 `_common.read_profile` 이다** — 같은 절을 두 벌로 파싱하면
+    한쪽만 고쳐졌을 때 두 장치가 다른 프로필을 본다(ADR 005: 이름은 데이터에, 코드는 모른다).
+    불러오지 못하면 None 이고 호출부는 그것을 '일반 안내' 로 받는다 — **거부 여부는 이 값과
+    무관하다.** 프로필은 안내 문구만 고르며, 판독이 실패해도 R18 은 그대로 거부한다."""
+    try:
+        import importlib.util
+        path = os.path.join(harness_root(), ".agents", "hooks", "_common.py")
+        spec = importlib.util.spec_from_file_location("_autoloop_registry_common", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.read_profile(harness_root())
+    except Exception:
+        return None
+
+
 def worktree_guard(cfg):
     """R18 — 하위 프로젝트 대상 루프는 전용 worktree 에서만 돈다(ADR 035). 반환: 거부 사유(없으면 "").
 
@@ -529,6 +556,17 @@ def worktree_guard(cfg):
         return ""      # 연결된 worktree — git-dir 만 .git/worktrees/<이름> 로 갈린다(실측)
     if proj_common == harness_repo_common_dir():
         return ""
+    if install_profile() == "사내":
+        # 이 설치처에서는 위 안내가 ADR 043 이 금지한 것을 시키는 말이 된다.
+        return (
+            "대상이 전용 worktree 가 아닙니다(%s). **이 설치처(`사내`)에서는 하위 프로젝트를 "
+            "무인 루프 대상으로 쓸 수 없습니다** — ADR 043 이 여기서 worktree 를 폐기했고"
+            "(그 안에서의 커밋·푸시·PR 이 실패한다), R18 은 그대로 둡니다. **worktree 를 "
+            "만들지 마세요** — 그 ADR 이 금지합니다. 격리 수단이 사라졌다고 위험이 줄지는 "
+            "않기 때문에 거부가 유지됩니다: 무인 세션이 사용자가 쓰는 체크아웃의 브랜치를 몇 "
+            "시간 움직이는 것이 R18 이 막는 바로 그 실패이고, worktree 가 없는 사이트에서는 "
+            "그것을 막을 구조가 아예 없습니다. 하네스 루트 대상으로만 돌리거나, 그 작업은 "
+            "사용자 세션에서 직접 진행하세요(ADR 043 결정 5)." % project)
     return (
         "대상이 전용 worktree 가 아닙니다(%s) — 무인 루프는 worktree 에서만 돌립니다"
         "(R18·ADR 035). 하위 프로젝트라면 `git -C <프로젝트> worktree add "

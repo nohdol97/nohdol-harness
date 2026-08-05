@@ -32,7 +32,7 @@ ADR 035가 하위 프로젝트 작업을 `project/.worktrees/<이름>/<브랜치
 
 **5. 그 결과 `사내` 프로필에서는 하위 프로젝트 대상 무인 루프(`autoloop`)를 쓸 수 없다. 이것은 부작용이 아니라 유지되는 제약이다.** `driver.py`의 R18 가드는 대상이 연결된 worktree가 아니면 기동을 거부하는데(ADR 035), 이 결정이 그 사이트에서 worktree를 없애므로 거부가 항상 발동한다. **가드를 그대로 두는 쪽을 택한다** — R18이 막는 것은 "무인 세션이 사용자가 쓰는 체크아웃의 브랜치를 몇 시간 동안 움직이는 것"이고, worktree가 없는 사이트에서는 그 위험이 줄어드는 게 아니라 **격리 수단이 사라져 오히려 커진다**. `dispatch-gate`(ADR 042)는 `Agent`·`Task` 호출만 보므로 Bash로 뜨는 드라이버를 막지 않는다 — 즉 이 제약이 없으면 사내에서 무인 루프가 공유 체크아웃 위에서 돈다.
 
-**남는 결함 하나는 후속이다**: R18의 거부 메시지가 `git worktree add`를 안내하는데, 사내에서는 이 ADR이 금지한 것을 하라는 말이 된다. 메시지 분기는 드라이버 코드 변경이라 `driver_test.py` 회귀와 독립 검증이 따로 필요하므로 이 변경에 넣지 않았다. 그때까지는 이 절이 그 안내를 정정하는 유일한 기록이다.
+**거부 메시지도 같은 날 고쳤다**(당초 후속으로 남겼다가 사용자 요청으로 착수): R18의 안내가 `git worktree add`를 시키면 사내에서는 이 ADR이 금지한 것을 하라는 말이 되므로, 드라이버가 설치처 프로필을 읽어 **문구만** 가른다. **거부 여부는 프로필과 무관하고 판독 실패도 거부를 뒤집지 않는다** — 판독을 거부의 입력으로 쓰면 게이트가 REGISTRY.md의 가독성에 인질이 된다. 판정 원본은 훅과 같은 `_common.read_profile`이며(두 벌 파싱 금지, ADR 005), 스펙 R18·C27·C30과 `driver_test.py` 4건이 이를 붙잡는다.
 
 ## 근거
 
@@ -49,6 +49,7 @@ ADR 035가 하위 프로젝트 작업을 `project/.worktrees/<이름>/<브랜치
 - `docs/adr/035-subproject-worktree-workflow.md` — 부분 대체 배너
 - `docs/README.md` — MOC 043 행 추가, 035 행 상태 갱신
 - `.agents/skills/README.ko.md` — branch-workflow 절 동조
+- `.agents/skills/autoloop/scripts/driver.py`·`driver_test.py` — 프로필별 거부 문구 분기와 회귀 4건, `.agents/skills/autoloop/SKILL.md`(기동 전 점검), `docs/specs/2026-07-19-autoloop-driver.md`(R18·C27 한정·C30 신설)
 - `docs/harness-changelog.md` — 이력 행
 
 `orchestrate`의 `isolation: worktree`(병렬 쓰기 격리)와 agent-rules ⑨의 bisect 격리는 **대상이 아니다.** 둘 다 커밋도 푸시도 하지 않으므로 보고된 실패가 닿지 않고, 발행 1회 동안만 살아 의존성 문제도 다르게 걸린다. 사내에서는 ADR 042가 발행 자체를 막으므로 병렬 격리는 애초에 발동하지 않는다. **다만 그 차단에는 예외가 하나 있다** — `infra-specialist`는 사내에서도 발행되고 파일을 바꾸는 역할이므로(7절 5항), 그 발행이 하위 프로젝트를 대상으로 하면 `orchestrate`의 작업 위치 조항이 지시하는 worktree 절대경로가 사내에는 존재하지 않는다. 그 경우 체크아웃 경로와 브랜치를 대신 넘긴다(독립 검증 F9 — 좁지만 실재하는 잔여).
