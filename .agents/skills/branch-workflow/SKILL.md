@@ -11,6 +11,36 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
 
 **Scope**: independent subproject repositories only. **The root harness repository is an exception** — it is document-centric and keeps direct commits to main (root AGENTS.md section 5).
 
+## Install-site fork — `사내` branches inside the single checkout
+
+Where REGISTRY.md's 「설치처 프로필」 records `사내`, **the worktree procedures in this skill do not run.** Reported from that site: commit, push, and PR from a worktree fail there while the same operations succeed in the primary checkout. Work happens on a branch inside `project/<name>/` — the method this skill used before ADR 035. Everything else in this skill is unchanged: the branch naming, the finish order, and the merge measurement are the same. **One thing this branch gains**: the checkout keeps its dependency directory, so the bootstrap step in the start procedure never runs here.
+
+**ADR 035 adopted worktrees to close two failures. Both come back here, as procedure instead of structure** — say that plainly rather than presenting this branch as equivalent:
+
+1. **Uncommitted changes stop the start.** `git -C project/<name> status --porcelain`; report anything present and let the user decide. `worktree add` never touched that checkout, but `checkout` moves the working tree — so this is a §3 data-loss confirmation the worktree path did not need.
+2. **Branch from a freshly fetched `origin/main`**, never from whatever is currently checked out. The stale starting point is precisely what a worktree made structural, and here it is a step someone can skip:
+   ```bash
+   git -C project/<name> fetch origin
+   git -C project/<name> checkout -b <type>/<description> --no-track origin/main
+   ```
+   The start procedure's three variants map over unchanged in meaning: **resuming an existing branch** is `checkout <branch>` with no `-b` (creating it again fails, and `-b` is what a session reaching for the line above will type); **no remote** branches off local `main`; **`origin/main` unfetchable** stops and reports, for the same reason as there.
+3. **On resume, read the branch before working** — `git -C project/<name> symbolic-ref --short HEAD`. A shared checkout can be sitting on `main`, which is the silent failure ADR 035 recorded; a worktree holds exactly one branch and could not. That re-check was deleted when worktrees arrived (ADR 035) and is restored here.
+4. **The session still stays at the harness root.** Every command names the checkout with `-C`, exactly as the worktree procedures do — nothing about cwd changes.
+
+**Finish runs unchanged** (verify → rebase → push → PR), with `-C project/<name>` in place of the worktree path.
+
+**Cleanup loses its data-loss guard, so the check becomes explicit.** Measure the merge exactly as the cleanup section prescribes — that part does not change. Then, **before switching away**:
+
+```bash
+git -C project/<name> status --porcelain   # anything here stops the cleanup
+git -C project/<name> checkout main
+git -C project/<name> branch -d <branch>
+```
+
+Measured (git 2.39.5, isolated repository): `git checkout main` with an unrelated file dirty **succeeds and carries that file across**, where `git worktree remove` exits 128 and refuses. **The refusal was the check** (cleanup section, condition 2) — without this explicit status read, cleanup silently relocates unsaved work onto `main`. A squash-merged branch still reads unmerged to `branch -d` and is refused; leave it and report it, exactly as the cleanup section already says. Never `-D`.
+
+> **This fork is about the feature-branch worktrees only.** `orchestrate`'s `isolation: worktree` and agent-rules ⑨'s bisect isolation neither commit nor push, so the reported failure does not reach them and they stay as they are.
+
 ## Start procedure (first step of every subproject task)
 
 > **Order**: for implementation or multi-step work, the **orchestrate Phase 0-1 gate ruling comes first** (root AGENTS.md section 7, item 3) — this start procedure is the first step after the ruling confirms execution, before touching any files. If you create the branch before the gate and the ruling comes back "not direct execution", an empty branch is left behind.
@@ -36,6 +66,11 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
 
    **Location is `project/.worktrees/<name>/<branch>/`**, and each part of that is load-bearing: `project/` is gitignored (REGISTRY.md path convention), so the root repository stays clean; the leading dot keeps it out of the `project/*/` glob that project scans use; and it sits **outside `_workspace/`**, whose weekly housekeeping lists 14-day-old directories as deletion candidates — a worktree holding uncommitted work must never land on that list. **The worktree path must be absolute**: a relative path is resolved against `-C`'s directory, not the root.
 2. **Uncommitted changes in `project/<name>/` no longer block the start.** The old rule stopped here and asked the user, because `git checkout main` would have moved work that might not be yours. Nothing moves now — `worktree add` does not touch that checkout. Still **report the leftover changes in one line** so they are not forgotten, and if they belong to the task you are about to start, ask before working around them in a second directory. The old resume-time `git branch --show-current` re-check is gone with the same cause: a worktree holds one branch, so there is no branch to have silently landed on (the 2026-07-22 case it guarded is recorded in ADR 035).
+
+**A fresh worktree has no dependency directory, and bootstrapping it is part of the start, not a surprise mid-task.** A worktree shares the repository, not the untracked build state — `.venv`, `node_modules`, and their kin do not come along. Measured 2026-08-05: all six registered projects carry a `.venv` (7–27MB), and recreating `telemetry-contract`'s took **8–12s** (two runs, cold and on a `git archive` copy — the point is the order of magnitude, not the second). Run the bootstrap **before any command runs in the new worktree**, using the command the project's own AGENTS.md gives (`telemetry-contract` §2 records `python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'`), and **name that step in any dispatch prompt that will run tests there** — otherwise the agent meets a missing runner mid-task and either rebuilds it unprompted or reports a failure that is not the code's (observed 2026-08-05: an implementer had to create the venv itself before it could run anything).
+
+**Never share that directory by symlink or copy to skip the cost.** These projects install editable (`pip install -e`), and **which tree a borrowed environment imports depends on how you invoke it** — measured in this workspace and recorded at `.agents/projects/agent-eval-onboarding/AGENTS.md`: `.venv/bin/python -m pytest tests/` picks up the *worktree's* package, while the `.venv/bin/pytest` console script picks up the *checkout's*. So the failure is not uniform, which is exactly why the prohibition is flat rather than conditional: the unsafe form is the shorter one people actually type, and the two are indistinguishable in a green test run. A pass over the wrong tree costs more than every rebuild it would have saved.
+
 3. Do the work **at the worktree path** (commits via `git -C <worktree>`, following Conventional Commits + project scope). **When the work is dispatched to a subagent — the official route at 3+ files — put the absolute worktree path in the issuing prompt** (orchestrate's CONTEXT element): agents inherit the session cwd, which is the root, and `project/<name>/` is sitting on an unrelated branch, so an agent left to infer the location commits to the wrong branch. **For feature additions or behavior changes, keep the spec → failing test order before implementing** (root AGENTS.md section 13 SDD+TDD; spec uses the doc-writer template).
 
 ## Finish procedure (on task completion)

@@ -69,9 +69,11 @@ Placement is deliberate: cleanup runs **after** step 4's saving, so anything wor
 
 If no worktree exists, say nothing (an empty cleanup report is noise). Report survivors in one line with their reason — they are the next session's starting points.
 
+**On a `사내` profile this step has a different target, and skipping it would leave cleanup with no owner at all** (ADR 043): there is no worktree there, so the sentence above would end the step in silence while a finished feature branch sits in `project/<name>/`. Run **`branch-workflow`'s install-site fork** instead — same merge measurement, then its `status --porcelain` → `checkout main` → `branch -d` sequence, stopping on anything the status read reports. Step 6 below then applies to a checkout this step has just returned to `main`.
+
 ### 6. Fast-forward the projects this session touched
 
-Worktrees are gone, so the `project/<name>/` checkouts are the only copies left — and **nothing updates them.** `branch-workflow`'s start procedure stopped pulling them when work moved into worktrees, and it says so itself while prescribing a fetch before any read. That prescription is the fallback, not the fix: it fires inside whatever future session happens to read, and a dispatched agent that never opened `branch-workflow` does not carry it. Correcting the state here removes the condition instead of relying on the next reader to remember.
+Worktrees are gone — or, on a `사내` profile, were never created (ADR 043) — so the `project/<name>/` checkouts are the only copies left, and **nothing updates them.** `branch-workflow`'s start procedure stopped pulling them when work moved into worktrees, and it says so itself while prescribing a fetch before any read. That prescription is the fallback, not the fix: it fires inside whatever future session happens to read, and a dispatched agent that never opened `branch-workflow` does not carry it. Correcting the state here removes the condition instead of relying on the next reader to remember.
 
 **Scope: the projects this session touched** — committed, or merely surveyed. This is a cost boundary, not a safety claim: an untouched project can still go stale when the user merges an open PR elsewhere, and `branch-workflow` routes read-only work to that same checkout without creating a worktree. Widening the scope to every registered project would put a fetch round-trip per project into every wrap-up, which is the trade this boundary takes.
 
