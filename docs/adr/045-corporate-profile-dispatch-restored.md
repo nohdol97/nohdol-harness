@@ -1,7 +1,7 @@
 # ADR 045 — 사내 프로필의 서브에이전트 발행 차단 폐기
 
 - **날짜**: 2026-08-07
-- **상태**: 활성
+- **상태**: **폐기(→046)** — 같은 날 [ADR 046](046-corporate-profile-dispatch-block-restored.md)이 이 결정을 되돌렸다(사용자 판정: 비용을 감당할 수 없다). 커밋 `1b1779f`가 revert됐고 **ADR 042·038이 다시 활성이다.** 아래 내용은 시점 기록이며 현재 규칙이 아니다. 이 파일을 남겨 두는 이유는 §6 규약(대체된 ADR을 지우지 않는다)이자, **하루 안의 왕복 자체가 다음 판단의 근거**이기 때문이다 — 무엇을 되돌리는 데 얼마가 드는지가 여기 실측으로 적혀 있다.
 - **관련**: [ADR 042](042-corporate-profile-dispatch-block.md)·[ADR 038](038-corporate-profile-verification-exemption.md)(**이 ADR이 둘 다 대체**), ADR 012(설치처 프로필 — 이 ADR이 건드리지 않는 축), ADR 037·040(같은 발행 지점의 `tier-gate`), ADR 043(사내 worktree 폐기 — 별개 축, 유지), 스펙 `2026-08-04-dispatch-gate-hook`(폐기)
 
 ## 변경 내용

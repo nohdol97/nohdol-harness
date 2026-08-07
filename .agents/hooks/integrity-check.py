@@ -378,10 +378,9 @@ CODEX_DOC_MAX = 65_536
 CODEX_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse"}
 CODEX_HOOK_MATCHERS = {
     "SessionStart": {"startup", "resume", "clear"},
-    # 발행 게이트(tier-gate)는 `Agent` 매처에 걸린다. 이 항목이 없던 동안 그
-    # 등록을 지워도 R18이 PASS였다(독립 검증 2026-08-03 F6 — ADR 037 때 생겼고,
-    # ADR 038·042로 둘이 됐다가 ADR 045로 다시 하나가 됐다).
-    # `spawn_agent`는 Codex 도구명 미실측이라 넣지 않는다.
+    # 발행 게이트 2종은 `Agent` 매처에 걸린다. 이 항목이 없던 동안 두 등록을
+    # 통째로 지워도 R18이 PASS였다(독립 검증 2026-08-03 F6 — ADR 037 때 생겨
+    # ADR 038로 둘이 됐다). `spawn_agent`는 Codex 도구명 미실측이라 넣지 않는다.
     "PreToolUse": {"apply_patch", "Agent"},
     "PostToolUse": {"Bash", "shell", "local_shell"},
 }
@@ -391,7 +390,7 @@ CODEX_HOOK_MATCHERS = {
 CLAUDE_HOOK_COMMANDS = {
     "SessionStart": ["agentsview-daemon.py", "harness-review-reminder.py",
                      "worklog-reminder.py"],
-    "PreToolUse": ["gate-reminder.py", "tier-gate.py"],
+    "PreToolUse": ["gate-reminder.py", "tier-gate.py", "dispatch-gate.py"],
     "PostToolUse": ["gate-reminder.py"],
 }
 
@@ -404,6 +403,7 @@ CODEX_HOOK_COMMANDS = {
     "PreToolUse": [
         ("gate-reminder.py", "--check"),
         ("tier-gate.py",),
+        ("dispatch-gate.py",),
     ],
     "PostToolUse": [("gate-reminder.py", "--record")],
 }
@@ -592,7 +592,7 @@ def check_lightweight_section(root):
 
     이 절은 `tier-gate`의 유일한 판정 입력인데 **gitignore 대상**이라, 지워지거나
     비어도 `git status`에 흔적이 없고 게이트는 조용히 잠든다(독립 검증 2026-08-04
-    F9). 프로필 판독의 fail-open은 미상이 '점검이 돌아간다'로 떨어져 안전하지만
+    F9). `dispatch-gate`의 프로필 판독은 미상이 '발행이 돌아간다'로 떨어져 안전하지만
     이쪽 fail-open은 '금지가 안 걸린다'로 떨어진다 — 그래서 상태를 눈에 보이게 한다.
 
     **FAIL로 만들지 않는다.** 절을 안 채운 설치처는 결함이 아니라 설계된 상태이고
@@ -614,12 +614,10 @@ def check_claude_hook_registrations(root):
     """R21: `.claude/settings.json`의 세션 훅 등록이 살아 있는지 검사한다(ADR 042).
 
     R18은 `.codex/config.toml`만 본다. 그래서 **Claude 쪽 등록을 지워도 무결성이
-    바이트 단위로 동일했다** — 스위트도 전부 초록이다(독립 검증 2026-08-04
-    C-03 실측). ADR 042가 이 검사를 만든 근거였던 발행 차단은 ADR 045로 사라졌지만
-    **검사는 그 훅 하나의 것이 아니었다** — 여기 걸린 나머지(`tier-gate`의 경량
-    금지, `gate-reminder`의 전환점 포착, 세션 훅 3종)는 전부 그대로이고, 유실이
-    조용하다는 성질도 그대로다. 조용히 사라질 수 있는 판정 장치는 무결성이 이름을
-    불러 줘야 한다(R18·R20과 같은 이유).
+    바이트 단위로 동일했다** — 9개 스위트도 전부 초록이다(독립 검증 2026-08-04
+    C-03 실측). ADR 037·038 때는 그 유실의 대가가 "게이트 하나가 안 걸린다"였지만,
+    ADR 042 이후로는 **사내에서 발행 차단이 통째로 꺼지는 것**이다. 조용히 사라질
+    수 있는 판정 장치는 무결성이 이름을 불러 줘야 한다(R18·R20과 같은 이유).
 
     커맨드 문자열 전체를 고정하지는 않는다 — shim은 인터프리터 탐색 형태가 바뀔
     수 있고, 여기서 잡으려는 것은 **등록의 유실**이지 표기 변화가 아니다.
@@ -645,7 +643,7 @@ def check_claude_hook_registrations(root):
             else:
                 out.append((label, FAIL,
                             "not registered under %s in .claude/settings.json — "
-                            "the hook silently stops firing (ADR 042·045)" % event))
+                            "the hook silently stops firing (ADR 042)" % event))
     return out or [("R21 Claude hooks", PASS, "")]
 
 

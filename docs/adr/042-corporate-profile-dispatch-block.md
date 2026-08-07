@@ -1,7 +1,7 @@
 # ADR 042 — 사내 프로필에서 서브에이전트 발행 전면 차단
 
 - **날짜**: 2026-08-04
-- **상태**: **폐기(→045)** — [ADR 045](045-corporate-profile-dispatch-restored.md)가 이 차단을 통째로 걷었다(2026-08-07, 사용자의 비용 판정 갱신). `dispatch-gate.py`와 그 테스트·등록은 삭제됐고, 설치처 프로필은 더 이상 발행의 판정 입력이 아니다. 아래 내용은 **시점 기록이며 현재 규칙이 아니다**. 살아남은 것은 이 ADR이 만든 무결성 R21(검사 대상이 이 훅 하나가 아니었다)과, 프로필을 판정 입력으로 쓰는 구조 자체(`harness-review` 일일 억제가 계속 쓴다)뿐이다.
+- **상태**: 활성 — **2026-08-07에 [ADR 045](045-corporate-profile-dispatch-restored.md)가 이 차단을 폐기했다가 같은 날 [ADR 046](046-corporate-profile-dispatch-block-restored.md)이 철회해 되살렸다**(커밋 `1b1779f` → revert). 아래 결정은 그 왕복 이후에도 그대로 유효하며, 뒤집힌 것은 규칙이 아니라 그 시점의 비용 감당 여부였다(046 「사유」).
 - **관련**: [ADR 038](038-corporate-profile-verification-exemption.md)(이 ADR이 차단 범위를 확장 — 검증 축 → 발행 축), ADR 037·040(같은 발행 지점의 tier-gate), ADR 012(설치처 프로필), AGENTS.md 7절 5·6항·13절 3항, 스펙 `2026-08-04-dispatch-gate-hook`(전신 `2026-08-03-review-gate-hook`을 대체)
 
 ## 변경 내용

@@ -19,7 +19,7 @@ _spec = importlib.util.spec_from_file_location(
 hook = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hook)
 
-# 프로필 판독기는 「경량 모델」 절과 절 파서를 공유하므로 _common이 원본이다(ADR 045).
+# 프로필 판독기는 dispatch-gate와 공유하므로 _common이 원본이다(ADR 038·042).
 # 이 스위트는 훅이 재노출한 이름(hook.read_profile)으로 계속 판정한다 — 이관
 # 후에도 리마인더가 프로필을 읽는지가 검사 대상이기 때문이다(스펙 C11).
 import _common  # noqa: E402

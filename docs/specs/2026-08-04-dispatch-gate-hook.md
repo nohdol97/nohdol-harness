@@ -1,8 +1,6 @@
 # dispatch-gate 훅 — 사내 프로필에서 서브에이전트 발행 차단
 
-> 상태: **폐기(2026-08-07)** · 작성 2026-08-04 · 결정: ADR 042 (ADR 038 확장), **폐기 결정: [ADR 045](../adr/045-corporate-profile-dispatch-restored.md)** · 전신: `review-gate`(스펙 2026-08-03, 이 문서가 대체)
->
-> **이 스펙이 규정한 훅은 삭제됐다.** `.agents/hooks/dispatch-gate.py`와 `dispatch-gate_test.py`, 그리고 `.claude/settings.json`·`.codex/config.toml`의 등록이 모두 사라졌으므로 아래 요구사항 R1–R8과 케이스 C1–C15는 **현재 무엇도 강제하지 않는다**. 시점 기록으로만 남긴다.
+> 상태: 구현됨 · 작성 2026-08-04 · 결정: ADR 042 (ADR 038 확장) · 전신: `review-gate`(스펙 2026-08-03, 이 문서가 대체)
 
 ## 1. 배경
 

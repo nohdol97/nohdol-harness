@@ -20,10 +20,8 @@ import sys
 
 try:
     # stdio UTF-8 재구성과 설치처 프로필 판독의 단일 원본
-    # (스펙 2026-07-15-hooks-common-bootstrap). ADR 045로 dispatch-gate가 사라져
-    # 프로필 판독기의 소비자는 이 훅 하나지만, 판독기는 「경량 모델」 절과 같은
-    # 절 파서(`_section_items`)를 쓰므로 _common에 남는다 — 옮기면 그 파서가
-    # 둘로 갈라져 이 파일이 없애려던 fix 연쇄가 되돌아온다.
+    # (스펙 2026-07-15-hooks-common-bootstrap). 프로필 판독기는 dispatch-gate와
+    # 공유하므로 _common에 있다(ADR 038·042) — 여기서는 이름만 다시 노출한다.
     from _common import CORPORATE, read_profile, utf8_stdio
 except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fail-open)
     CORPORATE = "사내"
