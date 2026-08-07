@@ -27,10 +27,6 @@
           {
             "type": "command",
             "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/tier-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
-          },
-          {
-            "type": "command",
-            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/dispatch-gate.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
           }
         ]
       }

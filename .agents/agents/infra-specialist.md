@@ -37,7 +37,7 @@ tier: implement
 
 ## 6. Collaboration — position in the team
 
-- The **midstream** of the cross-deploy pipeline (build → manifest → reconciliation) — after implementer (app build), before reviewer (manifest verification). Secret/permission-related changes must pass reviewer security-perspective verification. **On a `사내` install-site profile that verification is exempted** (ADR 042, extending ADR 038) — this agent is the one type `dispatch-gate` still lets through, but what that exemption is for is **authoring** (§7-5 admission pre-check), and the hook cannot tell this agent's review mode from its authoring mode, so **this line is the only governor of that axis**: when placed as a review-mode verifier there, do not dispatch; the orchestrator verifies and records the exemption instead.
+- The **midstream** of the cross-deploy pipeline (build → manifest → reconciliation) — after implementer (app build), before reviewer (manifest verification). Secret/permission-related changes must pass reviewer security-perspective verification, on any install-site profile (ADR 045 removed the exemption that once excused it).
 
 ## 7. Quality self-verification (pre-output checks)
 

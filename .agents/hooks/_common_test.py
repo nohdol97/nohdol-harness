@@ -44,11 +44,10 @@ HOOK_FILES = [
     ("agentsview_daemon_hook", "agentsview-daemon.py"),
     ("harness_review_reminder_hook", "harness-review-reminder.py"),
     ("worklog_reminder_hook", "worklog-reminder.py"),
-    # 발행 게이트 2종도 _common 소비자다. tier-gate는 ADR 037 때 이 목록에
-    # 들어오지 않아 C3·C4(공통 사용·유실 폴백)가 검사되지 않고 있었고,
-    # dispatch-gate(구 review-gate)가 같은 계층에 붙으면서 같은 구멍이 둘이 됐다(독립 검증 F6).
+    # 발행 게이트도 _common 소비자다. tier-gate는 ADR 037 때 이 목록에 들어오지
+    # 않아 C3·C4(공통 사용·유실 폴백)가 검사되지 않고 있었다(독립 검증 F6).
+    # 같은 계층에 있던 dispatch-gate는 ADR 045로 삭제됐다.
     ("tier_gate_hook", "tier-gate.py"),
-    ("dispatch_gate_hook", "dispatch-gate.py"),
 ]
 
 
@@ -85,25 +84,37 @@ class TestHooksUseCommon(unittest.TestCase):
                 hook.utf8_stdio()  # 폴백 no-op — 로드·호출 모두 예외 없어야 한다
                 self.assertIsNot(hook.utf8_stdio, common.utf8_stdio)
 
-    def test_c4b_fallback_profile_reader_never_reports_corporate(self):  # C4b (ADR 042)
+    def test_c4b_fallback_profile_reader_never_reports_corporate(self):  # C4b (ADR 045)
         """`_common` 유실 시의 폴백 `read_profile`은 항상 미상을 돌려준다.
 
-        폴백이 `사내`를 돌려주면 **개인 설치처에서 발행이 막힌다** — 게이트의
-        비목표("개인 설치처의 동작은 한 바이트도 바뀌지 않는다")를 정면으로
-        어기는 방향이다. C4가 `utf8_stdio`만 확인해 이 갈래에 커버리지가 0이었고
-        (독립 검증 C-02), `CORPORATE`를 돌려주는 변이가 스위트를 통과했다.
+        폴백이 `사내`를 돌려주면 **개인 설치처에서 일일 하네스 점검이 영구히
+        억제된다**(harness-review-reminder의 프로필 분기) — 판독 실패가 억제로
+        떨어지면 안 된다는 fail-open 방향을 정면으로 어긴다. C4가 `utf8_stdio`만
+        확인해 이 갈래에 커버리지가 0이었고(독립 검증 2026-08-04 C-02),
+        `CORPORATE`를 돌려주는 변이가 스위트를 통과했다.
+
+        **대상을 파일명이 아니라 `read_profile` 보유 여부로 고른다.** 파일명에
+        `gate`가 든 것만 보던 동안, ADR 045가 `dispatch-gate`를 지우자 이 케이스는
+        **어서션을 한 번도 실행하지 않는 상태**가 됐다 — 남은 `gate` 파일 둘
+        (`tdd-gate`·`tier-gate`)이 프로필을 읽지 않아 전부 건너뛰고, 정작 유일한
+        소비자인 `harness-review-reminder`는 이름에 `gate`가 없어 제외됐다(독립 검증
+        2026-08-07, 규칙 축 F1·코드 축 C-01이 각각 같은 변이로 확인). 그래서 아래
+        `checked` 어서션이 함께 있어야 한다 — 대상이 0이 되는 것 자체가 회귀다.
         """
+        checked = 0
         for name, filename in HOOK_FILES:
-            if "gate" not in filename:
-                continue  # 프로필을 읽는 것은 발행 게이트 2종뿐이다
             with self.subTest(hook=filename):
                 hook = load_module(name + "_no_common_profile", filename,
                                    block_common=True)
                 reader = getattr(hook, "read_profile", None)
                 if reader is None:
-                    continue  # tier-gate는 프로필을 읽지 않는다
+                    continue  # 프로필을 읽지 않는 훅은 이 계약의 대상이 아니다
+                checked += 1
                 self.assertIsNone(reader("/nonexistent"))
                 self.assertNotEqual(reader("/nonexistent"), hook.CORPORATE)
+        self.assertGreater(checked, 0,
+                           "폴백 read_profile을 가진 훅이 하나도 없다 — 이 케이스가 "
+                           "조용히 무검사가 됐다는 뜻이다(HOOK_FILES를 확인할 것)")
 
 
 class TestRegistryReaders(unittest.TestCase):
