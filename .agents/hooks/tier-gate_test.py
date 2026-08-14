@@ -35,6 +35,15 @@ def payload(subagent_type=None, model=None, tool_name="Agent", prompt="…", **e
     return json.dumps({"tool_name": tool_name, "tool_input": ti})
 
 
+def codex_payload(agent_type=None, message="…", **extra):
+    """Current Codex spawn_agent schema — do not reuse Claude field names."""
+    ti = {"message": message}
+    if agent_type is not None:
+        ti["agent_type"] = agent_type
+    ti.update(extra)
+    return json.dumps({"tool_name": "spawn_agent", "tool_input": ti})
+
+
 def run(raw, base=None):
     """훅을 stdin 텍스트로 실행하고 (exit code, stderr)를 돌려준다."""
     err = io.StringIO()
@@ -130,6 +139,22 @@ class Blocking(unittest.TestCase):
         with fixture() as d:
             rc, _ = run(payload("collector", model="haiku", tool_name="Task"), d)
         self.assertEqual(rc, hook.BLOCK_EXIT)
+
+    def test_c21_codex_spawn_agent_tool_name_also_fires(self):
+        # C21 — Codex는 역할을 agent_type에 싣는다. 도구명만 Codex로 바꾸고
+        # Claude의 subagent_type을 읽으면 design 경량 금지가 조용히 통과한다.
+        with fixture() as d:
+            rc, _ = run(codex_payload("judge", model="haiku"), d)
+        self.assertEqual(rc, hook.BLOCK_EXIT)
+
+    def test_c22_codex_message_carries_lightweight_override(self):
+        # C22 — Codex의 프롬프트 필드는 message다. explore 티어의 명시적 예외가
+        # Claude 전용 prompt만 읽는 바람에 막히는 반대 방향 회귀도 고정한다.
+        with fixture() as d:
+            rc, err = run(codex_payload(
+                "collector", model="haiku", message="빠른 확인 %s" % hook.OVERRIDE), d)
+        self.assertEqual(rc, 0)
+        self.assertEqual(err, "")
 
 
 class Passing(unittest.TestCase):

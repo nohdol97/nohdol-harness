@@ -24,9 +24,10 @@ run time, and applies it from here. **One original, no second copy to drift**
 
 ## Scope boundary against the read contract
 
-REGISTRY.md's 지식 소스 「사용 계약」 caps *consultation* to the recorded entry
-points, because a full-root grep can lift secrets into a report (§3). Authoring
-needs a wider surface, and this skill takes exactly these five paths and no more:
+Root AGENTS.md §7 clause 8 caps *consultation* to the entry points recorded in
+REGISTRY.md, because a full-root grep can lift secrets into a report (§3).
+REGISTRY.md owns only the install-site path and entry points. Authoring needs a
+wider surface, and this skill takes exactly these five paths and no more:
 
 | Touched | Never touched |
 |---|---|

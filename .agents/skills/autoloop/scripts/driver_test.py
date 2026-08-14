@@ -305,7 +305,8 @@ class TestC6Blocked(DriverTestBase):
         self.write_scenario([{"text": status_text("blocked", 3, note="need kubectl apply approval")}])
         cfg = self.make_config()
         self.assertEqual(driver.Driver(cfg).run(), "blocked")
-        note = open(os.path.join(self.workdir, "carryover.md")).read()
+        with open(os.path.join(self.workdir, "carryover.md")) as f:
+            note = f.read()
         self.assertIn("사용자 확인 필요", note)
         self.assertIn("need kubectl apply approval", note)
 
@@ -374,7 +375,8 @@ class TestC10Resume(DriverTestBase):
 
     def test_stop_file_refuses_startup(self):
         os.makedirs(self.workdir, exist_ok=True)
-        open(os.path.join(self.workdir, "STOP"), "w").write("")
+        with open(os.path.join(self.workdir, "STOP"), "w") as f:
+            f.write("")
         ok, reason = driver.startup_guard(self.make_config())
         self.assertFalse(ok)
         self.assertIn("STOP", reason)
@@ -477,7 +479,8 @@ class TestC12Artifacts(DriverTestBase):
         driver.Driver(cfg).run()
         self.assertTrue(os.path.exists(os.path.join(self.workdir, "carryover.md")))
         self.assertTrue(os.path.exists(os.path.join(self.workdir, "iters", "iter-1.json")))
-        log = open(os.path.join(self.workdir, "driver.log")).read()
+        with open(os.path.join(self.workdir, "driver.log")) as f:
+            log = f.read()
         self.assertIn("EXIT", log)
         self.assertIn("exhausted", log)
 
@@ -751,7 +754,8 @@ class TestTestCmdPreflight(DriverTestBase):
         # ① 이른 거부(STOP) — 명시적으로 멈춘 작업에서 명령이 돌면 안 된다
         os.makedirs(self.workdir, exist_ok=True)
         stop = os.path.join(self.workdir, "STOP")
-        open(stop, "w").write("")
+        with open(stop, "w") as f:
+            f.write("")
         ok, _ = driver.startup_guard(self.make_config(test_cmd="touch %s" % marker))
         self.assertFalse(ok)
         self.assertFalse(os.path.exists(os.path.join(self.tmp, marker)),

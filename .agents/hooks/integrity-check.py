@@ -376,12 +376,24 @@ def check_agents_budget(root):
 
 CODEX_DOC_MAX = 65_536
 CODEX_HOOK_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse"}
+CODEX_AGENT_TOOL_NAMES = {"Agent", "Task", "spawn_agent"}
+CODEX_AGENT_TYPE_FIELDS = {
+    "Agent": "subagent_type",
+    "Task": "subagent_type",
+    "spawn_agent": "agent_type",
+}
+CODEX_AGENT_PROMPT_FIELDS = {
+    "Agent": "prompt",
+    "Task": "prompt",
+    "spawn_agent": "message",
+}
 CODEX_HOOK_MATCHERS = {
     "SessionStart": {"startup", "resume", "clear"},
     # 발행 게이트 2종은 `Agent` 매처에 걸린다. 이 항목이 없던 동안 두 등록을
     # 통째로 지워도 R18이 PASS였다(독립 검증 2026-08-03 F6 — ADR 037 때 생겨
-    # ADR 038로 둘이 됐다). `spawn_agent`는 Codex 도구명 미실측이라 넣지 않는다.
-    "PreToolUse": {"apply_patch", "Agent"},
+    # ADR 038로 둘이 됐다). 발행 매처와 두 게이트의 AGENT_TOOLS도 아래에서
+    # 같은 집합인지 대조한다. 매처만 넓으면 핸들러 안에서 조용히 통과한다.
+    "PreToolUse": {"apply_patch"} | CODEX_AGENT_TOOL_NAMES,
     "PostToolUse": {"Bash", "shell", "local_shell"},
 }
 # Claude 쪽 필수 등록(R21). Codex 목록과 일부러 따로 둔다 — 두 런타임의
@@ -481,6 +493,49 @@ def check_codex_config(root):
                 out.append(("R18 Codex config", FAIL,
                             "%s command missing contract: %s"
                             % (event, " + ".join(fragments))))
+    for filename in ("tier-gate.py", "dispatch-gate.py"):
+        path = os.path.join(root, ".agents", "hooks", filename)
+        try:
+            with open(path, encoding="utf-8", errors="strict") as f:
+                tree = ast.parse(f.read(), filename=path)
+            values = {}
+            for node in tree.body:
+                if not isinstance(node, ast.Assign):
+                    continue
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        try:
+                            values[target.id] = ast.literal_eval(node.value)
+                        except Exception:
+                            values[target.id] = None
+            value = values.get("AGENT_TOOLS")
+            accepted = (set(value)
+                        if isinstance(value, (tuple, list, set, frozenset)) else set())
+        except Exception:
+            values = {}
+            accepted = set()
+        if accepted != CODEX_AGENT_TOOL_NAMES:
+            missing_names = sorted(CODEX_AGENT_TOOL_NAMES - accepted)
+            extra_names = sorted(accepted - CODEX_AGENT_TOOL_NAMES)
+            details = []
+            if missing_names:
+                details.append("missing " + ", ".join(missing_names))
+            if extra_names:
+                details.append("unexpected " + ", ".join(extra_names))
+            if not details:
+                details.append("AGENT_TOOLS literal unreadable")
+            out.append(("R18 Codex config", FAIL,
+                        "%s accepted tool names drift from Codex matcher: %s"
+                        % (filename, "; ".join(details))))
+        expected_fields = {"AGENT_TYPE_FIELDS": CODEX_AGENT_TYPE_FIELDS}
+        if filename == "tier-gate.py":
+            expected_fields["AGENT_PROMPT_FIELDS"] = CODEX_AGENT_PROMPT_FIELDS
+        for constant, expected in expected_fields.items():
+            actual = values.get(constant)
+            if actual != expected:
+                out.append(("R18 Codex config", FAIL,
+                            "%s %s must match tool schema: expected %r"
+                            % (filename, constant, expected)))
     return out or [("R18 Codex config", PASS, "")]
 
 

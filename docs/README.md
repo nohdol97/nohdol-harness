@@ -78,8 +78,9 @@
 | [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
 | [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
 | [2026-08-03-tier-gate-hook](specs/2026-08-03-tier-gate-hook.md) | 구현됨(040으로 개정) | `.agents/hooks/tier-gate.py` | 037·040 |
-| [2026-08-04-dispatch-gate-hook](specs/2026-08-04-dispatch-gate-hook.md) | 구현됨 | `.agents/hooks/dispatch-gate.py` | 038·042 |
+| [2026-08-04-dispatch-gate-hook](specs/2026-08-04-dispatch-gate-hook.md) | 구현됨 | `.agents/hooks/dispatch-gate.py` | 038·042·046 |
 | [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 초안 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
+| [2026-08-14-harness-functional-and-language-audit](specs/2026-08-14-harness-functional-and-language-audit.md) | 구현됨 | 루트 규칙·문서·훅·CLI 로더 | — |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

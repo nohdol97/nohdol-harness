@@ -51,7 +51,14 @@ except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fa
         return None  # 미상 — 차단하지 않는 방향(발행이 돌아간다)
 
 BLOCK_EXIT = 2  # PreToolUse: 도구 호출 차단 + stderr를 모델에게 전달
-AGENT_TOOLS = ("Agent", "Task")  # 실측: tool_name은 "Agent"(matcher "Task"도 발화)
+# Claude 계열은 Agent/Task, Codex는 spawn_agent를 보낸다. 설정 매처와 이
+# 집합이 어긋나면 훅 프로세스는 실행돼도 아래 판정 직전에 조용히 통과한다.
+AGENT_TOOLS = ("Agent", "Task", "spawn_agent")
+AGENT_TYPE_FIELDS = {
+    "Agent": "subagent_type",
+    "Task": "subagent_type",
+    "spawn_agent": "agent_type",
+}
 
 # 통과하는 단 하나의 역할. 값이 하나여도 집합으로 두는 것은 판정을 이름 비교
 # 한 곳에 모아 두기 위해서다(초판 VERIFY_AGENTS와 같은 자리, 뜻은 반대).
@@ -87,7 +94,7 @@ def main():
         tool_input = data.get("tool_input")
         if not isinstance(tool_input, dict):
             return 0
-        subagent_type = tool_input.get("subagent_type")
+        subagent_type = tool_input.get(AGENT_TYPE_FIELDS[data["tool_name"]])
         if not isinstance(subagent_type, str):
             subagent_type = ""  # 미지정도 발행이다 — 면제 비교만 통과시키지 않는다
         if subagent_type.strip().lower() in EXEMPT_AGENTS:

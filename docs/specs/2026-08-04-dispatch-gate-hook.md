@@ -30,9 +30,9 @@
 
 | ID | 요구사항 |
 |---|---|
-| R1 | `tool_name`이 `Agent`/`Task`이면 **`subagent_type`이 무엇이든**(미지정·비문자열 포함) 판정 대상이다 |
+| R1 | `tool_name`이 Claude 계열의 `Agent`·`Task` 또는 Codex의 `spawn_agent`이면 역할 필드가 무엇이든(미지정·비문자열 포함) 판정 대상이다. 역할은 Claude의 `subagent_type`, Codex의 `agent_type`에서 읽는다 |
 | R2 | REGISTRY.md 「설치처 프로필」이 `사내`일 때만 차단한다. 그 외(`개인`·미상·부재·판독 실패)는 통과 |
-| R3 | `subagent_type`이 `infra-specialist`(대소문자·여백 무시)이면 통과한다 — **유일한 예외** |
+| R3 | 도구별 역할 필드가 `infra-specialist`(대소문자·여백 무시)이면 통과한다 — **유일한 예외** |
 | R4 | 차단 시 stderr로 대체 절차를 알리고 exit 2 |
 | R5 | 어떤 예외·형식 불명 입력도 통과(fail-open). **fail-open 방향은 "발행이 돌아간다"** — tier-gate와 반대로, 판독 실패가 개인 설치처를 건드리지 않는 쪽으로 떨어진다 |
 | R6 | 프로필 판독은 `_common.read_profile` 단일 원본을 쓴다. 파서를 복제하지 않는다 |
@@ -49,9 +49,9 @@ sequenceDiagram
     participant A as 서브에이전트
 
     S->>H: PreToolUse(tool_input)
-    alt tool_name이 Agent/Task가 아님
+    alt tool_name이 Agent/Task/spawn_agent가 아님
         H-->>A: 통과 (R1 관장 밖)
-    else subagent_type이 infra-specialist
+    else 도구별 역할 필드가 infra-specialist
         H-->>A: 통과 (R3 — 유일한 예외)
     else
         H->>R: 「설치처 프로필」 판독
@@ -82,7 +82,7 @@ sequenceDiagram
 - [x] C4 (R2): REGISTRY.md 부재 → exit 0 (미상은 차단하지 않는다)
 - [x] C5 (R1): 프로필 `사내` + `reviewer`·`implementer`·`explorer`·`troubleshooter`·`architect`·`integrator`·`general-purpose`·`Explore`·`claude` → **전부 exit 2** (초판 C5의 반전)
 - [x] C6 (R3): 프로필 `사내` + `infra-specialist`(여백·대소문자 변형 포함) → exit 0
-- [x] C7 (R1): `tool_name`이 Agent/Task가 아니면 exit 0
+- [x] C7 (R1): `tool_name`이 Agent/Task/spawn_agent가 아니면 exit 0
 - [x] C8 (R5): 형식 불명 stdin(빈 문자열·비JSON·배열·`tool_input: null`·`tool_input`이 배열) → exit 0, 무출력
 - [x] C9 (R5): 판독 함수가 예외를 던져도 exit 0
 - [x] C9b (R1): `subagent_type` 미지정·비문자열·빈 `tool_input`도 **exit 2** (초판 C9 후단의 반전). 메시지는 빈 타입명을 노출하지 않는다
@@ -92,13 +92,21 @@ sequenceDiagram
 - [x] C14 (R5·R6): `_common` 유실 시의 폴백 `read_profile`이 **항상 미상**을 돌려준다 — `CORPORATE`를 돌려주면 개인 설치처에서 발행이 막혀 목표 4를 정면으로 어긴다. `_common_test.py`의 C4가 `utf8_stdio`만 보고 있어 이 갈래의 커버리지가 0이었다(독립 검증 C-02)
 - [x] C15 (R2): 프로필 절 제목을 **접두+낱말경계**로 읽는다 — `## 설치처 프로필 (ADR 012)`처럼 괄호 설명을 달아도 읽히고, `## 설치처 프로필별 메모`는 다른 절로 남는다. 정확 일치이던 동안 괄호 하나로 절이 조용히 미상이 됐고 **그 미상은 ADR 042 이후 차단 전체의 해제**다(독립 검증 C-04 실측). `_common.py`의 경량 절이 이미 쓰던 판정과 같은 형태로 맞췄다
 - [x] C16 (등록 가시성): `.claude/settings.json`에서 이 훅의 등록이 사라지면 무결성 **R21**이 FAIL한다. R18은 Codex 쪽만 봐서, Claude 등록을 지워도 무결성 출력이 바이트 단위로 동일했다(독립 검증 C-03 실측)
+- [x] C17 (R1·등록 가시성): `tool_name=spawn_agent`도 사내 프로필에서 차단되며, 무결성 R18이 Codex 매처와 두 발행 게이트의 허용 도구명 집합을 대조한다.
+- [x] C18 (R1·R3): Codex 형식의 `agent_type=infra-specialist`는 사내 프로필에서도 통과하고, R18이 역할 필드 매핑을 고정한다.
 - [x] C12 (R6): `harness-review-reminder` 스위트 37건이 개명 후에도 전부 통과 — 프로필 절 한정·코드 펜스·제목 레벨의 의미 축은 **그 스위트가 같은 함수에 대고** 판정하므로 여기서 다시 세우지 않는다(§16)
 
-> C1~C11·C13은 `python3 .agents/hooks/dispatch-gate_test.py`(12건), C14~C15는 `python3 .agents/hooks/_common_test.py`(10건), C16은 `python3 .agents/hooks/integrity-check_test.py`(63건), C12는 `python3 .agents/hooks/harness-review-reminder_test.py`(37건)로 판정한다. 스위트가 실제로 무언가를 고정하는지는 **변이 9종**을 임시 사본에 넣어 확인했고 전부 실패로 잡힌다: `EXEMPT_AGENTS`에 `reviewer` 추가(4건 실패), `EXEMPT_AGENTS` 비움(1건), 미지정 통과로 되돌림(1건), `AGENT_TOOLS`에서 `Task` 제거(1건), `BLOCK_EXIT`→0(5건), `[review-ok]` 우회 부활(1건), **면제를 부분 문자열 비교로(1건), 프로필 제목을 정확 일치로 되돌림(1건), 폴백 판독기가 `사내` 반환(1건)** — 뒤의 셋은 독립 검증이 살아남는 변이로 지목한 것들이다.
+> C1~C11·C13·C17·C18은 `python3 .agents/hooks/dispatch-gate_test.py`(14건), C14~C15는 `python3 .agents/hooks/_common_test.py`(10건), C16~C18의 등록·스키마 일치는 `python3 .agents/hooks/integrity-check_test.py`(67건), C12는 `python3 .agents/hooks/harness-review-reminder_test.py`(37건)로 판정한다.
 
 ## 6. 미해결
 
 - **이 설치처가 `개인`이라 차단 경로를 실환경에서 관측하지 못했다.** 판정은 임시 REGISTRY.md를 깐 테스트로만 확인했다 — 초판과 같은 한계이고, 사내 기계의 첫 세션이 실제 관측 지점이다.
-- **Codex 런타임의 발행 도구명은 미실측이다.** `.codex/config.toml`에 같은 매처로 등록하지만, `spawn_agent`가 어떤 `tool_name`으로 오는지 여기서 잰 적이 없다. 어긋나면 발화하지 않을 뿐이다(fail-open).
+- **Codex 실세션 차단 관측은 남아 있다.** 현재 호출 표면의 도구명은 `spawn_agent`로 확인했고 stdin 회귀 테스트도 고정했다. 다만 이 개인 설치처에서는 사내 프로필의 실제 차단을 세션 수준으로 관측하지 않았다.
 - **R7(등록 shim의 `[ -r "$f" ]` 가드)에는 아직 고정 케이스가 없다.** 두 설정에서 가드를 걷어도 스위트가 초록이다(독립 검증 Low). 실패 방향이 안전한 쪽(훅 파일이 없으면 셸이 오류를 내고 발행은 그대로 진행)이라 이번에는 남긴다.
 - **`Workflow` 도구는 대상이 아니다.** 매처가 `Agent`이므로 워크플로 경유 발행은 걸리지 않는다. 이 하네스가 워크플로를 쓰지 않아 실제 경로는 없지만, 구멍인 것은 사실이라 적어 둔다.
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|---|---|---|---|
+| 2026-08-14 | Codex `spawn_agent`의 도구명과 실제 역할 필드 `agent_type`을 판정 대상에 추가하고 관련 테스트 수를 현재 스위트에 맞춤 | R1, R3, C7, C17, C18, 검증 근거, 미해결 | 1차 수정은 도구명만 맞추고 Claude의 `subagent_type`을 계속 읽어 Codex의 `infra-specialist` 안전 예외를 차단함. 실제 페이로드로 재현한 뒤 수정 |

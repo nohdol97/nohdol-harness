@@ -1,75 +1,121 @@
 # nohdol-harness
 
-여러 프로젝트(웹·앱·백엔드·k8s·AWS)를 한 곳에서 지휘하기 위한 **루트 하네스 워크스페이스**.
+> 여러 독립 프로젝트의 작업 순서와 안전 규칙을 한곳에서 관리한다.
 
-Claude Code / Codex를 **이 디렉토리에서 열고** 프로젝트 작업을 지시하면, 하네스가 요청을 관련 프로젝트로 라우팅하고 해당 프로젝트의 규칙(AGENTS.md)을 로드해 작업한다. 이 저장소가 추적하는 것은 **하네스뿐**이다 — 실제 프로젝트 코드는 `project/` 아래 각자의 독립 git 저장소에 산다.
+## 이게 뭔가
 
-## 디렉토리 구조
+이 저장소는 제품 코드 저장소가 아니라 **작업 하네스**다. 실제 제품 코드는 `project/<이름>/` 아래의 각 git 저장소에 있다.
 
-```
-nohdol-harness/
-├── AGENTS.md              # 단일 원본(공용 규칙, 영어 — ADR 030) — 가드레일·라우팅·진화 트리거·티어 매핑
-├── AGENTS.ko.md           # AGENTS.md 한글 다이제스트 — 생성된 뷰(편집 금지, source-hash 드리프트 가드) (ADR 030)
-├── REGISTRY.md            # 프로젝트 레지스트리 — 설치처별 데이터 (미추적, harness-install로 생성)
-├── CLAUDE.md              # `@AGENTS.md` 임포트(단일 원본 항상-온 주입) + Claude 전용 항상-온 앵커 (ADR 021, 영어 — ADR 030)
-├── .agents/               # 에이전트·스킬 정의 원본 (공용, 영어 — ADR 030)
-│   ├── agents/            # 표준 팀원 7종 — explorer·architect·troubleshooter·implementer·infra-specialist·reviewer·integrator (+README.ko.md 한글 요약 뷰)
-│   ├── skills/            # (+README.ko.md 한글 요약 뷰 — ADR 030)
-│   │   ├── orchestrate/     # 작업 규모 판정 게이트 + 에이전트 팀·병렬·크로스 프로젝트 오케스트레이션
-│   │   ├── metaskill/       # 하네스 생성·개선·프로젝트 스캐폴딩
-│   │   ├── harness-review/  # 일일 경량·주간 전체 하네스 운영 점검 (진화 트리거·무결성)
-│   │   ├── harness-install/ # 새 컴퓨터 설치 부트스트랩 (REGISTRY.md 생성)
-│   │   ├── project-status/  # 전체 프로젝트 현황 팬아웃 리포트
-│   │   ├── branch-workflow/ # 하위 프로젝트 브랜치·PR 워크플로우 (main 최신화→브랜치→rebase→PR)
-│   │   ├── doc-writer/      # 일관 형식 문서 작성 (스펙·리포트·README·런북·PR 본문 템플릿)
-│   │   ├── diagram/         # 문서가 다이어그램을 빚졌는지 내용으로 판정 + Mermaid 작성·사전 체커 (스펙·PR 본문·이슈에서 필수 발동, nohdol-study 하네스 포팅 — ADR 039)
-│   │   ├── team-review/     # 규모 스케일링 팀 리뷰 (관점 팬아웃 + 통합 게이트, 스펙 대비 판정)
-│   │   ├── work-tracker/    # 세션 영속 작업 추적 (GitHub Issues, ccpm 패턴, ADR 009)
-│   │   ├── release/         # 머지 이후 배포·릴리스 워크플로우 (런북 → 단계별 확인 → 검증)
-│   │   ├── defuddle/        # 웹 본문만 추출 (토큰 절감, 실패 시 WebFetch 폴백 — kepano/obsidian-skills 착안)
-│   │   ├── context7/        # 라이브러리·프레임워크 버전별 최신 문서 조회 (context7 MCP 래퍼, 미설치·실패 시 WebFetch/WebSearch 폴백)
-│   │   ├── tool-audit/      # 외부 도구(플러그인·MCP·스킬 팩) 사용 실측 감사 (agentsview로 매칭 집계 → 판정·제안, 실행은 metaskill)
-│   │   ├── tool-eval/       # 외부 도구·플러그인 채택 평가 (README 대조 → 채택/개인/기각 → proposal·MOC → 채택 시 harness-install·라우팅·reviewer). tool-audit는 설치 후 실측, tool-eval은 설치 전 평가
-│   │   ├── vault-write/     # study vault 지식 노트 작성 — nohdol-study 하네스의 노트 계약을 런타임 참조(사본 없음), index.md·log.md·hot.md 기록 필수 (ADR 034)
-│   │   ├── carryover/       # 세션 이월 노트 (슬래시 전용) — 남길 작업 선택 → _workspace 로컬 md, 다음 세션 재개 (work-tracker와 공존)
-│   │   ├── wait-what/       # 직전 설명 재피치 (슬래시 전용) — 산출물에서 다시 유도해 쉬운 말로, 새 주장·검증은 하지 않음 (13절 이해도 요건의 당기는 쪽, ADR 044)
-│   │   ├── autoloop/        # 자율 멀티세션 루프 발사대 — 세션 외부 드라이버(scripts/driver.py)가 headless claude -p 반복 기동, 게이트 3종(안전·검증·정지) (ADR 025)
-│   │   └── wrapup/          # clear 전 마무리 관문 (슬래시 전용) — 세션 작업 훑기 → 개선 신호 포착·제안(harness-review 상보) → 범위로 저장 대상 판단해 work-tracker/carryover 위임(로컬 무확인·work-tracker 등록만 직전 확인) → worktree 정리 → 접촉한 프로젝트 체크아웃 ff → /clear 안내 (얇은 오케스트레이터)
-│   ├── hooks/             # Claude·Codex 세션 훅 — agentsview-daemon.py (동기화 데몬 자동 기동), harness-review-reminder.py (일일·주간 점검 트리거), worklog-reminder.py (세션 경계 미커밋 작업 환기 — claude-mem 착안, ADR 018), integrity-check.py (구조 무결성 결정론 점검 — harness-review 주간용, ADR 026), gate-reminder.py (진단→구현 전환점의 orchestrate 게이트 상기 — 세션당 1회 차단, ADR 028), tier-gate.py (서브에이전트 발행에서 9절 경량 모델 금지 강제 — 판정 입력은 REGISTRY.md 「경량 모델」 절이고 `model` 미지정(=세션 모델 상속)은 경량에 닿지 않아 통과, 우회는 `[light-ok]`. 티어 적합성은 보지 않는다, ADR 040), dispatch-gate.py (사내 프로필에서 서브에이전트 발행 **전면** 차단 — 역할 무관이며 로스터 밖 타입·`subagent_type` 미지정도 포함, `infra-specialist` 하나만 통과(7절 5항 admission 선확인). **우회 표식 없음**. 대체는 메인 루프 순차 수행 + 팬아웃 없음 기록이고 `orchestrate`는 항상 「직접 수행」으로 수렴한다, ADR 042 — ADR 038의 `review-gate` 확장·개명), _common.py (훅 공통 부트스트랩 단일 원본 — stdio UTF-8 재구성 + REGISTRY.md 절 판독 2종(설치처 프로필·경량 모델 목록), 스펙 2026-07-15)
-│   ├── githooks/          # 전역 core.hooksPath 대상 — tdd-gate.py (커밋 시점 TDD 강제, 도구 무관 — ADR 008·014·015) + secret-gate.py (형식 확정 자격증명 패턴 커밋 차단, 도구 무관 — ADR 023) + 진입 shim·로컬 훅 체인, 등록은 harness-install 1단계
-│   └── projects/          # 하위 프로젝트 하네스 원본 — 설치처별 데이터 (미추적, ADR 006)
-├── .claude/               # Claude Code 호환 계층 — .agents/ 에이전트·스킬 심링크 + settings.json 세션 훅 등록
-├── .codex/                # Codex 병행 계층 — agents/*.toml custom-agent 어댑터(ADR 027), config.toml 인라인 세션 훅·문서 한도(ADR 031; trust 필요)
-├── docs/
-│   ├── README.md          # 문서 지도(MOC) — ADR·스펙·제안 탐색 인덱스 (상태·대체 관계·대상 코드)
-│   ├── adr/               # 구조적 결정 기록 (ADR)
-│   ├── specs/             # 루트 자체 코드(훅 등)의 스펙 (SDD, AGENTS.md 13절)
-│   └── proposals/         # 외부 도구 분석·채택 설계 (ponytail·claude-mem 등 → ADR로 확정)
-├── project/               # 하위 프로젝트들 — 각자 독립 git 저장소 (이 저장소는 미추적, 하네스 파일 없음)
-└── _workspace/            # 세션 산출물 (미추적) — 팀 작업 중간물 + 세션 넘김 운영 데이터(정리 제외): autoloop/(자율 루프 상태·재개), carryover/(이월 노트), harness-ops-log.md·harness-updates.md·점검 마커
+이 하네스는 어떤 프로젝트 규칙을 읽을지, 어떤 순서로 작업할지, 무엇을 사용자에게 확인할지를 정한다.
+
+Claude Code와 Codex를 이 디렉터리에서 열면 같은 `AGENTS.md` 규칙과 같은 에이전트·스킬 정의를 사용한다.
+
+## 시작하기
+
+1. 이 저장소의 루트에서 Claude Code 또는 Codex를 연다.
+2. 새 컴퓨터라면 **“하네스 설치”**라고 요청한다.
+3. 설치가 끝나면 원하는 작업을 평소 말하듯 요청한다.
+
+설치 과정은 이 컴퓨터 전용 `REGISTRY.md`를 만들고, git 훅과 CLI 연결 상태를 확인한다. `REGISTRY.md`는 설치처 데이터이므로 git에 올리지 않는다.
+
+```text
+하네스 설치
 ```
 
-## 새 컴퓨터에 설치하기
+설치가 끝나면 `REGISTRY.md`에 프로젝트 목록과 설치처 프로필이 생긴다.
 
-클론만으로는 미완성이다 — 설치처별 요소(REGISTRY.md, `project/`)는 의도적으로 git에 없다. 클론 후 Claude Code / Codex에 **"하네스 설치"**라고 요청하면 `harness-install` 스킬이 심링크 검증 → **git 훅 계층 등록**(`core.hooksPath` → `.agents/githooks`, tdd-gate의 유일한 실행 계층이라 미등록이면 커밋 게이트가 꺼진 상태) → 디렉토리 생성 → agentsview 설치(세션 이력 실측·시크릿 스캔용, 권장) → context7 MCP 등록(라이브러리 문서 조회, user 스코프) → 프로젝트 스캔 → 인터뷰 → REGISTRY.md 생성까지 진행한다. 전역 git 설정은 저장소로 전파되지 않으므로 **머신마다 한 번씩** 필요하다.
+## 사용법
+
+### 프로젝트 작업
+
+```text
+agent-eval-gate의 실패 원인을 조사해줘
+```
+
+하네스는 `REGISTRY.md`에서 프로젝트를 찾고 `.agents/projects/<이름>/AGENTS.md`를 읽는다. 구현이 필요하면 작업 규모를 먼저 판단하고, 스펙·테스트·검토 순서를 적용한다.
+
+### 전체 상태 확인
+
+```text
+전체 프로젝트 상태 요약해줘
+```
+
+`project-status`가 등록된 프로젝트의 git 상태, 최근 활동, 하네스 존재 여부를 모아 한국어 보고서를 만든다.
+
+### 하네스 자체 점검
+
+```text
+하네스 주간 점검해줘
+```
+
+`harness-review`가 무결성 검사와 운영 신호를 확인한다. 실제 개선은 사용자가 승인한 뒤 `metaskill`이 적용한다.
 
 ## 동작 방식
 
-1. **라우팅**: 요청을 받으면 `REGISTRY.md`의 프로젝트 레지스트리에서 관련 프로젝트를 식별하고 해당 하네스(`.agents/projects/<이름>/AGENTS.md`)를 로드한다. (공용 규칙은 AGENTS.md, 설치 환경별 프로젝트 목록은 REGISTRY.md) 하위 프로젝트 하네스는 전부 이 워크스페이스에서 중앙 관리하며, 프로젝트 디렉토리·저장소에는 하네스 파일을 두지 않는다.
-2. **구현·다단계 작업**은 `orchestrate`의 팀 필요성 판정(Phase 0-1)을 거친다 — 직접 수행 / 단독 서브에이전트 / 생성-검증 쌍 / 팀 중 규모에 맞게 정하고, 구현이 포함되면 reviewer 독립 검증을 반드시 포함한다(`사내` 프로필은 **발행 자체가 차단돼** 판정이 항상 「직접 수행」이며, 메인 루프 순차 수행+팬아웃 없음 기록으로 대체 — ADR 042). 팀은 표준 로스터 7종(explorer·architect·troubleshooter·implementer·infra-specialist·reviewer·integrator)을 재사용하며, 위임 깊이는 최대 2단계다.
-3. **새 프로젝트**는 "프로젝트 새로 만들어줘"라고 지시하면 `metaskill`이 인터뷰 → 스캐폴딩 → 하네스 생성 → 레지스트리 등록까지 수행한다.
-4. **작업 방법론**: 기능 추가·동작 변경은 스펙 작성(SDD, `doc-writer`) → 실패 테스트(TDD) → 구현 → 스펙 대비 리뷰(`team-review`) 순서를 따른다 (AGENTS.md 13절). TDD는 전역 `core.hooksPath`의 git commit-msg 훅(`tdd-gate`)이 강제한다 — 코드 변경에 테스트가 없으면 커밋이 차단되며, Claude Code·Codex·수동 커밋 등 **도구와 무관**하게 걸린다(ADR 014·015).
-5. **작업 추적**: 세션을 넘는 작업은 `work-tracker`가 프로젝트 저장소의 GitHub Issues에 상태(태스크·진행 로그)를 영속화한다 — "이어서 하자"로 재개한다 (AGENTS.md 14절). 세션이 미커밋 작업을 남긴 채 닫히면 다음 세션 시작 시 `worklog-reminder` 훅이 진행 로그·재개를 환기한다(claude-mem 착안, ADR 018).
-6. **진화**: 같은 요청 3회 / 같은 실패·정정 2회 / 하네스 우회 / 수축·효율(3주+ 무호출 스킬, 토큰 과소모 패턴 — 주간 점검 한정) 관찰 시 metaskill이 에이전트·스킬 신설·개선·폐기를 제안한다.
-7. **내부 통신 언어**: 모델이 읽는 것(하네스 운영 자산 전부 — AGENTS.md·CLAUDE.md·에이전트·스킬 — 와 발행 프롬프트·`_workspace/` 팀 중간 리포트·P2P 메시지)은 영어, 사용자가 읽는 것(채팅 보고·PR·이슈·ADR·스펙·changelog·이 README·한글 뷰 3종(AGENTS.ko.md, skills/agents README.ko.md)·트리거 키워드)은 한국어 — 한국어가 같은 내용에 ~1.5-2배 토큰이라 모델-read 표면을 영어화해 절감한다 (AGENTS.md 15절, ADR 016·030).
-8. **코드 최소주의**: 하위 프로젝트 제품 코드는 쓰기 전에 결정 사다리(필요성→재사용→표준 라이브러리→네이티브→기존 의존성→한 줄→최소 구현)를 밟는다 — 단 문제 이해·검증·에러 처리·보안·명시 요청 기능은 최소화 예외(전면 엄밀성 유지). 판정은 `team-review`의 "단순성/과설계" 관점이 담당한다 (AGENTS.md 16절, ADR 017 — ponytail 착안).
+1. **프로젝트 선택** — `REGISTRY.md`에서 작업 대상을 찾는다.
+2. **규칙 로드** — 루트 `AGENTS.md`와 대상 프로젝트의 하위 하네스를 읽는다.
+3. **작업 방식 선택** — 직접 수행, 한 에이전트, 구현-검증 쌍, 팀 중에서 범위와 위험에 맞는 방식을 고른다.
+4. **스펙과 테스트** — 기능 또는 동작을 바꾸면 스펙을 먼저 확정하고 실패 테스트부터 작성한다.
+5. **검토와 전달** — 스펙 완료 기준으로 검토하고, 사용자가 변경을 읽을 순서와 검증 결과를 한국어로 보고한다.
 
-## 안전 가드레일
+주요 경로는 다음과 같다.
 
-- 파괴적 작업(리소스 삭제, 프로덕션 배포·롤백, DB 마이그레이션, force push, IAM 변경)은 **예외 없이 실행 전 사용자 확인**.
-- 시크릿·자격증명은 하네스 파일과 `_workspace/`에 절대 기록하지 않는다.
-- **사내 설치처**(REGISTRY.md의 설치처 프로필)에서는 이 저장소를 수정·커밋·푸시하지 않는다 — 하네스 개선 사항은 `_workspace/harness-updates.md` 대기 큐에 기록해 두고 개인 설치처에서 적용한다 (AGENTS.md 5절).
+| 경로 | 역할 |
+|---|---|
+| `AGENTS.md` | 모든 CLI가 읽는 공통 규칙의 단일 원본 |
+| `AGENTS.ko.md` | 사용자를 위한 한국어 요약 |
+| `REGISTRY.md` | 이 컴퓨터의 프로젝트 목록과 설치처 데이터 |
+| `.agents/agents/` | 설계·수집·구현·검증 등 표준 역할 7종 |
+| `.agents/skills/` | 구현, 리뷰, 배포, 문서 작성 등 반복 절차 |
+| `.agents/hooks/` | Claude Code·Codex 세션 훅과 무결성 검사 |
+| `.agents/githooks/` | 테스트 없는 코드와 시크릿 커밋을 막는 git 훅 |
+| `.agents/projects/` | 하위 프로젝트 하네스의 설치처별 원본 |
+| `.codex/`, `.claude/` | 두 CLI가 같은 하네스 자산을 읽게 하는 연결 계층 |
+| `docs/` | ADR, 스펙, 제안서, 변경 이력 |
+| `_workspace/` | 팀 보고서와 세션 운영 산출물. git 미추적 |
+| `project/` | 실제 제품 저장소들. 루트 저장소에서는 미추적 |
 
-## 규칙 상세
+## FAQ · 트러블슈팅
 
-모든 규칙의 단일 원본은 [AGENTS.md](AGENTS.md)다. 구조적 결정·스펙·외부 도구 채택 설계는 [docs/README.md](docs/README.md)의 문서 지도(MOC)에서 상태·대체 관계와 함께 탐색한다.
+### “REGISTRY.md가 없다”는 안내가 나온다
+
+설치가 끝나지 않은 상태다. 루트에서 **“하네스 설치”**라고 요청한다.
+
+### 프로젝트 하네스가 없어서 수정이 중단됐다
+
+하위 하네스는 git에 들어 있지 않다. 다른 기계의 `.agents/projects/<이름>/AGENTS.md`를 같은 경로로 옮기거나 `metaskill`의 프로젝트 반입 절차를 사용한다.
+
+읽기와 진단은 가능하지만 제품 파일 수정은 하네스가 복구될 때까지 보류한다.
+
+### git 훅이 동작하는지 확인하고 싶다
+
+다음 명령이 이 저장소의 `.agents/githooks`를 가리켜야 한다.
+
+```bash
+git config --show-origin --get core.hooksPath
+```
+
+구조 전체는 다음 명령으로 확인한다.
+
+```bash
+python3 .agents/hooks/integrity-check.py
+```
+
+## 기여
+
+- 로컬 세션의 루트 하네스 변경은 `main`에 직접 커밋한다.
+- 원격 세션처럼 `main`에 직접 커밋할 수 없는 환경에서는 지정된 브랜치에 커밋·푸시하고 PR을 만든다. 머지는 사용자가 한다.
+- 모든 하네스 변경은 같은 커밋에서 `docs/harness-changelog.md`를 갱신하고 관련 테스트와 무결성 검사를 다시 실행한다.
+- 하위 제품 프로젝트는 각 저장소의 브랜치·PR 절차를 따른다.
+
+## 라이선스
+
+해당 없음 — 이 저장소에는 별도 라이선스 파일이 선언되어 있지 않다.
+
+## 참고
+
+- [한국어 규칙 요약](AGENTS.ko.md)
+- [문서 지도](docs/README.md)
+- [변경 이력](docs/harness-changelog.md)
+- [에이전트 카탈로그](.agents/agents/README.ko.md)
+- [스킬 카탈로그](.agents/skills/README.ko.md)

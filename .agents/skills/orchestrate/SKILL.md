@@ -69,6 +69,17 @@ Only when a domain-specific member is needed (e.g., payments domain expert, DB m
 
 > **Environment fallback**: if TeamCreate/TeamDelete are unavailable in the current environment, substitute mode B (subagent mode) and record that fact in team-log.jsonl.
 
+### CLI execution mapping
+
+| Team operation | Claude team surface | Codex collaboration surface |
+|---|---|---|
+| Start a member | Agent call with `team_name` | `spawn_agent` |
+| Send information | `SendMessage` | `send_message`; use `followup_task` only to start another turn on an idle member |
+| Read status / wait | Task list and team messages | `list_agents` / `wait_agent` |
+| Stop a running member | shutdown message, then TeamDelete | `interrupt_agent`; Codex has no separate team-delete object |
+
+Codex currently has no shared TaskCreate/TaskUpdate queue on this surface. Record each task and its `depends_on` edges in `team-log.jsonl`, dispatch only when dependencies are complete, and keep the output file as the handoff. Codex members share the working tree and `spawn_agent` exposes no worktree-isolation parameter here, so concurrent writers must be serialized or placed in already-created separate worktrees. A spawned member already runs asynchronously; do not invent a `run_in_background` argument. These are execution mappings only; the role, evidence, and shutdown rules below are unchanged.
+
 ## Channel selection criteria
 
 - Small, immediately usable info → **SendMessage**
@@ -87,7 +98,7 @@ Dependent tasks must be declared with `depends_on`. The resulting **dependency g
 | Medium | 10–20 | 3–5 | 4–6 |
 | Large | 20+ | 5–7 | 4–5 |
 
-For the supervisor pattern, 3–5 workers is optimal. Hierarchical delegation **must not exceed 2 levels of depth** — latency grows exponentially. The generate-verify retry default is 2–3; on hitting the limit, ask a human for judgment.
+For the supervisor pattern, 3–5 workers is optimal. Hierarchical delegation **must not exceed 2 levels of depth** — latency grows exponentially. The generate-verify retry default is 2–3. At the limit, stop with a blocked verdict that names the evidence and the exact human decision needed; do not reopen an ordinary mid-work question (§13-0).
 
 ## The leader's (orchestrator's) role
 

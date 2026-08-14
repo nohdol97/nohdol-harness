@@ -69,6 +69,17 @@ def make_good_fixture(root):
     write(os.path.join(root, ".agents/skills/bar/SKILL.md"),
           "---\nname: bar\ndescription: A test skill\n---\n# bar\n")
     write_codex_adapter(root)
+    # Codex 매처와 두 핸들러가 같은 발행 도구명 집합을 가져야 한다.
+    for gate in ("tier-gate.py", "dispatch-gate.py"):
+        body = (
+            'AGENT_TOOLS = ("Agent", "Task", "spawn_agent")\n'
+            'AGENT_TYPE_FIELDS = {"Agent": "subagent_type", '
+            '"Task": "subagent_type", "spawn_agent": "agent_type"}\n'
+        )
+        if gate == "tier-gate.py":
+            body += ('AGENT_PROMPT_FIELDS = {"Agent": "prompt", "Task": "prompt", '
+                     '"spawn_agent": "message"}\n')
+        write(os.path.join(root, ".agents/hooks", gate), body)
     write(os.path.join(root, ".codex/config.toml"),
           "project_doc_max_bytes = 65536\n\n"
           "[features]\n"
@@ -514,6 +525,54 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("FAIL R18", out)
         self.assertIn("matcher", out)
+
+    def test_codex_config_missing_spawn_agent_matcher_fails(self):
+        """R18: Codex 발행 도구명이 매처에서 빠지면 FAIL한다."""
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace("Agent|Task|spawn_agent", "Agent|Task"))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("spawn_agent", out)
+
+    def test_codex_gate_tool_names_must_match_matcher(self):
+        """R18: 매처가 넓어도 게이트 핸들러가 이름을 거부하면 FAIL한다."""
+        path = os.path.join(self.root, ".agents/hooks/tier-gate.py")
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        write(path, text.replace(', "spawn_agent"', ""))
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("tier-gate.py", out)
+        self.assertIn("spawn_agent", out)
+        self.assertIn("dispatch-gate.py", out)
+
+    def test_codex_gate_role_fields_must_match_tool_schema(self):
+        """R18: 도구명뿐 아니라 역할 필드도 실제 CLI 스키마와 같아야 한다."""
+        path = os.path.join(self.root, ".agents/hooks/dispatch-gate.py")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write('AGENT_TYPE_FIELDS = {"Agent": "subagent_type", '
+                    '"Task": "subagent_type", "spawn_agent": "subagent_type"}\n')
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("AGENT_TYPE_FIELDS", out)
+        self.assertIn("agent_type", out)
+
+    def test_codex_tier_prompt_fields_must_match_tool_schema(self):
+        """R18: Codex의 사용자 메시지는 prompt가 아니라 message에서 읽는다."""
+        path = os.path.join(self.root, ".agents/hooks/tier-gate.py")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write('AGENT_PROMPT_FIELDS = {"Agent": "prompt", "Task": "prompt", '
+                    '"spawn_agent": "prompt"}\n')
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R18", out)
+        self.assertIn("AGENT_PROMPT_FIELDS", out)
+        self.assertIn("message", out)
 
     def test_codex_config_missing_dispatch_gates_fails(self):
         """R18: 발행 게이트 등록을 통째로 지우면 FAIL한다.

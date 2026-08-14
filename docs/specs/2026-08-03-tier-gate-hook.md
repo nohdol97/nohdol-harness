@@ -46,10 +46,10 @@
 
 ## 요구사항
 
-- R1: `PreToolUse`에서 `tool_name`이 `Agent`(또는 `Task`)인 호출만 판정한다. 그 외 도구는 통과.
+- R1: `PreToolUse`에서 `tool_name`이 Claude 계열의 `Agent`·`Task` 또는 Codex의 `spawn_agent`인 호출만 판정한다. 그 외 도구는 통과.
 - R2: **`tool_input.model`이 없으면 통과한다.** 미지정은 부모 세션 모델 상속이고, 로스터 에이전트는 자기 모델을 박지 않으므로 그 경로가 경량 등급에 닿지 않는다. `inherit`에는 **분기를 두지 않는다** — 경량 목록에 없는 문자열이라 일반 경로로 통과하며, 따로 처리하면 죽은 분기가 된다(초판에서는 차단 대상이라 분기가 필요했다).
-- R3: `tool_input.prompt`에 `[light-ok]`가 있으면 통과한다 — 9절 경량 예외(사용자 명시 요청)를 옮긴 것이다. **단 `design` 티어에는 닿지 않는다**: 사용자 전역 정책은 조항이 둘이고, 경량 예외와 **별도로** 검증·리뷰·최종 확인의 경량 사용을 절대 금지한다(에이전트 정의들도 예외 없이 그렇게 적혀 있다). 그래서 **우회 판정은 티어를 읽은 뒤에** 한다 — 앞에 두면 절대 금지가 표식 한 단어로 풀린다. 표식을 넣는 주체가 게이트 대상이라 기계적 보증은 아니며, 값은 우회가 기록으로 남는 것이다.
-- R4: `tool_input.subagent_type`의 티어는 **`.agents/agents/<name>.md` frontmatter의 `tier`**에서 읽는다(10절이 정의 파일을 티어 선언의 원본으로 규정하므로, 로스터가 늘어도 훅을 고칠 필요가 없다). 이름은 `[A-Za-z0-9_-]+`만 허용해 경로 조작을 배제한다. 티어 미선언·판독 실패는 통과.
+- R3: 사용자 메시지에 `[light-ok]`가 있으면 통과한다. Claude `Agent`·`Task`는 `tool_input.prompt`, Codex `spawn_agent`는 `tool_input.message`를 읽는다. **단 `design` 티어에는 닿지 않는다**: 사용자 전역 정책은 경량 예외와 별도로 검증·리뷰·최종 확인의 경량 사용을 절대 금지한다. 그래서 우회 판정은 티어를 읽은 뒤에 한다.
+- R4: 역할 이름은 Claude `Agent`·`Task`의 `tool_input.subagent_type`, Codex `spawn_agent`의 `tool_input.agent_type`에서 읽는다. 해당 역할의 티어는 **`.agents/agents/<name>.md` frontmatter의 `tier`**가 원본이다. 이름은 `[A-Za-z0-9_-]+`만 허용해 경로 조작을 배제하며, 티어 미선언·판독 실패는 통과한다.
 - R5: 경량 목록은 **REGISTRY.md 「경량 모델」 절의 굵은 라벨 목록**에서 읽는다(`_common.read_lightweight_models`). 판정은 **소문자 + 영숫자 낱말 경계** — 별칭(`haiku`)과 전체 모델 ID(`claude-haiku-4-5-20251001`)를 한 항목이 함께 잡으면서, 낱말 내부의 우연한 일치는 배제한다. 맨 부분 문자열이면 다른 벤더 등급명을 오차단한다(항목 `mini`가 `gemini-2.5-pro`를 막고, 한 글자 항목이 전 발행을 막는다). **빈 항목은 판독기가 걸러낸다** — 집합에 들어가면 어떤 모델에도 매칭돼 fail-open이 fail-closed로 뒤집힌다. **모델명을 훅 코드에 박지 않는 이유는 ADR 005**이며, 설치처 데이터에 두면 판정하면서도 탈모델명이 유지된다(프로필 판독이 쓰는 것과 같은 구조 — ADR 012).
 - R6: 티어가 선언돼 있고 지정된 모델이 목록에 걸리면 **exit 2 + stderr**로 차단한다. 메시지는 티어 이름, 지정된 모델, 걸린 목록 항목, **미지정으로 재발행하는 것이 기본값이라는 안내**, `[light-ok]` 우회를 담는다.
 - R7: fail-open — 형식 불명 stdin, 정의 부재·판독 실패, `tier` 미선언, **「경량 모델」 절 부재**, 예외는 전부 exit 0 무출력.
@@ -89,10 +89,12 @@
 - [x] C18 (R5): 항목 `mini`일 때 `gemini-2.5-pro` 통과, `mini`·`gpt-4-mini`·`MINI-2` 차단.
 - [x] C19 (R5): 빈 라벨 항목만 있는 절 → 어떤 모델도 차단하지 않는다.
 - [x] C20 (R13): 「경량 모델」 절의 상태가 `integrity-check` R20에 뜬다 — 항목 있음 PASS / 없음 SKIP(FAIL 아님).
+- [x] C21 (R1·R11): `tool_name=spawn_agent` 경로도 같은 판정을 거치며, `integrity-check` R18이 Codex 매처와 두 발행 게이트의 허용 도구명 집합을 대조한다.
+- [x] C22 (R3·R4): Codex 형식의 `agent_type=judge` + 경량은 차단하고, explore 역할의 `message`에 `[light-ok]`가 있으면 통과한다. R18은 역할·메시지 필드 매핑도 고정한다.
 
 ## 미해결 질문
 
-- **Codex 발행 도구 이름 미실측** — 매처 후보 3종을 걸었으나 어느 것이 실제인지 확인하지 않았다. Codex 런타임 판정은 이 세션의 몫이 아니며(ADR 031 계약), 어긋나도 fail-open이라 손해는 "Codex에서 게이트가 안 걸린다"에 그친다.
+- **Codex 실세션 차단 관측** — 현재 호출 표면의 도구명은 `spawn_agent`로 확인했고 stdin 회귀 테스트도 고정했다. 다만 이 개인 설치처에서 사내 프로필 차단을 실제 세션으로 관측하지는 않았다.
 - **차단 경로의 실환경 관측** — 반전 후의 차단(경량 지정)은 stdin 실행으로만 확인했다. 실제 세션에서 경량을 지정할 일이 드물어(그것이 목적이다) 관측 기회 자체가 적다.
 - **explore 과소모의 재발 규모** — 미지정 통과로 되살아나는 상태이며, 다음 주간 점검에서 같은 집계를 다시 내어 비교한다.
 
@@ -104,3 +106,4 @@
 | 2026-08-03 | 독립 검증 BLOCK 반영 — `inherit` 우회 차단(R2·C12), 등록 shim fail-open(R7), 구간별 수치 정정과 상태 의존 표기, matcher 미관측 항목 명시, ADR 037 연결 | R2·R7, C12, 배경 표, 미해결 질문, 훅·테스트, `.claude/settings.json`, `.codex/config.toml` | reviewer BLOCK(High 1·Med 5·Low 7) — F2 등록 shim이 fail-closed라 훅 파일 부재 시 전 발행이 막혔고(재현), F6 `model: "inherit"`이 통과했으며(재현), F3 25/37은 전 구간 수치인데 07-25 이후로 귀속했다. F5로 ADR 037을 신설했다 |
 | 2026-08-04 | **판정 반전(ADR 040)** — 미지정·`inherit` 통과(R2), 경량 목록 판정 신설(R5), `[light-ok]` 우회(R3), 판독기 `_common` 공유(R9), `harness-install` 인터뷰 항목(R12). 완료 기준을 C1~C16으로 재작성하고 「티어 적합성 미판정」을 한계에서 비목표로 옮김 | 전체(목표·비목표·R1~R12·C1~C16·배경 「왜 반전했나」), `.agents/hooks/tier-gate.py`, `tier-gate_test.py`, `_common.py`, `_common_test.py`, `REGISTRY.md`(미추적) | **사용자 지적**: "tier-gate가 문제 있다는 거였어". 초판이 사용자 전역 정책의 기본값(`model` 미명시)을 차단했고, 상속이 닿을 수 없던 경량 경로를 명시 강제로 열었다. **그 위반이 훅 신설 당일 실현됐다** — 훅 메시지의 지시를 따른 재발행이 경량 모델이었고 훅은 값을 안 보므로 통과시켰다. 초판이 더 무겁다고 지목한 "검증 25건이 표준 모델"도 지정 여부만 보는 게이트는 못 막는다. 값 판정을 하면서 ADR 005를 지키는 방법은 이름을 코드가 아닌 설치처 데이터에 두는 것이고, 프로필 판독(ADR 012)이 이미 그 구조다 |
 | 2026-08-04 | 독립 검증 BLOCK 반영 — `[light-ok]`의 design 티어 차단(R3·C17), 낱말 경계 매칭(R5·C18), 빈 항목 방어(R5·C19), `integrity-check` R20 신설(R13·C20), R8 판독 순서 정정, `inherit` 전용 분기 제거 | R3·R5·R8·R13, C2·C4·C6·C17~C20, 목표·미해결 질문, `.agents/hooks/tier-gate.py`, `tier-gate_test.py`, `_common.py`, `.agents/hooks/integrity-check.py`, `integrity-check_test.py`, `AGENTS.md`, `AGENTS.ko.md`, `.agents/skills/orchestrate/SKILL.md`, `REGISTRY.md`(미추적 — 지식 소스 경로 정정) | reviewer BLOCK(must-fix 1·should-fix 3·low 6). **F1(must-fix)**: 표식을 티어 판정 앞에 둬서 `reviewer`+경량+`[light-ok]`가 실측으로 통과했다 — 전역 정책의 절대 금지와 `reviewer.md`·`integrator.md`의 무조건 서술을 한 단어로 뚫었다. **F2**: 맨 부분 문자열이 `gemini-2.5-pro`를 오차단(항목 `mini`). **F3**: "상속은 경량에 닿지 않는다"가 로스터 밖에서 반증됨(2026-08-02 로그) → 한정 명시. **F5**: 빈 항목 변이가 전 발행을 막는데 스위트가 못 잡음. **F9**: 미추적 판정 입력의 삭제가 무흔적 → R20. **F10**: 지식 소스 진입점 경로 오기(`GeekNews/주제/` 하위 디렉토리 없음) — 정정 후 실제 조회함. 델타 회귀: tier-gate 20건, 훅 스위트 9종 OK, integrity 47 pass 0 fail, F1 재현 케이스 실측 차단 |
+| 2026-08-14 | Codex `spawn_agent`의 도구명과 실제 페이로드 필드(`agent_type`·`message`)를 판정 대상에 추가하고 R18에 드리프트 검사를 연결 | R1·R3·R4·C21·C22·미해결 질문, `.agents/hooks/tier-gate.py`, `tier-gate_test.py`, `integrity-check.py`, `integrity-check_test.py` | 1차 수정은 도구명만 맞추고 Claude 필드를 계속 읽어 Codex의 design 경량 발행이 통과했다. 실제 Codex 형식의 실패 테스트로 재현한 뒤 역할·메시지 매핑을 고정함 |

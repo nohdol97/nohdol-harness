@@ -72,6 +72,15 @@ def payload(subagent_type=None, prompt="…", tool_name="Agent", **extra):
     return json.dumps({"tool_name": tool_name, "tool_input": ti})
 
 
+def codex_payload(agent_type=None, message="…", **extra):
+    """Current Codex spawn_agent schema — do not reuse Claude field names."""
+    ti = {"message": message}
+    if agent_type is not None:
+        ti["agent_type"] = agent_type
+    ti.update(extra)
+    return json.dumps({"tool_name": "spawn_agent", "tool_input": ti})
+
+
 def run(raw, base=None):
     """훅을 stdin 텍스트로 실행하고 (exit code, stderr)를 돌려준다."""
     err = io.StringIO()
@@ -102,6 +111,21 @@ class Gate(unittest.TestCase):
         with base_with(CORPORATE_REGISTRY) as d:
             rc, _ = run(payload("reviewer", tool_name="Task"), d)
         self.assertEqual(rc, 2)
+
+    def test_c17_codex_spawn_agent_tool_name_also_blocks(self):
+        # C17 — Codex 설정은 spawn_agent를 이 훅에 연결한다. 매처와 핸들러의
+        # 도구명 집합이 다르면 사내 프로필에서도 Codex 발행이 통과한다.
+        with base_with(CORPORATE_REGISTRY) as d:
+            rc, _ = run(codex_payload("reviewer"), d)
+        self.assertEqual(rc, hook.BLOCK_EXIT)
+
+    def test_c18_codex_agent_type_keeps_infra_exemption(self):
+        # C18 — Codex의 역할 필드는 agent_type이다. 도구명만 Codex로 바꾸고
+        # Claude의 subagent_type을 계속 읽으면 유일한 안전 예외까지 막힌다.
+        with base_with(CORPORATE_REGISTRY) as d:
+            rc, err = run(codex_payload("infra-specialist"), d)
+        self.assertEqual(rc, 0)
+        self.assertEqual(err, "")
 
     def test_c3_personal_passes(self):
         # 개인 설치처의 동작은 한 바이트도 바뀌지 않는다.

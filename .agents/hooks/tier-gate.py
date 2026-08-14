@@ -67,7 +67,19 @@ except Exception:  # _common 유실·손상 시에도 훅은 살아야 한다(fa
         return set()  # 판정 입력 없음 — 차단하지 않는 방향
 
 BLOCK_EXIT = 2  # PreToolUse: 도구 호출 차단 + stderr를 모델에게 전달
-AGENT_TOOLS = ("Agent", "Task")  # 실측: tool_name은 "Agent"(matcher "Task"도 발화)
+# Claude 계열은 Agent/Task, Codex는 spawn_agent를 보낸다. 설정 매처와 이
+# 집합이 어긋나면 훅 프로세스는 실행돼도 아래 판정 직전에 조용히 통과한다.
+AGENT_TOOLS = ("Agent", "Task", "spawn_agent")
+AGENT_TYPE_FIELDS = {
+    "Agent": "subagent_type",
+    "Task": "subagent_type",
+    "spawn_agent": "agent_type",
+}
+AGENT_PROMPT_FIELDS = {
+    "Agent": "prompt",
+    "Task": "prompt",
+    "spawn_agent": "message",
+}
 OVERRIDE = "[light-ok]"
 # **우회가 닿지 않는 티어.** 사용자 전역 정책은 조항이 둘이다 — 경량 예외는
 # "사용자가 명시적으로 빠르게/가볍게를 요청한 경우"이지만, 검증·리뷰·최종
@@ -157,7 +169,7 @@ def main():
         # 파일 판독은 여기서부터다. `model`을 지정하지 않은 발행이 압도적이므로
         # 매 발행마다 정의와 REGISTRY.md를 읽지는 않는다.
         base = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-        subagent_type = tool_input.get("subagent_type")
+        subagent_type = tool_input.get(AGENT_TYPE_FIELDS[data["tool_name"]])
         tier = read_tier(base, subagent_type)
         if not tier:
             return 0  # 티어 미선언·판독 실패는 9절 관장 밖(fail-open)
@@ -168,7 +180,8 @@ def main():
         # **우회 판정은 티어를 안 뒤에 한다.** 앞에 두면 절대 금지 티어까지
         # 표식 한 줄로 열린다(독립 검증 F1).
         overridable = tier.strip().lower() not in NO_OVERRIDE_TIERS
-        if overridable and OVERRIDE in str(tool_input.get("prompt") or ""):
+        prompt = tool_input.get(AGENT_PROMPT_FIELDS[data["tool_name"]])
+        if overridable and OVERRIDE in str(prompt or ""):
             return 0  # 사용자 명시 요청 — 9절 경량 예외가 닿는 티어다
         print(message(subagent_type, tier, model, hit, overridable), file=sys.stderr)
         return BLOCK_EXIT

@@ -21,8 +21,8 @@ command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec
 
 # tier-gate — 서브에이전트 발행에서 9절 경량 모델 금지 강제(ADR 040). 판정
 # 입력은 REGISTRY.md 「경량 모델」 절이고 `model` 미지정(=세션 모델 상속)은
-# 통과한다. Codex의 발행 도구 이름은 실측하지 않았으므로 Claude 실측
-# 이름(Agent/Task)과 spawn_agent를 함께 건다. 매처가 어긋나면 발화하지 않을 뿐
+# 통과한다. 현재 Codex 도구 계약의 `spawn_agent`와 Claude의 Agent/Task를
+# 함께 건다. 매처가 어긋나면 발화하지 않을 뿐
 # 차단은 생기지 않는다(fail-open, ADR 029).
 [[hooks.PreToolUse]]
 matcher = "Agent|Task|spawn_agent"
