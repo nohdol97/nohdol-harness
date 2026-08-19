@@ -3,6 +3,8 @@
 - 날짜: 2026-07-19 / 상태: 확정
 - 관련: ADR 025(아키텍처 결정), 루트 AGENTS.md §3(안전 가드레일)·§13(SDD/TDD), carryover 스킬(노트 템플릿 차용)
 
+> **실행 모델 확장(ADR 048, 2026-08-19)**: 이 문서의 외부 driver·안전/검증/정지/체크포인트 계약은 유지되며, 단일 구현 반복은 `2026-08-19-autoloop-orchestration-runtime.md`의 read-only planner, 구조화 task DAG, ready-set 병렬 dispatch, writer별 child worktree fan-in으로 대체됐다. 아래의 Codex `workspace-write` 구현 허용·설치처 network 의존 서술과 C17 편집-session 기준도 새 스펙 R7·C6이 대체한다. 구현의 현재 정본은 두 스펙을 함께 읽는다.
+
 ## 배경
 
 한 세션 컨텍스트를 넘는 작업(멀티세션 완주·자율 개발)을 무인으로 돌리려면 세 가지가 필요하다: ① 반복 사이 프롬프트 재구성, ② 작업 중 사용자 질의 제거, ③ 컨텍스트 소진 시 자동 핸드오프 후 새 컨텍스트로 재개("wrapup→clear→재개"). ③이 핵심 공백이다 — `/clear`는 CLI 명령이라 세션 안의 모델이 스스로 부를 수 없다. 해법: **세션 바깥의 드라이버 프로세스가 `claude -p`(headless)를 반복 기동**하면 새 프로세스=새 컨텍스트가 되어 clear가 구조적으로 해결된다. 반복 간 상태는 carryover 노트(로컬 Markdown)로 넘긴다.
@@ -22,7 +24,7 @@
 - **wrapup/carryover 스킬 대체 아님**: 대화형 세션의 수동 이월은 기존 스킬 그대로. autoloop은 자체 노트 파일을 쓴다(스키마만 차용).
 - **오케스트레이션 대체 아님**: 반복 안에서의 팀 구성·검증 라우팅은 headless 세션이 로드하는 하네스(CLAUDE.md/AGENTS.md)가 담당한다. 드라이버는 반복 경계만 관리한다.
 - **크로스 머신 아님**: 산출물은 `_workspace/`(미추적) — 같은 머신 한정. 정식 추적은 work-tracker의 몫.
-- **Codex 안전 게이트는 sandbox 레벨(coarser)**: Codex 엔진은 fine-grained allow/deny 목록이 없다 — `--sandbox workspace-write`(구현)·`read-only`(검증)로 매핑한다. workspace-write는 쓰기를 워크스페이스에 confine하고, **네트워크는 기본값으로만 차단된다** — 설치처 `~/.codex/config.toml`의 `[sandbox_workspace_write] network_access`가 이 기본값을 덮을 수 있고 드라이버는 그 값을 고정하지 않는다(R3-2). 즉 원격 파괴 작업(kubectl·aws·terraform·gh·push) 봉쇄는 **설치처 설정에 달린 조건부 성질이지 이 도구가 보장하는 것이 아니다.** 그 위에 **워크스페이스 내 로컬 파괴 명령(예: 프로젝트 파일 rm)까지 정책으로 막지는 못한다**(Claude 블랙리스트와의 잔여 갭). 그래서 Codex 엔진도 인프라·배포 스펙 금지·완주 후 백업 전제는 동일하고, blocked 이월 메커니즘이 1차 방어다.
+- **Codex는 read-only 역할 전용이다(ADR 048)**: Codex 엔진은 fine-grained allow/deny 목록이 없어 mutating 인자 생성을 거부하고 writer 요청은 Claude denylist 경계로 fallback한다. planner·read task·reviewer는 `--sandbox read-only`, target `-C`, `--ignore-user-config`, network false override로 실행한다. 인프라·배포 스펙 금지와 bypass 금지는 그대로다.
 - **비용 정밀 회계 아님**: 반복 상한이 1차 백스톱이고 비용 상한은 결과 JSON이 제공될 때만 동작하는 보조 장치다.
 - **단일 컨텍스트 작업 대상 아님 (비용 경계)**: 한 컨텍스트 윈도우에 들어가는 작업은 `/loop`·단일 세션이 더 싸다 — `-p` 반복의 재확립 비용(AGENTS.md 재주입·재탐색·검증 세션)은 **윈도우를 넘길 규모에서만** 회수된다. autoloop은 그 규모의 무인 작업 전용이다.
 - **티어→모델 해석을 드라이버가 하지 않음**: 드라이버는 역할별 티어를 **선언·라우팅**만 하고(구현=implement, 검증=design), 티어→구체 모델명 매핑은 기동 세션이 §9 라인업 판단으로 수행한다 — 독립 스크립트에 모델명을 박지 않는다(탈모델명). 세션이 값을 안 넘기면 균일/기본으로 동작한다(강제 아님).
@@ -109,19 +111,19 @@
 
 ### 멀티 엔진 (driver.py — Claude Code CLI + Codex CLI)
 
-- **R13 (엔진 추상화 + 역할별 엔진)**: 드라이버는 헤드리스 세션을 두 엔진 중 하나로 돌린다 — `claude`(기본) 또는 `codex`. 엔진은 역할별로 갈릴 수 있다: `resolve_engine(cfg, readonly)` = `(verify_engine if readonly else implement_engine) or engine`. 즉 `--engine`이 균일 기본, `--implement-engine`/`--verify-engine`가 역할 오버라이드다("구현=claude, 검증=codex" 요구를 이걸로 충족). 티어 모델 해석(R6)은 엔진과 직교로 유지된다(각 엔진의 `--model`/`-m`에 전달).
+- **R13 (엔진 추상화 + 역할별 엔진)**: 드라이버는 헤드리스 세션을 두 엔진 중 하나로 돌린다 — `claude`(기본) 또는 `codex`. 엔진은 역할별로 갈리지만 ADR 048 이후 Codex는 read-only 역할에만 허용되고 writer 요청은 Claude로 fallback한다. 티어 모델 해석(R6)은 엔진과 직교로 유지된다(각 엔진의 `--model`/`-m`에 전달).
 - **R14 (엔진별 표면·안전 매핑)**: 각 엔진의 헤드리스 인자·출력·안전 게이트를 아래로 고정한다. **bypass 계열은 두 엔진 모두 절대 금지**(§3).
 
   | | Claude(`claude`) | Codex(`codex`) |
   |---|---|---|
   | 헤드리스 | `-p <prompt>` | `exec <prompt>` |
-  | 편집 세션 게이트 | `--permission-mode acceptEdits` + `--setting-sources project`(R3-1) + `--allowedTools`(SAFE_ALLOW+extra) + `--disallowedTools`(DESTRUCTIVE) | `--sandbox workspace-write` + `--skip-git-repo-check` + `-C <project>` |
+  | 편집 세션 게이트 | `--permission-mode acceptEdits` + `--setting-sources project`(R3-1) + `--allowedTools`(SAFE_ALLOW+extra) + `--disallowedTools`(DESTRUCTIVE) | 인자 생성 단계에서 거부하고 Claude writer로 fallback |
   | 검증 세션(readonly) | 위와 동일한 모드·설정 소스 + `READONLY_ALLOW` + disallow | `--sandbox read-only`(쓰기 자체 차단) |
   | 모델 | `--model <M>` | `-m <M>` |
   | 출력 취득 | `--output-format json` → stdout `{result,total_cost_usd}` | `-o <파일>` → 최종 메시지 텍스트(비용 미제공 → 0) |
   | 금지(bypass) | `--dangerously-skip-permissions` | `--dangerously-bypass-approvals-and-sandbox` |
 
-  Codex는 fine-grained 도구 목록이 없어 sandbox 레벨이 게이트다(비목표의 잔여 갭 참조). `--allow-extra`는 Claude 전용(Codex는 sandbox라 무의미 — 무시). **하네스 로드 차이(F1)**: Codex는 쓰기를 프로젝트에 confine하려 `-C <project>`로 실행되므로 하네스 루트 AGENTS.md가 자동 로드되지 않을 수 있다(Claude 경로는 cwd=하네스 루트로 항상-온 로드 — §12). 따라서 Codex 경로에서 필수 게이트는 **프롬프트에 임베드된 anchor·instructions·untrusted 봉투**가 나르고, 하드 게이트는 **sandbox**가 담당한다(비목표 "오케스트레이션 대체 아님"의 하네스 자동로드 가정은 Claude 엔진 한정).
+  Codex는 fine-grained 도구 목록이 없어 read-only sandbox만 사용한다. `--allow-extra`는 Claude 전용이다. **하네스 로드 차이(F1)**: Codex task worktree는 루트 AGENTS.md 자동 로드를 전제로 삼지 않으며, versioned bounded contract를 prompt에 주입한다. driver는 `--ignore-user-config`와 network false를 함께 고정한다. 상세 정본은 orchestration runtime 스펙 R7이다.
 
 - **R15 (엔진 기본값 선택 — SKILL.md)**: 기동 세션의 CLI에 기본 엔진을 맞춘다 — Codex 세션이 기동하면 `--engine codex`, Claude 세션이면 기본(`claude`). 불확실하면 사용자에게 확인한다. 사용자가 역할별 엔진을 명시하면(구현/검증) 그대로 `--implement-engine`/`--verify-engine`로 전달한다.
 
@@ -169,7 +171,7 @@
 - [x] C19 (R3-1): 조립된 claude 인자에 `--setting-sources`가 실리고 그 값에 `user`가 없으며 `project`는 있다(작업·검증 세션 모두). **Codex 경로는 이 기준이 검사하지 않는다** — R3-2의 미해소 갭이며, 해소 시 별도 기준을 세운다.
 - [x] C15 (R6): 검증 세션(readonly)은 `--verify-model`을, 구현 반복은 `--implement-model`을 쓰고, 역할별 미지정 시 균일 `--model`로 폴백하며 그것도 없으면 `--model`을 아예 출력하지 않는다; 드라이버 소스에 하드코딩된 모델명이 없다(§9 탈모델명).
 - [x] C16 (R13): `resolve_engine`이 역할별 엔진을 라우팅한다 — `--implement-engine claude --verify-engine codex`면 구현 호출은 claude 엔진, 검증 호출은 codex 엔진; 역할별 미지정 시 `--engine`으로 폴백(기본 claude).
-- [x] C17 (R14): Codex 편집 세션 인자는 `exec`·`--sandbox workspace-write`·`--skip-git-repo-check`·`-C <project>`·`-o <파일>`을 포함하고, Codex 검증 세션은 `--sandbox read-only`를 쓴다; **두 엔진 모두 `--dangerously-skip-permissions`·`--dangerously-bypass-approvals-and-sandbox`가 어떤 경로로도 등장하지 않는다**; Codex 최종 메시지 파일에서 상태 블록을 파싱한다(비용 0).
+- [x] C17 (R14): Codex mutating 인자 생성은 거부되고 structured writer 요청은 Claude로 fallback한다. Codex read-only 세션은 `exec`·`--sandbox read-only`·`--skip-git-repo-check`·`-C <project>`·`-o <파일>`을 포함하며, **두 엔진 모두 bypass variant가 어떤 경로로도 등장하지 않는다**. Codex 최종 메시지 파일에서 상태 블록을 파싱한다(비용 0).
 - [x] C6 (R3): 세션이 `blocked`를 보고하면 즉시 종료하고 carryover.md에 "사용자 확인 필요" 절이 생긴다.
 - [x] C7 (R5): fake test-cmd의 exit 0/1이 각각 green/red로 기록되고, 세션 주장과 불일치 시 드라이버 기록이 이긴다(green 주장+red 실측 → done 불인정).
 - [x] C8 (R6): status done+open_items 0+테스트 green이면 검증 반복이 1회 돌고, PASS면 `done`, BLOCK이면 사유가 다음 프롬프트에 포함된 채 루프가 계속된다.
@@ -208,6 +210,7 @@
 | 2026-08-19 | R11을 4동사로 확장하고 C13을 동조 | 이 문서, autoloop SKILL.md | 로컬 읽기 전용 진행 대시보드를 기존 대화형 status와 구분해 추가함. 상세 계약은 별도 대시보드 스펙이 소유함 |
 | 2026-08-19 | 표시 상태·비용 측정 범위 회귀를 드라이버 스위트에 편입하고 실측 포인터를 93건으로 갱신 | 이 문서, `driver.py`, `driver_test.py`, ADR 025 | 대시보드 관측 상태 기록 실패가 게이트를 바꾸지 않고, 재기동이 누적 비용의 미측정 범위를 완전 측정으로 승격하지 않음을 고정함 |
 | 2026-08-19 | R2 작업 지도와 R11 자동 대시보드 기동 추가, C31·C32 신설 | `.agents/skills/{autoloop,orchestrate}/SKILL.md`, `.agents/skills/autoloop/scripts/{driver.py,driver_test.py,dashboard.py,dashboard_test.py}`, `.agents/skills/README.ko.md`, `.agents/agents/{architect.md,README.ko.md}`, `docs/specs/2026-08-19-autoloop-dashboard.md`, `docs/adr/{025-autoloop-driver.md,047-autoloop-observation-dashboard.md}`, `docs/harness-changelog.md`, `_workspace/{autoloop-auto-dashboard-review,harness-ops-log.md}` | 사용자 요청에 따라 autoloop 시작과 진행 화면을 묶고, 완료 기준에서 작업·의존성·검증 증거로 내려가는 분해를 직접·팀·무인 경로에 공통화함 |
+| 2026-08-19 | 단일 구현 반복을 구조화 orchestration runtime으로 확장 | 이 문서의 유지 계약, 별도 orchestration runtime 스펙·ADR 048 | must-fix 검토에서 prompt-only 분해, 순차 실행, shared writer 위치, Codex load 비대칭, aggregate dashboard가 확인됨 |
 | 2026-07-19 | R2에 untrusted 봉투(⑥) + 완료 기준 C18 추가 | driver.py `build_prompt`, driver_test.py | oh-my-openagent 프롬프트 인젝션 위생 이식(제안: 2026-07-19, 루트 3절) — 무인 루프 주입 표면 방어 |
 | 2026-07-26 | R11 `start`에 종료 신호 등록 추가(감시는 별도 프로세스, 드라이버는 계속 detach) | 이 문서, autoloop SKILL.md | 기동 세션이 루프 종료를 통보받을 경로가 없어 사용자가 물어야만 완료를 알 수 있었음(실사례 — agent-eval-gate 런) |
 | 2026-07-19 | 리뷰 반영 — R3 bare 인터프리터 그랜트 금지·`--allow-extra` 명시 확장(H1), 목표 절 주장 정직화(완전 봉쇄 아님+사용 가드레일), C1 파싱 실패 정체(L1)·C2 null open_items(M2)·C5 그랜트 검사 보강, R8 실패 반복 기록 명시(L2), R12 800자 권장·1024 캡 정합(M3) | 이 문서 | reviewer 독립 검증 BLOCK(H1·M1~M3·L1~L5) 반영 |

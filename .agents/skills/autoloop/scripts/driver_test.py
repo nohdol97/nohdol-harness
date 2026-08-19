@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
@@ -219,6 +221,606 @@ class TestC4PromptAnchor(DriverTestBase):
         after_instructions = prompt.split("[INSTRUCTIONS")[1]
         self.assertIn("/wd/carryover.md", after_instructions)
 
+
+class TestStructuredOrchestration(DriverTestBase):
+    @staticmethod
+    def plan(tasks, criteria=None):
+        return {
+            "schema_version": 1,
+            "contract_version": "autoloop-orchestrate-v1",
+            "criteria": criteria or ["C1", "C2"],
+            "orchestrate": {"verdict": "team", "reason": "independent tasks",
+                            "agent_budget": 2},
+            "tasks": tasks,
+            "dispatches": [],
+            "integrations": [],
+        }
+
+    @staticmethod
+    def task(task_id, criteria, depends_on=None, mutability="write"):
+        return {
+            "id": task_id,
+            "criterion_ids": criteria,
+            "deliverable": "deliverable %s" % task_id,
+            "depends_on": depends_on or [],
+            "owner": "implementer",
+            "mode": "worker",
+            "mutability": mutability,
+            "expected_evidence": "evidence %s" % task_id,
+            "observed_evidence": "",
+            "status": "pending",
+        }
+
+    def test_criterion_extraction_and_complete_coverage(self):
+        with open(self.spec, "w") as f:
+            f.write("## 완료 기준\n- [ ] **C1 (R1)**: one\n- [x] C2 (R2): two\n")
+        self.assertEqual(driver.extract_criterion_ids(self.spec), ["C1", "C2"])
+        plan = self.plan([self.task("T1", ["C1"]), self.task("T2", ["C2"])])
+        self.assertEqual(driver.validate_orchestration(plan, ["C1", "C2"]), [])
+
+    def test_missing_criterion_dangling_dependency_and_cycle_are_rejected(self):
+        missing = self.plan([self.task("T1", ["C1"])])
+        self.assertTrue(any("coverage" in item for item in
+                            driver.validate_orchestration(missing, ["C1", "C2"])))
+
+        dangling = self.plan([
+            self.task("T1", ["C1"], ["UNKNOWN"]), self.task("T2", ["C2"]),
+        ])
+        self.assertTrue(any("unknown dependency" in item for item in
+                            driver.validate_orchestration(dangling, ["C1", "C2"])))
+
+        cycle = self.plan([
+            self.task("T1", ["C1"], ["T2"]), self.task("T2", ["C2"], ["T1"]),
+        ])
+        self.assertTrue(any("cycle" in item for item in
+                            driver.validate_orchestration(cycle, ["C1", "C2"])))
+
+    def test_ready_set_releases_dependent_task_only_after_both_parents(self):
+        tasks = [
+            self.task("A", ["C1"]), self.task("B", ["C2"]),
+            self.task("C", ["C1", "C2"], ["A", "B"], mutability="read"),
+        ]
+        plan = self.plan(tasks)
+        self.assertEqual([task["id"] for task in driver.ready_tasks(plan)], ["A", "B"])
+        tasks[0]["status"] = "complete"
+        self.assertEqual([task["id"] for task in driver.ready_tasks(plan)], ["B"])
+        tasks[1]["status"] = "complete"
+        self.assertEqual([task["id"] for task in driver.ready_tasks(plan)], ["C"])
+
+    def test_final_validation_rejects_missing_dispatch_agent_and_writer_integration(self):
+        task = self.task("A", ["C1"])
+        task.update({"status": "complete", "observed_evidence": "proof"})
+        plan = self.plan([task], criteria=["C1"])
+        errors = driver.validate_orchestration(plan, ["C1"], final=True)
+        self.assertTrue(any("dispatch" in error for error in errors))
+        self.assertTrue(any("agent" in error for error in errors))
+        self.assertTrue(any("integration" in error for error in errors))
+
+    def test_independent_tasks_run_with_overlapping_intervals(self):
+        barrier = threading.Barrier(2)
+        intervals = {}
+
+        def runner(task):
+            intervals[task["id"]] = [time.monotonic(), None]
+            barrier.wait(timeout=2)
+            time.sleep(0.05)
+            intervals[task["id"]][1] = time.monotonic()
+            return {"id": task["id"], "ok": True}
+
+        tasks = [self.task("A", ["C1"]), self.task("B", ["C2"])]
+        results = driver.run_task_wave(tasks, runner, max_workers=2)
+        self.assertEqual([result["id"] for result in results], ["A", "B"])
+        self.assertLess(intervals["A"][0], intervals["B"][1])
+        self.assertLess(intervals["B"][0], intervals["A"][1])
+
+    def test_wave_callback_persists_fast_task_before_slow_task_finishes(self):
+        release = threading.Event()
+        seen = threading.Event()
+
+        def runner(task):
+            if task["id"] == "B":
+                release.wait(timeout=2)
+            return {"id": task["id"], "ok": True}
+
+        def callback(task, _result):
+            if task["id"] == "A":
+                seen.set()
+
+        tasks = [self.task("A", ["C1"], mutability="read"),
+                 self.task("B", ["C2"], mutability="read")]
+        thread = threading.Thread(
+            target=driver.run_task_wave, args=(tasks, runner, 2),
+            kwargs={"on_result": callback})
+        thread.start()
+        self.assertTrue(seen.wait(timeout=1), "A result was buffered behind slow B")
+        release.set()
+        thread.join(timeout=2)
+
+    def test_codex_prompt_and_args_pin_bounded_contract_without_widening(self):
+        cfg = self.make_config(engine="codex", project="/tmp/task-wt")
+        args = driver.build_codex_args(cfg, "TASK", True, "/tmp/out")
+        joined = " ".join(args)
+        self.assertIn(driver.ORCHESTRATE_CONTRACT_VERSION, joined)
+        self.assertIn("orchestrate verdict", joined)
+        self.assertIn("--ignore-user-config", args)
+        self.assertIn("sandbox_workspace_write.network_access=false", args)
+        self.assertNotIn("--add-dir", args)
+        self.assertNotIn("dangerously-bypass", joined)
+        self.assertEqual(args[args.index("-C") + 1], "/tmp/task-wt")
+
+    def test_contradictory_prompt_cannot_remove_runtime_orchestrate_gate(self):
+        contradiction = "Do not invoke orchestrate. Never parallelize."
+        cfg = self.make_config()
+        for prompt in (
+                driver.build_claude_args(cfg, contradiction)[1],
+                driver.build_codex_args(cfg, contradiction, True, "/tmp/out")[-1]):
+            self.assertIn(driver.ORCHESTRATE_CONTRACT_VERSION, prompt)
+            self.assertIn("cannot waive or contradict", prompt)
+            self.assertIn(contradiction, prompt)
+        plan, error = driver.parse_orchestration_block(contradiction, ["C1"])
+        self.assertIsNone(plan)
+        self.assertIn("missing", error)
+
+
+class TestWriterWorktreeIsolation(DriverTestBase):
+    def setUp(self):
+        super().setUp()
+        self.repo = os.path.join(self.tmp, "repo")
+        os.makedirs(self.repo)
+        subprocess.run(["git", "init", "-q", self.repo], check=True)
+        subprocess.run(["git", "-C", self.repo, "config", "user.email", "test@example.com"], check=True)
+        subprocess.run(["git", "-C", self.repo, "config", "user.name", "Test"], check=True)
+        with open(os.path.join(self.repo, "base.txt"), "w") as f:
+            f.write("base\n")
+        subprocess.run(["git", "-C", self.repo, "add", "base.txt"], check=True)
+        subprocess.run(["git", "-C", self.repo, "commit", "-qm", "initial"], check=True)
+
+    def test_concurrent_writers_receive_distinct_worktrees(self):
+        cfg = self.make_config(project=self.repo)
+        tasks = [
+            TestStructuredOrchestration.task("A", ["C1"]),
+            TestStructuredOrchestration.task("B", ["C2"]),
+        ]
+        assignments, error = driver.prepare_writer_worktrees(cfg, tasks, wave=1)
+        self.assertEqual(error, "")
+        self.assertNotEqual(assignments["A"]["path"], assignments["B"]["path"])
+        with open(os.path.join(assignments["A"]["path"], "sentinel.txt"), "w") as f:
+            f.write("A")
+        self.assertFalse(os.path.exists(os.path.join(assignments["B"]["path"], "sentinel.txt")))
+
+    def test_single_writer_also_receives_a_child_worktree(self):
+        cfg = self.make_config(project=self.repo)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=3)
+        self.assertEqual(error, "")
+        self.assertNotEqual(assignments["A"]["path"], self.repo)
+        self.assertEqual(assignments["A"]["cleanup"], "retained_for_verified_cleanup")
+
+    def test_partial_writer_creation_reports_each_retained_worktree_immediately(self):
+        cfg = self.make_config(project=self.repo)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        records = []
+        assignments, error = driver.prepare_writer_worktrees(
+            cfg, [task, dict(task)], wave=6,
+            on_created=lambda task_id, record: records.append((task_id, record)))
+        self.assertIn("already exists", error)
+        self.assertEqual(list(assignments), ["A"])
+        self.assertEqual(records[0][0], "A")
+        self.assertTrue(os.path.isdir(records[0][1]["path"]))
+        self.assertEqual(records[0][1]["cleanup"], "retained_for_verified_cleanup")
+
+    def test_writer_worktree_can_live_under_ignored_workspace_inside_parent(self):
+        with open(os.path.join(self.repo, ".git", "info", "exclude"), "a") as f:
+            f.write("\n_workspace/\n")
+        cfg = self.make_config(
+            project=self.repo,
+            workspace=os.path.join(self.repo, "_workspace", "autoloop", "nested"))
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=1)
+        self.assertEqual(error, "")
+        self.assertTrue(assignments["A"]["path"].startswith(cfg.workdir() + os.sep))
+
+    def test_empty_writer_patch_is_blocked(self):
+        cfg = self.make_config(project=self.repo)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=4)
+        self.assertEqual(error, "")
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=4)
+        self.assertFalse(result["ok"])
+        self.assertIn("empty patch", result["error"])
+        self.assertTrue(os.path.isdir(result["integration_worktree"]))
+        self.assertEqual(result["cleanup"], "retained_for_verified_cleanup")
+
+    def test_fan_in_applies_nonoverlapping_writer_patches_in_task_order(self):
+        cfg = self.make_config(project=self.repo)
+        tasks = [
+            TestStructuredOrchestration.task("B", ["C2"]),
+            TestStructuredOrchestration.task("A", ["C1"]),
+        ]
+        assignments, error = driver.prepare_writer_worktrees(cfg, tasks, wave=1)
+        self.assertEqual(error, "")
+        for task_id, filename in (("A", "a.txt"), ("B", "b.txt")):
+            with open(os.path.join(assignments[task_id]["path"], filename), "w") as f:
+                f.write(task_id + "\n")
+        result = driver.integrate_writer_worktrees(cfg, tasks, assignments, wave=1)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["task_ids"], ["A", "B"])
+        self.assertTrue(os.path.exists(os.path.join(self.repo, "a.txt")))
+        self.assertTrue(os.path.exists(os.path.join(self.repo, "b.txt")))
+
+    def test_fan_in_conflict_leaves_parent_checkout_unchanged(self):
+        cfg = self.make_config(project=self.repo)
+        tasks = [
+            TestStructuredOrchestration.task("A", ["C1"]),
+            TestStructuredOrchestration.task("B", ["C2"]),
+        ]
+        assignments, error = driver.prepare_writer_worktrees(cfg, tasks, wave=2)
+        self.assertEqual(error, "")
+        for task_id in ("A", "B"):
+            with open(os.path.join(assignments[task_id]["path"], "base.txt"), "w") as f:
+                f.write(task_id + "\n")
+        result = driver.integrate_writer_worktrees(cfg, tasks, assignments, wave=2)
+        self.assertFalse(result["ok"])
+        self.assertIn("conflict", result["error"].lower())
+        with open(os.path.join(self.repo, "base.txt")) as f:
+            self.assertEqual(f.read(), "base\n")
+
+    def test_failing_mutating_commit_hook_never_touches_parent_checkout(self):
+        hooks = os.path.join(self.tmp, "test-hooks")
+        os.makedirs(hooks)
+        hook = os.path.join(hooks, "pre-commit")
+        with open(hook, "w") as f:
+            f.write("#!/bin/sh\nprintf hook >> base.txt\ngit add base.txt\nexit 1\n")
+        os.chmod(hook, 0o755)
+        subprocess.run(["git", "-C", self.repo, "config", "core.hooksPath", hooks], check=True)
+        cfg = self.make_config(project=self.repo)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=5)
+        self.assertEqual(error, "")
+        with open(os.path.join(assignments["A"]["path"], "base.txt"), "w") as f:
+            f.write("writer\n")
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=5)
+        self.assertFalse(result["ok"])
+        self.assertEqual(subprocess.run(
+            ["git", "-C", self.repo, "status", "--porcelain"],
+            capture_output=True, text=True, check=True).stdout, "")
+        with open(os.path.join(self.repo, "base.txt")) as f:
+            self.assertEqual(f.read(), "base\n")
+
+    def test_interrupted_writer_uses_a_new_wave_and_reaches_execution(self):
+        cfg = self.make_config(project=self.repo, max_iterations=1)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=1)
+        self.assertEqual(error, "")
+        task.update({
+            "status": "running", "worktree": assignments["A"]["path"],
+            "base_commit": assignments["A"]["base_commit"],
+            "agent": {"id": "old-A", "status": "running", "started_at": "s",
+                      "finished_at": "", "worktree": assignments["A"]["path"]},
+        })
+        plan = TestStructuredOrchestration.plan([task], criteria=["C1"])
+        plan["dispatches"] = [{"wave": 1, "task_ids": ["A"], "started_at": "s"}]
+        os.makedirs(cfg.workdir(), exist_ok=True)
+        driver.save_orchestration(cfg, plan)
+        loop = driver.OrchestratedDriver(cfg)
+        blocked = {"ok": False, "status": "blocked", "evidence": "stop", "cost": 0.0}
+        with mock.patch.object(loop, "_execute_task", return_value=blocked) as execute:
+            self.assertEqual(loop.run(), "blocked")
+        execute.assert_called_once()
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(saved["dispatches"][-1]["wave"], 2)
+
+    def test_pre_dispatch_writer_checkpoint_reserves_next_wave_across_restart(self):
+        cfg = self.make_config(project=self.repo, max_iterations=1)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        plan = TestStructuredOrchestration.plan([task], criteria=["C1"])
+        os.makedirs(cfg.workdir(), exist_ok=True)
+        driver.save_orchestration(cfg, plan)
+        original_prepare = driver.prepare_writer_worktrees
+
+        def terminate_after_first_checkpoint(*args, **kwargs):
+            assignments, error = original_prepare(*args, **kwargs)
+            self.assertEqual(error, "")
+            self.assertTrue(os.path.isdir(assignments["A"]["path"]))
+            raise RuntimeError("simulated termination before dispatch persistence")
+
+        first = driver.OrchestratedDriver(cfg)
+        with mock.patch.object(driver, "prepare_writer_worktrees",
+                               side_effect=terminate_after_first_checkpoint):
+            with self.assertRaisesRegex(RuntimeError, "before dispatch"):
+                first.run()
+        checkpoint, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(checkpoint["wave_reservations"][0]["wave"], 1)
+        self.assertEqual(checkpoint["dispatches"], [])
+        self.assertEqual(checkpoint["worktrees"][0]["wave"], 1)
+
+        loop = driver.OrchestratedDriver(cfg)
+        blocked = {"ok": False, "status": "blocked", "evidence": "stop", "cost": 0.0}
+        with mock.patch.object(loop, "_execute_task", return_value=blocked) as execute:
+            self.assertEqual(loop.run(), "blocked")
+        execute.assert_called_once()
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(saved["dispatches"][-1]["wave"], 2)
+        self.assertEqual([record["wave"] for record in saved["wave_reservations"]], [1, 2])
+
+    def test_resume_reconciles_target_promoted_before_completion_checkpoint(self):
+        cfg = self.make_config(project=self.repo, max_iterations=1)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=1)
+        self.assertEqual(error, "")
+        with open(os.path.join(assignments["A"]["path"], "writer.txt"), "w") as f:
+            f.write("promoted\n")
+        task.update({
+            "status": "running", "observed_evidence": "writer proof",
+            "worktree": assignments["A"]["path"],
+            "base_commit": assignments["A"]["base_commit"],
+            "agent": {"id": "wave-1-A", "status": "done", "started_at": "s",
+                      "finished_at": "f", "worktree": assignments["A"]["path"]},
+        })
+        plan = TestStructuredOrchestration.plan([task], criteria=["C1"])
+        plan["wave_reservations"] = [{
+            "wave": 1, "task_ids": ["A"], "status": "dispatched", "reserved_at": "s"}]
+        plan["dispatches"] = [{"wave": 1, "task_ids": ["A"], "started_at": "s"}]
+        plan["worktrees"] = [{
+            "kind": "writer", "wave": 1, "task_id": "A",
+            "path": assignments["A"]["path"],
+            "base_commit": assignments["A"]["base_commit"],
+            "cleanup": assignments["A"]["cleanup"], "status": "created"}]
+        integration_record = {
+            "wave": 1, "task_ids": ["A"], "ok": False, "status": "preparing",
+            "commit": "", "error": "", "base_commit": assignments["A"]["base_commit"]}
+        plan["integrations"] = [integration_record]
+        os.makedirs(cfg.workdir(), exist_ok=True)
+        driver.save_orchestration(cfg, plan)
+
+        def integration_created(record):
+            plan["worktrees"].append({
+                "kind": "integration", "wave": 1, "path": record["path"],
+                "base_commit": record["base_commit"], "cleanup": record["cleanup"],
+                "status": "created"})
+            integration_record.update({
+                "status": "worktree_created", "integration_worktree": record["path"],
+                "cleanup": record["cleanup"]})
+            driver.save_orchestration(cfg, plan)
+
+        def integration_committed(commit):
+            integration_record.update({"status": "commit_ready", "commit": commit})
+            driver.save_orchestration(cfg, plan)
+
+        result = driver.integrate_writer_worktrees(
+            cfg, [task], assignments, wave=1, on_created=integration_created,
+            on_committed=integration_committed)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(subprocess.run(
+            ["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True,
+            text=True, check=True).stdout.strip(), result["commit"])
+
+        loop = driver.OrchestratedDriver(cfg)
+        with mock.patch.object(loop, "_execute_task") as execute, \
+                mock.patch.object(loop, "_run_session",
+                                  return_value=(True, verdict_text("PASS"), 0.0)):
+            self.assertEqual(loop.run(), "done")
+        execute.assert_not_called()
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(saved["tasks"][0]["status"], "complete")
+        self.assertTrue(saved["integrations"][0]["ok"])
+        self.assertEqual(saved["integrations"][0]["commit"], result["commit"])
+
+    def test_incomplete_writer_is_retained_but_never_integrated(self):
+        cfg = self.make_config(project=self.repo, max_iterations=1)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        plan = TestStructuredOrchestration.plan([task], criteria=["C1"])
+        os.makedirs(cfg.workdir(), exist_ok=True)
+        driver.save_orchestration(cfg, plan)
+        loop = driver.OrchestratedDriver(cfg)
+        incomplete = {"ok": True, "status": "continue", "evidence": "not done", "cost": 0.0}
+        with mock.patch.object(loop, "_execute_task", return_value=incomplete):
+            self.assertEqual(loop.run(), "exhausted")
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(saved["integrations"], [])
+        self.assertEqual(saved["tasks"][0]["status"], "pending")
+        self.assertEqual(saved["worktrees"][0]["status"], "retained_incomplete")
+        with open(os.path.join(self.repo, "base.txt")) as f:
+            self.assertEqual(f.read(), "base\n")
+
+
+class TestOrchestrationPersistence(DriverTestBase):
+    def test_last_valid_plan_block_is_parsed_and_normalized(self):
+        task = TestStructuredOrchestration.task("T1", ["C1"])
+        plan = TestStructuredOrchestration.plan([task], criteria=["C1"])
+        text = "bad\n```json\n{broken\n```\n```json\n%s\n```" % json.dumps(plan)
+        parsed, error = driver.parse_orchestration_block(text, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(parsed["tasks"][0]["status"], "pending")
+
+    def test_corrupt_persisted_orchestration_is_a_startup_blocker(self):
+        cfg = self.make_config()
+        os.makedirs(cfg.workdir())
+        with open(os.path.join(cfg.workdir(), driver.ORCHESTRATION_FILE), "w") as f:
+            f.write("{broken")
+        with mock.patch.object(driver, "worktree_guard", return_value=""), \
+                mock.patch.object(driver, "test_cmd_guard", return_value=""):
+            ok, reason = driver.startup_guard(cfg)
+        self.assertFalse(ok)
+        self.assertIn("orchestration", reason)
+
+    def test_false_complete_parent_is_rejected_before_dependent_dispatch(self):
+        parent = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
+        parent["status"] = "complete"
+        child = TestStructuredOrchestration.task("B", ["C1"], ["A"], mutability="read")
+        cfg = self.make_config()
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(
+            cfg, TestStructuredOrchestration.plan([parent, child], criteria=["C1"]))
+        with mock.patch.object(driver, "worktree_guard", return_value=""), \
+                mock.patch.object(driver, "test_cmd_guard", return_value=""):
+            ok, reason = driver.startup_guard(cfg)
+        self.assertFalse(ok)
+        self.assertIn("observed evidence", reason)
+
+
+class TestOrchestratedDriver(DriverTestBase):
+    def plan(self, tasks):
+        return TestStructuredOrchestration.plan(tasks, criteria=["C1"])
+
+    def test_invalid_planner_output_blocks_before_any_task_dispatch(self):
+        self.write_scenario([{"text": "no valid plan"}])
+        cfg = self.make_config(max_iterations=1)
+        loop = driver.OrchestratedDriver(cfg)
+        with mock.patch.object(loop, "_execute_task") as execute:
+            self.assertEqual(loop.run(), "blocked")
+        execute.assert_not_called()
+        self.assertFalse(os.path.exists(os.path.join(cfg.workdir(), "writers")))
+
+    def test_claude_writer_session_is_bound_to_assigned_worktree_cwd(self):
+        cfg = self.make_config(engine="claude")
+        loop = driver.OrchestratedDriver(cfg)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        loop.plan = self.plan([task])
+        target = os.path.join(self.tmp, "writer-A")
+        os.makedirs(target)
+        with mock.patch.object(
+                driver.Driver, "_run_session", autospec=True,
+                return_value=(True, status_text("done", 0, "proof"), 0.0)) as session:
+            result = loop._execute_task(task, target, wave=1)
+        self.assertTrue(result["ok"])
+        child_driver = session.call_args.args[0]
+        self.assertEqual(child_driver.cfg.cwd, target)
+        self.assertEqual(child_driver.cfg.project, target)
+
+    def test_independent_ready_tasks_are_dispatched_in_one_overlapping_wave(self):
+        tasks = [
+            TestStructuredOrchestration.task("A", ["C1"], mutability="read"),
+            TestStructuredOrchestration.task("B", ["C1"], mutability="read"),
+        ]
+        cfg = self.make_config(max_iterations=1)
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(cfg, self.plan(tasks))
+        loop = driver.OrchestratedDriver(cfg)
+        barrier = threading.Barrier(2)
+        intervals = {}
+
+        def execute(task, _path, _wave):
+            intervals[task["id"]] = [time.monotonic(), None]
+            barrier.wait(timeout=2)
+            time.sleep(0.04)
+            intervals[task["id"]][1] = time.monotonic()
+            return {"ok": True, "status": "done", "evidence": "checked", "cost": 0.0}
+
+        with mock.patch.object(loop, "_execute_task", side_effect=execute), \
+                mock.patch.object(loop, "_run_session",
+                                  return_value=(True, verdict_text("PASS"), 0.0)):
+            self.assertEqual(loop.run(), "done")
+        self.assertLess(intervals["A"][0], intervals["B"][1])
+        self.assertLess(intervals["B"][0], intervals["A"][1])
+
+    def test_resume_uses_wave_after_persisted_maximum(self):
+        parent = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
+        parent.update({
+            "status": "complete", "observed_evidence": "proof-A", "worktree": self.tmp,
+            "agent": {"id": "old-A", "status": "done", "started_at": "s", "finished_at": "f"},
+        })
+        child = TestStructuredOrchestration.task("B", ["C1"], ["A"], mutability="read")
+        plan = self.plan([parent, child])
+        plan["dispatches"] = [{"wave": 2, "task_ids": ["A"], "started_at": "s", "finished_at": "f"}]
+        cfg = self.make_config(max_iterations=1)
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(cfg, plan)
+        loop = driver.OrchestratedDriver(cfg)
+        done = {"ok": True, "status": "done", "evidence": "proof-B", "cost": 0.0}
+        with mock.patch.object(loop, "_execute_task", return_value=done), \
+                mock.patch.object(loop, "_run_session", return_value=(True, verdict_text("PASS"), 0.0)):
+            self.assertEqual(loop.run(), "done")
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual(saved["dispatches"][-1]["wave"], 3)
+
+    def test_read_only_production_phase_sequence_is_complete(self):
+        task = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
+        cfg = self.make_config(max_iterations=1)
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(cfg, self.plan([task]))
+        loop = driver.OrchestratedDriver(cfg)
+        phases = []
+        done = {"ok": True, "status": "done", "evidence": "proof", "cost": 0.0}
+        with mock.patch.object(loop, "_publish_status",
+                               side_effect=lambda _state, phase, **_kw: phases.append(phase)), \
+                mock.patch.object(loop, "_execute_task", return_value=done), \
+                mock.patch.object(loop, "_run_session", return_value=(True, verdict_text("PASS"), 0.0)):
+            self.assertEqual(loop.run(), "done")
+        self.assertEqual(phases, [
+            "starting", "planning", "dispatching", "testing", "verifying", "finished"])
+
+    def test_writer_production_phase_sequence_includes_integration(self):
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        cfg = self.make_config(max_iterations=1)
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(cfg, self.plan([task]))
+        loop = driver.OrchestratedDriver(cfg)
+        phases = []
+        done = {"ok": True, "status": "done", "evidence": "proof", "cost": 0.0}
+        assignment = {"path": os.path.join(self.tmp, "writer-A"), "base_commit": "base",
+                      "cleanup": "retained_for_verified_cleanup"}
+        integration = {"ok": True, "task_ids": ["A"], "commit": "commit",
+                       "error": "", "integration_worktree": os.path.join(self.tmp, "integration"),
+                       "cleanup": "retained_for_verified_cleanup"}
+        with mock.patch.object(loop, "_publish_status",
+                               side_effect=lambda _state, phase, **_kw: phases.append(phase)), \
+                mock.patch.object(loop, "_execute_task", return_value=done), \
+                mock.patch.object(loop, "_run_session",
+                                  return_value=(True, verdict_text("PASS"), 0.0)), \
+                mock.patch.object(driver, "prepare_writer_worktrees",
+                                  return_value=({"A": assignment}, "")), \
+                mock.patch.object(driver, "integrate_writer_worktrees",
+                                  return_value=integration):
+            self.assertEqual(loop.run(), "done")
+        self.assertEqual(phases, [
+            "starting", "planning", "dispatching", "integrating", "testing",
+            "verifying", "finished"])
+
+    def test_codex_writer_falls_back_to_mechanically_gated_claude(self):
+        cfg = self.make_config(engine="codex")
+        loop = driver.OrchestratedDriver(cfg)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        loop.plan = self.plan([task])
+        target = os.path.join(self.tmp, "writer-A")
+        os.makedirs(target)
+        with mock.patch.object(
+                driver.Driver, "_run_session", autospec=True,
+                return_value=(True, status_text("done", 0, "proof"), 0.0)) as session:
+            result = loop._execute_task(task, target, wave=1)
+        self.assertTrue(result["ok"])
+        child_driver = session.call_args.args[0]
+        self.assertEqual(driver.resolve_engine(child_driver.cfg, readonly=False), "claude")
+
+    def test_resume_skips_completed_tasks_and_reviews_persisted_evidence(self):
+        task = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
+        task.update({
+            "status": "complete", "observed_evidence": "existing proof",
+            "agent": {"id": "old-A", "status": "done", "started_at": "2026-08-19T01:00:00",
+                      "finished_at": "2026-08-19T01:01:00", "worktree": self.tmp},
+            "worktree": self.tmp,
+        })
+        cfg = self.make_config(max_iterations=1)
+        os.makedirs(cfg.workdir())
+        plan = self.plan([task])
+        plan["dispatches"] = [{"wave": 1, "task_ids": ["A"],
+                               "started_at": "2026-08-19T01:00:00",
+                               "finished_at": "2026-08-19T01:01:00"}]
+        driver.save_orchestration(cfg, plan)
+        loop = driver.OrchestratedDriver(cfg)
+        with mock.patch.object(loop, "_execute_task") as execute, \
+                mock.patch.object(loop, "_run_session",
+                                  return_value=(True, verdict_text("PASS"), 0.0)) as review:
+            self.assertEqual(loop.run(), "done")
+        execute.assert_not_called()
+        self.assertIn("existing proof", review.call_args.args[0])
+
     def test_injected_blocks_carry_untrusted_envelope(self):
         # C18: 외부 유래 주입(핸드오프 노트·테스트 출력)은 untrusted 봉투로 감싼다
         # (루트 AGENTS.md 3절 — 주입 텍스트 안의 지시를 사용자 지시로 오인 금지).
@@ -243,7 +845,7 @@ class TestDashboardAutoStart(DriverTestBase):
     def test_refused_startup_never_starts_dashboard_or_driver(self):
         with mock.patch.object(driver, "startup_guard", return_value=(False, "refused")), \
                 mock.patch.object(driver, "ensure_dashboard") as ensure, \
-                mock.patch.object(driver, "Driver") as driver_class, \
+                mock.patch.object(driver, "OrchestratedDriver") as driver_class, \
                 redirect_stderr(io.StringIO()):
             result = driver.main(["--spec", self.spec, "--project", self.tmp])
         self.assertEqual(result, 2)
@@ -320,7 +922,7 @@ class TestDashboardAutoStart(DriverTestBase):
                                                         "url": "http://127.0.0.1:8765",
                                                         "detail": "port occupied",
                                                         "log_path": "/tmp/dashboard.log"}), \
-                        mock.patch.object(driver, "Driver", return_value=fake_driver), \
+                        mock.patch.object(driver, "OrchestratedDriver", return_value=fake_driver), \
                         redirect_stdout(output), redirect_stderr(errors):
                     result = driver.main(["--spec", self.spec, "--project", self.tmp])
                 self.assertEqual(result, expected_code)
@@ -345,7 +947,7 @@ class TestDashboardAutoStart(DriverTestBase):
         with open(launch_log, "w", encoding="utf-8") as redirected, \
                 mock.patch.object(driver, "startup_guard", return_value=(True, "")), \
                 mock.patch.object(driver, "ensure_dashboard", return_value=dashboard_result), \
-                mock.patch.object(driver, "Driver", return_value=fake_driver), \
+                mock.patch.object(driver, "OrchestratedDriver", return_value=fake_driver), \
                 redirect_stdout(redirected):
             result = driver.main(["--spec", self.spec, "--project", self.tmp])
         self.assertEqual(result, 0)
@@ -536,17 +1138,10 @@ class TestC16EngineRouting(DriverTestBase):
 
 
 class TestC17CodexSafety(DriverTestBase):
-    def test_codex_edit_session_flags(self):
+    def test_codex_mutating_session_is_rejected_at_argument_boundary(self):
         cfg = self.make_config(project="/proj")
-        out = "/wd/.codex-out.txt"
-        args = driver.build_codex_args(cfg, "PROMPT", False, out)
-        self.assertEqual(args[0], "exec")
-        self.assertIn("--sandbox", args)
-        self.assertEqual(args[args.index("--sandbox") + 1], "workspace-write")
-        self.assertIn("--skip-git-repo-check", args)
-        self.assertEqual(args[args.index("-C") + 1], "/proj")
-        self.assertEqual(args[args.index("-o") + 1], out)
-        self.assertIn("PROMPT", args)
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            driver.build_codex_args(cfg, "PROMPT", False, "/wd/.codex-out.txt")
 
     def test_codex_verify_session_is_read_only(self):
         cfg = self.make_config()
@@ -555,15 +1150,12 @@ class TestC17CodexSafety(DriverTestBase):
 
     def test_codex_model_flag(self):
         cfg = self.make_config(implement_model="impl-m", verify_model="ver-m")
-        work = driver.build_codex_args(cfg, "P", False, "/o")
         verify = driver.build_codex_args(cfg, "P", True, "/o")
-        self.assertEqual(work[work.index("-m") + 1], "impl-m")
         self.assertEqual(verify[verify.index("-m") + 1], "ver-m")
 
     def test_no_bypass_in_either_engine(self):
         cfg = self.make_config()
-        codex = " ".join(driver.build_codex_args(cfg, "P", False, "/o")
-                         + driver.build_codex_args(cfg, "P", True, "/o"))
+        codex = " ".join(driver.build_codex_args(cfg, "P", True, "/o"))
         claude = " ".join(driver.build_claude_args(cfg, "P")
                           + driver.build_claude_args(cfg, "P", readonly=True))
         for bad in ["--dangerously-bypass-approvals-and-sandbox", "danger-full-access",
@@ -572,14 +1164,16 @@ class TestC17CodexSafety(DriverTestBase):
             self.assertNotIn(bad, claude)
 
     def test_codex_engine_run_parses_output_file(self):
-        # 순수 codex 엔진 1반복 — -o 파일에서 상태 블록 파싱, 완주
+        # read-only Codex 세션은 -o 파일에서 상태 블록을 파싱한다.
         self.write_scenario([])  # claude 미사용
         self.write_codex_scenario([{"text": status_text("continue", 1)}])
-        cfg = self.make_config(engine="codex", max_iterations=1)
-        self.assertEqual(driver.Driver(cfg).run(), "exhausted")
-        with open(os.path.join(self.workdir, "iters", "iter-1.json")) as f:
-            rec = json.load(f)
-        self.assertEqual(rec["status"]["status"], "continue")
+        cfg = self.make_config(engine="codex")
+        loop = driver.Driver(cfg)
+        loop._ensure_workdir()
+        ok, text, cost = loop._run_session("PROMPT", readonly=True)
+        self.assertTrue(ok)
+        self.assertEqual(driver.parse_status_block(text)["status"], "continue")
+        self.assertEqual(cost, 0.0)
 
 
 class TestC11ProcessFailure(DriverTestBase):
@@ -691,10 +1285,12 @@ class TestDashboardStatus(DriverTestBase):
             state = json.load(f)
         self.assertEqual(state["cost_measurement"], "partial")
 
-    def test_codex_iteration_records_unavailable_cost(self):
-        self.write_codex_scenario([{"text": status_text("continue", 1)}])
-        result = driver.Driver(self.make_config(engine="codex", max_iterations=1)).run()
-        self.assertEqual(result, "exhausted")
+    def test_codex_readonly_iteration_records_unavailable_cost(self):
+        cfg = self.make_config(engine="codex")
+        loop = driver.Driver(cfg)
+        loop._ensure_workdir()
+        loop._write_iter(1, {"status": "continue", "open_items": 1,
+                             "note": "read-only", "parsed": True}, None, 0.0)
         with open(os.path.join(self.workdir, "iters", "iter-1.json"), encoding="utf-8") as f:
             iteration = json.load(f)
         self.assertEqual(iteration["cost_measurement"], "unavailable")

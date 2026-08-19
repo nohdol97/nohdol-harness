@@ -1,5 +1,7 @@
 # ADR 047: autoloop 관측 상태와 로컬 대시보드 분리
 
+> **부분 확장(ADR 048, 2026-08-19)**: loop aggregate 관측에 `orchestration.json` 기반 task·dependency·agent·worktree·evidence 투영이 추가됐다. 읽기 전용·loopback·게이트 상태 분리 결정은 유지된다.
+
 - **날짜**: 2026-08-19
 - **변경 내용**: autoloop 드라이버가 현재 런의 관측 상태를 `run-status.json`에 원자 기록하고, 별도 Python 표준 라이브러리 서버가 기존 작업 산출물과 함께 읽어 loopback 전용 대시보드로 제공한다. `start`는 이 대시보드를 자동으로 시작하거나 재사용하고, `dashboard` 동사는 수동 복구 진입점으로 유지한다.
 - **대상**: `.agents/skills/{autoloop,orchestrate}/SKILL.md`, `.agents/skills/autoloop/scripts/{driver.py,driver_test.py,dashboard.py,dashboard_test.py}`, `.agents/skills/README.ko.md`, `.agents/agents/{architect.md,README.ko.md}`, `docs/specs/{2026-07-19-autoloop-driver.md,2026-08-19-autoloop-dashboard.md}`, `docs/adr/{025-autoloop-driver.md,047-autoloop-observation-dashboard.md}`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/{autoloop-auto-dashboard-review,harness-ops-log.md}`
@@ -24,7 +26,7 @@
 
 - 사용자는 여러 autoloop 작업의 현재 단계와 최신 검증 증거를 한 화면에서 비교할 수 있다.
 - 대시보드는 제어면이 아니므로 기존 STOP·승인·파괴 작업 가드레일을 우회할 경로가 생기지 않는다.
-- 일반 orchestrate 팀 통합과 작업 제어는 별도 결정 전까지 범위 밖이다.
+- 일반 interactive orchestrate 팀의 제어는 범위 밖이며, autoloop 내부 오케스트레이션은 ADR 048에 따라 task 단위로 관찰한다.
 - autoloop을 시작하면 별도 명령 없이 진행 화면 URL을 즉시 얻는다.
 - 직접·팀·무인 실행 모두 같은 요구사항 작업 지도를 사용하고, 개인 프로필의 하위 프로젝트 변경은 기존 전용 worktree에서 수행한다.
 

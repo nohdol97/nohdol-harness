@@ -125,7 +125,8 @@ INDEX_HTML = r'''<!doctype html>
       interrupted: "중단 의심", unknown: "상태 미확인"
     };
     const phases = {
-      starting: "기동 중", implementing: "구현 세션", testing: "독립 테스트",
+      starting: "기동 중", planning: "DAG 계획", dispatching: "작업 배치",
+      integrating: "격리 작업 통합", implementing: "구현 세션", testing: "독립 테스트",
       verifying: "독립 검증", finished: "종료", unknown: "확인 불가"
     };
     const tests = { green: "GREEN", red: "RED", error: "RUNNER ERROR", "n/a": "측정 없음" };
@@ -194,7 +195,8 @@ INDEX_HTML = r'''<!doctype html>
           fact("현재 단계", phases[task.phase] || task.phase),
           fact("반복", `${value(task.run_iteration, "?")} / 누적 ${value(task.total_iterations, 0)}`),
           fact("테스트", tests[task.test_outcome] || value(task.test_outcome)),
-          fact("남은 항목", value(task.open_items)),
+          fact("task", Object.entries(task.task_counts || {}).map(([key, count]) => `${key} ${count}`).join(" · ")),
+          fact("agent", Object.entries(task.agent_counts || {}).map(([key, count]) => `${key} ${count}`).join(" · ")),
           fact("비용", cost(task)),
           fact("갱신", value(task.updated_at))
         );
@@ -243,6 +245,100 @@ INDEX_HTML = r'''<!doctype html>
       const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap); return section;
     }
 
+    function renderOrchestration(task) {
+      const section = el("section");
+      section.append(el("h3", "", "구조화된 task DAG / agent"));
+      const tasks = task.tasks || [];
+      if (!tasks.length) {
+        section.append(el("p", "muted", "구조화된 task DAG 기록 없음"));
+        return section;
+      }
+      const table = el("table");
+      const head = el("tr");
+      ["작업", "기준", "의존", "소유자 / agent", "engine / fallback", "상태", "시작 / 종료", "worktree", "증거", "blocker"].forEach(name => head.append(el("th", "", name)));
+      const thead = el("thead"); thead.append(head); table.append(thead);
+      const tbody = el("tbody");
+      tasks.forEach(item => {
+        const row = el("tr");
+        row.append(
+          el("td", "", value(item.id)),
+          el("td", "", (item.criterion_ids || []).join(", ") || "—"),
+          el("td", "", (item.depends_on || []).join(", ") || "—"),
+          el("td", "", [item.owner, item.agent_id].filter(Boolean).join(" / ") || "—"),
+          el("td", "note", [[item.requested_engine, item.effective_engine].filter(Boolean).join(" → "), item.engine_fallback].filter(Boolean).join(" / ") || "—"),
+          el("td", "", value(item.status)),
+          el("td", "note", [item.started_at, item.finished_at].filter(Boolean).join(" / ") || "—"),
+          el("td", "note", value(item.worktree)),
+          el("td", "note", (item.observed_evidence || []).join("\n") || "—"),
+          el("td", "note", value(item.blocker))
+        );
+        tbody.append(row);
+      });
+      table.append(tbody);
+      const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
+      return section;
+    }
+
+    function renderDispatches(task) {
+      const section = el("section");
+      section.append(el("h3", "", "병렬 dispatch / fallback"));
+      const items = task.dispatches || [];
+      if (!items.length) { section.append(el("p", "muted", "dispatch 기록 없음")); return section; }
+      const table = el("table");
+      const head = el("tr");
+      ["wave", "task", "시작 / 종료", "fallback"].forEach(name => head.append(el("th", "", name)));
+      const thead = el("thead"); thead.append(head); table.append(thead);
+      const tbody = el("tbody");
+      items.forEach(item => {
+        const row = el("tr");
+        row.append(el("td", "", value(item.wave)),
+          el("td", "", (item.task_ids || []).join(", ") || "—"),
+          el("td", "note", [item.started_at, item.finished_at].filter(Boolean).join(" / ") || "—"),
+          el("td", "note", value(item.fallback)));
+        tbody.append(row);
+      });
+      table.append(tbody); const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
+      return section;
+    }
+
+    function renderIntegrations(task) {
+      const section = el("section");
+      section.append(el("h3", "", "writer fan-in / worktree"));
+      const integrations = task.integrations || [];
+      const worktrees = task.worktrees || [];
+      if (!integrations.length && !worktrees.length) {
+        section.append(el("p", "muted", "integration/worktree 기록 없음")); return section;
+      }
+      if (integrations.length) {
+        const table = el("table"); const head = el("tr");
+        ["wave", "task", "결과", "commit", "integration worktree", "오류 / 정리"].forEach(name => head.append(el("th", "", name)));
+        const thead = el("thead"); thead.append(head); table.append(thead); const tbody = el("tbody");
+        integrations.forEach(item => {
+          const row = el("tr");
+          row.append(el("td", "", value(item.wave)), el("td", "", (item.task_ids || []).join(", ") || "—"),
+            el("td", "", item.ok ? "성공" : "실패"), el("td", "note", value(item.commit)),
+            el("td", "note", value(item.integration_worktree)),
+            el("td", "note", [item.error, item.cleanup].filter(Boolean).join(" / ") || "—"));
+          tbody.append(row);
+        });
+        table.append(tbody); const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
+      }
+      if (worktrees.length) {
+        const table = el("table"); const head = el("tr");
+        ["종류", "wave / task", "상태", "경로", "base", "정리"].forEach(name => head.append(el("th", "", name)));
+        const thead = el("thead"); thead.append(head); table.append(thead); const tbody = el("tbody");
+        worktrees.forEach(item => {
+          const row = el("tr");
+          row.append(el("td", "", value(item.kind)), el("td", "", [item.wave, item.task_id].filter(value => value !== "" && value !== null && value !== undefined).join(" / ") || "—"),
+            el("td", "", value(item.status)), el("td", "note", value(item.path)),
+            el("td", "note", value(item.base_commit)), el("td", "note", value(item.cleanup)));
+          tbody.append(row);
+        });
+        table.append(tbody); const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
+      }
+      return section;
+    }
+
     function renderEmptyDetail(message) {
       const root = document.getElementById("detail");
       clear(root);
@@ -259,10 +355,15 @@ INDEX_HTML = r'''<!doctype html>
         fact("상태", labels[task.status] || task.status), fact("단계", phases[task.phase] || task.phase),
         fact("기동 횟수", task.run), fact("현재 / 누적 반복", `${value(task.run_iteration, "?")} / ${value(task.total_iterations, 0)}`),
         fact("최신 테스트", tests[task.test_outcome] || value(task.test_outcome)), fact("남은 항목", task.open_items),
-        fact("누적 비용", cost(task)), fact("마지막 갱신", task.updated_at)
+        fact("누적 비용", cost(task)), fact("마지막 갱신", task.updated_at),
+        fact("orchestrate 판정", task.orchestrate_verdict), fact("agent 예산", task.agent_budget),
+        fact("task 상태", Object.entries(task.task_counts || {}).map(([key, count]) => `${key} ${count}`).join(" · "))
       );
       root.append(head, facts);
       if (task.diagnostics && task.diagnostics.length) root.append(detailSection("진단", task.diagnostics.join("\n"), "diagnostic"));
+      root.append(renderOrchestration(task));
+      root.append(renderDispatches(task));
+      root.append(renderIntegrations(task));
       root.append(detailSection("사용자 확인 필요 / carryover", task.carryover));
       root.append(renderIterations(task));
       root.append(detailSection("driver.log 최근 기록", task.log_tail));
@@ -489,6 +590,117 @@ def legacy_status(task_path, state, launch_log, diagnostics):
     return "unknown", "unknown"
 
 
+def orchestration_projection(task_path, diagnostics, details=False):
+    """Expose only the bounded task/agent fields needed by the dashboard."""
+    raw = read_json(
+        os.path.join(task_path, "orchestration.json"), diagnostics, boundary=task_path) or {}
+    raw_tasks = raw.get("tasks") if isinstance(raw.get("tasks"), list) else []
+    raw_dispatches = raw.get("dispatches") if isinstance(raw.get("dispatches"), list) else []
+    raw_integrations = raw.get("integrations") if isinstance(raw.get("integrations"), list) else []
+    raw_worktrees = raw.get("worktrees") if isinstance(raw.get("worktrees"), list) else []
+    tasks = []
+    agents = []
+    counts = {}
+    agent_counts = {}
+    orchestrate = raw.get("orchestrate") if isinstance(raw.get("orchestrate"), dict) else {}
+    allowed_status = {"pending", "running", "complete", "blocked", "failed", "skipped"}
+
+    def string_list(value):
+        if isinstance(value, list):
+            return [str(item) for item in value if isinstance(item, (str, int))]
+        if isinstance(value, (str, int)) and str(value):
+            return [str(value)]
+        return []
+
+    def bounded_text(value, limit=1000):
+        return str(value or "")[:limit]
+
+    for item in raw_tasks:
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status") or "pending")
+        if status not in allowed_status:
+            status = "unknown"
+        counts[status] = counts.get(status, 0) + 1
+        agent = item.get("agent") if isinstance(item.get("agent"), dict) else {}
+        task = {
+            "id": str(item.get("id") or ""),
+            "criterion_ids": string_list(item.get("criterion_ids", [])),
+            "depends_on": string_list(item.get("depends_on", [])),
+            "owner": str(item.get("owner") or ""),
+            "mode": str(item.get("mode") or ""),
+            "mutability": str(item.get("mutability") or ""),
+            "status": status,
+            "worktree": str(item.get("worktree") or agent.get("worktree") or ""),
+            "agent_id": str(agent.get("id") or item.get("agent_id") or ""),
+            "requested_engine": str(item.get("requested_engine") or ""),
+            "effective_engine": str(item.get("effective_engine") or ""),
+            "engine_fallback": bounded_text(item.get("engine_fallback")),
+            "started_at": str(agent.get("started_at") or ""),
+            "finished_at": str(agent.get("finished_at") or ""),
+            "observed_evidence": string_list(item.get("observed_evidence", [])),
+            "blocker": str(item.get("blocker") or ""),
+        }
+        tasks.append(task)
+        if task["agent_id"]:
+            agent_counts[status] = agent_counts.get(status, 0) + 1
+            agents.append({
+                "id": task["agent_id"],
+                "task_id": task["id"],
+                "status": status,
+                "worktree": task["worktree"],
+                "started_at": str(agent.get("started_at") or ""),
+                "finished_at": str(agent.get("finished_at") or ""),
+            })
+    result = {
+        "orchestrate_verdict": str(orchestrate.get("verdict") or ""),
+        "agent_budget": orchestrate.get("agent_budget"),
+        "task_counts": counts,
+        "agent_counts": agent_counts,
+    }
+    if details:
+        dispatches = []
+        for item in raw_dispatches:
+            if not isinstance(item, dict):
+                continue
+            dispatches.append({
+                "wave": item.get("wave"),
+                "task_ids": string_list(item.get("task_ids", [])),
+                "started_at": bounded_text(item.get("started_at"), 100),
+                "finished_at": bounded_text(item.get("finished_at"), 100),
+                "fallback": bounded_text(item.get("fallback")),
+            })
+        integrations = []
+        for item in raw_integrations:
+            if not isinstance(item, dict):
+                continue
+            integrations.append({
+                "wave": item.get("wave"),
+                "task_ids": string_list(item.get("task_ids", [])),
+                "ok": item.get("ok") is True,
+                "commit": bounded_text(item.get("commit"), 200),
+                "error": bounded_text(item.get("error")),
+                "integration_worktree": bounded_text(item.get("integration_worktree")),
+                "cleanup": bounded_text(item.get("cleanup"), 200),
+            })
+        worktrees = []
+        for item in raw_worktrees:
+            if not isinstance(item, dict):
+                continue
+            worktrees.append({
+                "kind": bounded_text(item.get("kind"), 100),
+                "wave": item.get("wave"),
+                "task_id": bounded_text(item.get("task_id"), 200),
+                "path": bounded_text(item.get("path")),
+                "base_commit": bounded_text(item.get("base_commit"), 200),
+                "status": bounded_text(item.get("status"), 100),
+                "cleanup": bounded_text(item.get("cleanup"), 200),
+            })
+        result.update({"tasks": tasks, "agents": agents, "dispatches": dispatches,
+                       "integrations": integrations, "worktrees": worktrees})
+    return result
+
+
 def collect_task(root, slug, details=False):
     task_path = safe_task_path(root, slug)
     if task_path is None:
@@ -502,6 +714,7 @@ def collect_task(root, slug, details=False):
     latest_status = latest.get("status") if isinstance(latest.get("status"), dict) else {}
     latest_test = latest.get("test") if isinstance(latest.get("test"), dict) else {}
     launch_log = read_tail(os.path.join(task_path, "launch.log"), diagnostics, boundary=task_path)
+    orchestration = orchestration_projection(task_path, diagnostics, details=details)
 
     if run_status:
         source = "run-status"
@@ -547,6 +760,7 @@ def collect_task(root, slug, details=False):
         "project": (run_status or {}).get("project", ""),
         "diagnostics": diagnostics,
     }
+    result.update(orchestration)
     if details:
         result.update({
             "iterations": iterations,

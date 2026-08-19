@@ -37,6 +37,47 @@ class DashboardTestBase(unittest.TestCase):
 
 
 class TestCollection(DashboardTestBase):
+    def test_orchestration_projection_exposes_tasks_agents_and_dependencies(self):
+        task = self.task()
+        self.write_json(os.path.join(task, "orchestration.json"), {
+            "schema_version": 1,
+            "contract_version": "autoloop-orchestrate-v1",
+            "criteria": ["C1", "C2"],
+            "orchestrate": {"verdict": "team", "agent_budget": 2, "reason": "parallel"},
+            "tasks": [{
+                "id": "T2", "criterion_ids": ["C2"], "deliverable": "second",
+                "depends_on": ["T1"], "owner": "implementer", "mode": "worker",
+                "mutability": "write", "expected_evidence": "test", "observed_evidence": "",
+                "status": "running", "blocker": "", "worktree": "writer-T2",
+                "requested_engine": "codex", "effective_engine": "claude",
+                "engine_fallback": "Codex writers require the Claude gate",
+                "agent": {"id": "agent-T2", "status": "running",
+                          "started_at": "2026-08-19T12:00:00", "finished_at": ""},
+            }],
+            "dispatches": [{"wave": 1, "task_ids": ["T2"],
+                            "started_at": "2026-08-19T12:00:00",
+                            "fallback": "budget limited"}],
+            "integrations": [{"wave": 1, "task_ids": ["T2"], "ok": False,
+                              "error": "conflict", "integration_worktree": "integration-1",
+                              "cleanup": "retained_for_verified_cleanup"}],
+            "worktrees": [{"kind": "writer", "wave": 1, "task_id": "T2",
+                           "path": "writer-T2", "base_commit": "abc", "status": "retained_failed",
+                           "cleanup": "retained_for_verified_cleanup"}],
+        })
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+        self.assertEqual(value["task_counts"]["running"], 1)
+        self.assertEqual(value["tasks"][0]["depends_on"], ["T1"])
+        self.assertEqual(value["agents"][0]["id"], "agent-T2")
+        self.assertEqual(value["tasks"][0]["effective_engine"], "claude")
+        self.assertIn("Claude gate", value["tasks"][0]["engine_fallback"])
+        self.assertEqual(value["orchestrate_verdict"], "team")
+        self.assertEqual(value["agent_counts"]["running"], 1)
+        self.assertEqual(value["dispatches"][0]["wave"], 1)
+        self.assertEqual(value["dispatches"][0]["task_ids"], ["T2"])
+        self.assertEqual(value["dispatches"][0]["fallback"], "budget limited")
+        self.assertEqual(value["integrations"][0]["error"], "conflict")
+        self.assertEqual(value["worktrees"][0]["status"], "retained_failed")
+
     def test_latest_iteration_is_the_display_authority(self):
         task = self.task()
         self.write_json(os.path.join(task, "state.json"), {
@@ -272,6 +313,8 @@ class TestHtmlContract(unittest.TestCase):
         self.assertNotIn("innerHTML", dashboard.INDEX_HTML)
         self.assertIn("측정 안 됨", dashboard.INDEX_HTML)
         self.assertIn("사용자 확인 필요", dashboard.INDEX_HTML)
+        self.assertIn("병렬 dispatch / fallback", dashboard.INDEX_HTML)
+        self.assertIn("writer fan-in / worktree", dashboard.INDEX_HTML)
 
     def test_refresh_is_pausable_focus_safe_and_truthful(self):
         self.assertIn("자동 갱신 일시정지", dashboard.INDEX_HTML)
