@@ -231,6 +231,7 @@ class TestHttp(DashboardTestBase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)["tasks"][0]["slug"], "sample")
         self.assertIn("application/json", headers["Content-Type"])
+        self.assertEqual(headers["X-Autoloop-Root-Id"], dashboard.root_id(self.tmp))
 
         status, _, body = self.request("GET", "/api/tasks/sample")
         self.assertEqual(status, 200)

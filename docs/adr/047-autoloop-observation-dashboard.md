@@ -1,8 +1,8 @@
 # ADR 047: autoloop 관측 상태와 로컬 대시보드 분리
 
 - **날짜**: 2026-08-19
-- **변경 내용**: autoloop 드라이버가 현재 런의 관측 상태를 `run-status.json`에 원자 기록하고, 별도 Python 표준 라이브러리 서버가 기존 작업 산출물과 함께 읽어 loopback 전용 대시보드로 제공한다. autoloop의 동사는 `start/dashboard/status/stop` 네 가지가 된다.
-- **대상**: `.agents/skills/autoloop/SKILL.md`, `.agents/skills/autoloop/scripts/{driver.py,driver_test.py,dashboard.py,dashboard_test.py}`, `.agents/skills/README.ko.md`, `docs/specs/{2026-07-19-autoloop-driver.md,2026-08-19-autoloop-dashboard.md}`, `docs/adr/025-autoloop-driver.md`, `docs/README.md`, `_workspace/harness-ops-log.md`
+- **변경 내용**: autoloop 드라이버가 현재 런의 관측 상태를 `run-status.json`에 원자 기록하고, 별도 Python 표준 라이브러리 서버가 기존 작업 산출물과 함께 읽어 loopback 전용 대시보드로 제공한다. `start`는 이 대시보드를 자동으로 시작하거나 재사용하고, `dashboard` 동사는 수동 복구 진입점으로 유지한다.
+- **대상**: `.agents/skills/{autoloop,orchestrate}/SKILL.md`, `.agents/skills/autoloop/scripts/{driver.py,driver_test.py,dashboard.py,dashboard_test.py}`, `.agents/skills/README.ko.md`, `.agents/agents/{architect.md,README.ko.md}`, `docs/specs/{2026-07-19-autoloop-driver.md,2026-08-19-autoloop-dashboard.md}`, `docs/adr/{025-autoloop-driver.md,047-autoloop-observation-dashboard.md}`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/{autoloop-auto-dashboard-review,harness-ops-log.md}`
 - **사유**: 기존 `state.json`은 재기동 시 게이트를 이어받는 내부 체크포인트다. 화면이 필요한 최신 단계·남은 항목을 이 파일에서 추론하면 판정용 `prev_open`을 표시값으로 오독하고, 표시 요구가 게이트 스키마를 끌고 다니게 된다. 관측 상태를 분리하면 대시보드 고장이 루프 판정을 바꾸지 않으며, 기존 작업 디렉터리도 변환 없이 읽을 수 있다.
 
 ## 결정
@@ -16,13 +16,18 @@
 7. loopback 바인딩만으로 브라우저의 로컬 접근 경계를 주장하지 않는다. 비-loopback `Host`를 거부하고 상태·로그·반복 파일의 심볼릭 링크도 거부한다.
 8. 목록은 최신 반복 하나만, 상세는 최근 200개만 읽는다. 자동 갱신은 일시정지할 수 있고 카드 포커스를 복원한다.
 9. 누적 비용의 측정 범위를 체크포인트에 이어받고 반복별로도 기록한다. 미측정 이력이 있는 작업을 `$0.00` 또는 완전 측정으로 표시하지 않는다.
+10. 안전 사전검사가 통과한 `start`는 `127.0.0.1:8765`의 기존 autoloop 대시보드를 확인해 재사용하고, 없으면 작업 루트를 읽는 분리 프로세스를 기동한다. 루프가 끝나도 서버를 유지해 완료 이력을 보존한다.
+11. 대시보드는 관측면이므로 포트 충돌·프로세스 기동 실패가 autoloop의 종료 사유나 반환 코드를 바꾸지 않는다. 실패는 `dashboard.log` 경로가 포함된 경고로만 드러낸다.
+12. 무인 반복과 orchestrate는 완료 기준을 실행 작업·`depends_on`·기대 검증 증거로 변환한다. worktree는 이 작업 지도의 실행 위치이며, 요구사항 분해를 대신하지 않는다.
 
 ## 결과
 
 - 사용자는 여러 autoloop 작업의 현재 단계와 최신 검증 증거를 한 화면에서 비교할 수 있다.
 - 대시보드는 제어면이 아니므로 기존 STOP·승인·파괴 작업 가드레일을 우회할 경로가 생기지 않는다.
 - 일반 orchestrate 팀 통합과 작업 제어는 별도 결정 전까지 범위 밖이다.
+- autoloop을 시작하면 별도 명령 없이 진행 화면 URL을 즉시 얻는다.
+- 직접·팀·무인 실행 모두 같은 요구사항 작업 지도를 사용하고, 개인 프로필의 하위 프로젝트 변경은 기존 전용 worktree에서 수행한다.
 
 ## 영향
 
-`.agents/skills/autoloop/SKILL.md`, `.agents/skills/autoloop/scripts/driver.py`, `.agents/skills/autoloop/scripts/driver_test.py`, `.agents/skills/autoloop/scripts/dashboard.py`, `.agents/skills/autoloop/scripts/dashboard_test.py`, `.agents/skills/README.ko.md`, `docs/specs/2026-07-19-autoloop-driver.md`, `docs/specs/2026-08-19-autoloop-dashboard.md`, `docs/adr/025-autoloop-driver.md`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/harness-ops-log.md`
+`.agents/skills/autoloop/SKILL.md`, `.agents/skills/autoloop/scripts/driver.py`, `.agents/skills/autoloop/scripts/driver_test.py`, `.agents/skills/autoloop/scripts/dashboard.py`, `.agents/skills/autoloop/scripts/dashboard_test.py`, `.agents/skills/README.ko.md`, `.agents/skills/orchestrate/SKILL.md`, `.agents/agents/architect.md`, `.agents/agents/README.ko.md`, `docs/specs/2026-07-19-autoloop-driver.md`, `docs/specs/2026-08-19-autoloop-dashboard.md`, `docs/adr/025-autoloop-driver.md`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/{autoloop-auto-dashboard-review,harness-ops-log.md}`

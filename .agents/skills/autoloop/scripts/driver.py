@@ -29,11 +29,14 @@
 import argparse
 import dataclasses
 import datetime
+import hashlib
+import http.client
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 
 # ---------------------------------------------------------------------------
 # 안전 게이트 목록 (R3) — 읽기·편집·안전 Bash만 무인 허용, 파괴 패턴은 명시 차단.
@@ -82,6 +85,9 @@ STATE_FILE = "state.json"      # R16 실행 위치 체크포인트
 RUN_STATUS_FILE = "run-status.json"  # dashboard observation snapshot (never a gate input)
 TEST_TIMEOUT = 1800            # 테스트 명령 1회 상한(초) — 초과는 R5-1 `error`(kind=timeout)
 TEST_OUTCOMES = ("green", "red", "error")   # R5-1 — error 는 "실행조차 못 함"만을 뜻한다
+DASHBOARD_HOST = "127.0.0.1"
+DASHBOARD_PORT = 8765
+DASHBOARD_READY_ATTEMPTS = 40
 # 재기동 시 이어받아야 하는 실행 상태와 그 기본값. 노트(carryover.md)가 나르는 서술 상태와
 # 달리 이건 게이트가 읽는 값이라, 하나라도 리셋되면 그 게이트가 재기동으로 우회된다.
 STATE_DEFAULTS = {
@@ -202,7 +208,10 @@ def build_prompt(anchor, note_path, note_text, test_result, feedback, prev_statu
     parts.append(
         "\n[INSTRUCTIONS - fixed]\n"
         "1. Follow the harness rules loaded from this workspace (routing, SDD/TDD, guardrails).\n"
-        "2. Pick the highest-priority open item from the note (or derive from the spec) and complete it.\n"
+        "2. Before editing, maintain a requirement-to-task map in the handoff note's\n"
+        "   '진행 중 · 다음 할 일' section. Map every completion criterion ID to one or more\n"
+        "   concrete executable tasks, each task's depends_on IDs, and its expected verification evidence.\n"
+        "   Then pick the smallest unblocked task from that map and complete it. Keep the map current.\n"
         "3. NEVER attempt destructive operations (deploy, resource deletion, force push, DB migration,\n"
         "   IAM changes). If one becomes necessary, stop and report status \"blocked\".\n"
         "4. Update the handoff note file at " + note_path + " (Korean; sections 한 일 (완료)/\n"
@@ -223,6 +232,62 @@ def build_prompt(anchor, note_path, note_text, test_result, feedback, prev_statu
         "   report status \"blocked\" and explain why; do not edit it. Adding tests is encouraged."
     )
     return "\n".join(parts)
+
+
+def dashboard_is_healthy(port, tasks_root=None):
+    """Return true only for this harness's loopback dashboard API."""
+    connection = None
+    try:
+        connection = http.client.HTTPConnection(DASHBOARD_HOST, port, timeout=0.25)
+        connection.request("GET", "/api/tasks")
+        response = connection.getresponse()
+        body = response.read(1024 * 1024)
+        server = response.getheader("Server", "")
+        served_root_id = response.getheader("X-Autoloop-Root-Id", "")
+        payload = json.loads(body.decode("utf-8"))
+        return (response.status == 200 and server.startswith("AutoloopDashboard/")
+                and (tasks_root is None or served_root_id == hashlib.sha256(
+                     os.fsencode(os.path.realpath(tasks_root))).hexdigest())
+                and isinstance(payload, dict) and isinstance(payload.get("tasks"), list))
+    except (OSError, ValueError, TypeError, UnicodeError, http.client.HTTPException):
+        return False
+    finally:
+        if connection is not None:
+            connection.close()
+
+
+def ensure_dashboard(cfg, port=DASHBOARD_PORT):
+    """Reuse or detach the read-only dashboard; never raise into the loop path (R12·R13)."""
+    url = "http://%s:%d" % (DASHBOARD_HOST, port)
+    tasks_root = os.path.realpath(os.path.dirname(cfg.workdir()))
+    log_path = os.path.join(tasks_root, "dashboard.log")
+    result = {"ok": False, "state": "failed", "url": url,
+              "detail": "", "log_path": log_path}
+    try:
+        if dashboard_is_healthy(port, tasks_root):
+            result.update(ok=True, state="reused", detail="existing dashboard reused")
+            return result
+        os.makedirs(tasks_root, exist_ok=True)
+        script = os.path.join(os.path.dirname(os.path.realpath(__file__)), "dashboard.py")
+        with open(log_path, "a", encoding="utf-8") as log_file:
+            process = subprocess.Popen(
+                [sys.executable, script, "--root", tasks_root, "--port", str(port)],
+                stdin=subprocess.DEVNULL, stdout=log_file, stderr=subprocess.STDOUT,
+                start_new_session=True, close_fds=True)
+        for _ in range(DASHBOARD_READY_ATTEMPTS):
+            if dashboard_is_healthy(port, tasks_root):
+                result.update(ok=True, state="started",
+                              detail="dashboard process started (pid %d)" % process.pid)
+                return result
+            if process.poll() is not None:
+                result["detail"] = "dashboard process exited during startup"
+                return result
+            time.sleep(0.05)
+        result["detail"] = "dashboard did not become ready within 2 seconds"
+        return result
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        result["detail"] = "dashboard start failed: %s" % exc
+        return result
 
 
 VERIFY_TEST_LABELS = {
@@ -995,7 +1060,11 @@ def main(argv=None):
                         help="구현 반복 엔진 오버라이드(R13)")
     parser.add_argument("--verify-engine", default="", choices=["", "claude", "codex"],
                         help="검증 세션 엔진 오버라이드(R13)")
+    parser.add_argument("--dashboard-port", type=int, default=DASHBOARD_PORT,
+                        help="자동 기동할 loopback 대시보드 포트(기본: 8765)")
     args = parser.parse_args(argv)
+    if not 1 <= args.dashboard_port <= 65535:
+        parser.error("--dashboard-port must be between 1 and 65535")
 
     cfg = Config(spec=os.path.abspath(args.spec), project=os.path.abspath(args.project),
                  test_cmd=args.test_cmd, max_iterations=args.max_iterations,
@@ -1008,6 +1077,13 @@ def main(argv=None):
     if not ok:
         print("[autoloop] 기동 거부: %s" % reason, file=sys.stderr)
         return 2
+    dashboard = ensure_dashboard(cfg, port=args.dashboard_port)
+    if dashboard["ok"]:
+        print("[autoloop dashboard] %s: %s" % (dashboard["state"], dashboard["url"]),
+              flush=True)
+    else:
+        print("[autoloop dashboard] WARN: %s (log: %s)" %
+              (dashboard["detail"], dashboard["log_path"]), file=sys.stderr)
     reason = Driver(cfg).run()
     print("[autoloop] 종료: %s (로그: %s)" % (reason, os.path.join(cfg.workdir(), "driver.log")))
     return 0 if reason == "done" else 1

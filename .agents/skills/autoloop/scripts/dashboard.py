@@ -6,6 +6,7 @@ It binds only to loopback and exposes no mutation endpoint.
 """
 import argparse
 import datetime
+import hashlib
 import heapq
 import json
 import math
@@ -313,6 +314,10 @@ def now_iso():
     return datetime.datetime.now().isoformat(timespec="seconds")
 
 
+def root_id(path):
+    return hashlib.sha256(os.fsencode(os.path.realpath(path))).hexdigest()
+
+
 def confined_path(path, boundary, diagnostics):
     """Reject paths leaving a task and all symlinked artifact components."""
     boundary_real = os.path.realpath(boundary)
@@ -585,6 +590,7 @@ def make_handler(root):
             return
 
         def security_headers(self):
+            self.send_header("X-Autoloop-Root-Id", root_id(root))
             self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Cache-Control", "no-store, max-age=0")

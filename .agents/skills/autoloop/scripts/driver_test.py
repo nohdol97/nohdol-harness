@@ -6,12 +6,15 @@
 (fake claude 실행파일로 CLI 경계를 모킹 — R7⑦ 프로세스 실패까지 재현).
 """
 import json
+import io
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, HERE)
@@ -228,6 +231,125 @@ class TestC4PromptAnchor(DriverTestBase):
         # 봉투가 주입 블록(노트·테스트 결과)보다 앞서야 데이터로 읽힌다(순서 보장)
         self.assertLess(prompt.lower().index("untrusted"), prompt.index("NOTE"))
         self.assertLess(prompt.lower().index("untrusted"), prompt.index("TESTOUT"))
+
+    def test_prompt_requires_criterion_task_dependency_evidence_map(self):
+        prompt = driver.build_prompt("A", "/wd/carryover.md", "", "", "")
+        for phrase in ["completion criterion", "depends_on", "expected verification evidence",
+                       "smallest unblocked task"]:
+            self.assertIn(phrase, prompt.lower())
+
+
+class TestDashboardAutoStart(DriverTestBase):
+    def test_refused_startup_never_starts_dashboard_or_driver(self):
+        with mock.patch.object(driver, "startup_guard", return_value=(False, "refused")), \
+                mock.patch.object(driver, "ensure_dashboard") as ensure, \
+                mock.patch.object(driver, "Driver") as driver_class, \
+                redirect_stderr(io.StringIO()):
+            result = driver.main(["--spec", self.spec, "--project", self.tmp])
+        self.assertEqual(result, 2)
+        ensure.assert_not_called()
+        driver_class.assert_not_called()
+
+    def test_existing_dashboard_is_reused_without_spawning(self):
+        cfg = self.make_config()
+        with mock.patch.object(driver, "dashboard_is_healthy", return_value=True), \
+                mock.patch.object(driver.subprocess, "Popen") as popen:
+            result = driver.ensure_dashboard(cfg, port=8765)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["state"], "reused")
+        self.assertEqual(result["url"], "http://127.0.0.1:8765")
+        popen.assert_not_called()
+
+    def test_dashboard_health_requires_the_expected_task_root(self):
+        class Response:
+            status = 200
+
+            @staticmethod
+            def read(_limit):
+                return b'{"tasks":[]}'
+
+            @staticmethod
+            def getheader(name, default=""):
+                return {"Server": "AutoloopDashboard/1", "X-Autoloop-Root-Id": "wrong"}.get(
+                    name, default)
+
+        connection = mock.Mock()
+        connection.getresponse.return_value = Response()
+        with mock.patch.object(driver.http.client, "HTTPConnection", return_value=connection):
+            self.assertFalse(driver.dashboard_is_healthy(8765, self.tmp))
+
+    def test_first_launch_starts_dashboard_and_second_launch_reuses_same_url(self):
+        cfg = self.make_config()
+        process = mock.Mock()
+        process.poll.return_value = None
+        process.pid = 4321
+        with mock.patch.object(driver, "dashboard_is_healthy", side_effect=[False, True, True]), \
+                mock.patch.object(driver.subprocess, "Popen", return_value=process) as popen:
+            first = driver.ensure_dashboard(cfg, port=8765)
+            second = driver.ensure_dashboard(cfg, port=8765)
+        self.assertTrue(first["ok"])
+        self.assertEqual(first["state"], "started")
+        self.assertTrue(second["ok"])
+        self.assertEqual(second["state"], "reused")
+        self.assertEqual(first["url"], second["url"])
+        popen.assert_called_once()
+        argv = popen.call_args.args[0]
+        self.assertEqual(argv[0], sys.executable)
+        self.assertIn(os.path.join(HERE, "dashboard.py"), argv)
+        self.assertEqual(argv[argv.index("--root") + 1], os.path.realpath(self.tmp))
+        self.assertEqual(argv[argv.index("--port") + 1], "8765")
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_spawn_error_is_returned_as_observation_failure(self):
+        with mock.patch.object(driver, "dashboard_is_healthy", return_value=False), \
+                mock.patch.object(driver.subprocess, "Popen", side_effect=OSError("no process")):
+            result = driver.ensure_dashboard(self.make_config(), port=8765)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["state"], "failed")
+        self.assertIn("no process", result["detail"])
+
+    def test_dashboard_spawn_failure_does_not_change_driver_main_result(self):
+        for reason, expected_code in (("done", 0), ("stalled", 1)):
+            with self.subTest(reason=reason):
+                fake_driver = mock.Mock()
+                fake_driver.run.return_value = reason
+                output, errors = io.StringIO(), io.StringIO()
+                with mock.patch.object(driver, "startup_guard", return_value=(True, "")), \
+                        mock.patch.object(driver, "ensure_dashboard",
+                                          return_value={"ok": False, "state": "failed",
+                                                        "url": "http://127.0.0.1:8765",
+                                                        "detail": "port occupied",
+                                                        "log_path": "/tmp/dashboard.log"}), \
+                        mock.patch.object(driver, "Driver", return_value=fake_driver), \
+                        redirect_stdout(output), redirect_stderr(errors):
+                    result = driver.main(["--spec", self.spec, "--project", self.tmp])
+                self.assertEqual(result, expected_code)
+                fake_driver.run.assert_called_once_with()
+                self.assertIn("dashboard", errors.getvalue().lower())
+                self.assertIn("port occupied", errors.getvalue())
+                self.assertIn(reason, output.getvalue())
+
+    def test_dashboard_success_url_is_flushed_for_redirected_launch_log(self):
+        fake_driver = mock.Mock()
+        launch_log = os.path.join(self.tmp, "launch.log")
+
+        def observe_before_loop_completion():
+            with open(launch_log, encoding="utf-8") as written:
+                self.assertIn("http://127.0.0.1:8765", written.read())
+            return "done"
+
+        fake_driver.run.side_effect = observe_before_loop_completion
+        dashboard_result = {"ok": True, "state": "started",
+                            "url": "http://127.0.0.1:8765",
+                            "detail": "ready", "log_path": "/tmp/dashboard.log"}
+        with open(launch_log, "w", encoding="utf-8") as redirected, \
+                mock.patch.object(driver, "startup_guard", return_value=(True, "")), \
+                mock.patch.object(driver, "ensure_dashboard", return_value=dashboard_result), \
+                mock.patch.object(driver, "Driver", return_value=fake_driver), \
+                redirect_stdout(redirected):
+            result = driver.main(["--spec", self.spec, "--project", self.tmp])
+        self.assertEqual(result, 0)
+        fake_driver.run.assert_called_once_with()
 
 
 class TestC5SafetyArgs(DriverTestBase):
