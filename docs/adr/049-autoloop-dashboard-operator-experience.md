@@ -16,7 +16,7 @@
 3. task 관계는 그래프 대신 기록된 `team-log.jsonl` task event를 시간순 chip과 방향 cue로 잇는다. 이는 대화가 아니라 기록된 작업 전이이며, event가 없을 때 dependency로 추정하지 않는다.
 4. `team-log.jsonl`은 bounded coordination timeline으로 읽는다. 현재 감사 가능한 것은 선행 task 완료 뒤 후속 task가 dispatch된 event 순서이며, dependency evidence 전달은 별도로 기록되지 않는다. 이를 전달·자유 대화·내부 추론으로 해석하지 않는다.
 5. 기존 API의 `source` 의미는 보존한다. `orchestration.json` 존재 여부를 나타내는 additive `tracking`과 명시적 `dashboard-meta.json`만 읽는 `provenance`를 추가한다. unstructured 작업은 당시 구조화 추적이 없었다고 설명하고 누락 정보를 추정하지 않는다. 이름·경로로 demo를 판정하지 않는다.
-6. agent 기본 화면은 모든 실행을 하나의 track에 놓고 ID·상태만 보여 준다. 역할·requested/effective engine·fallback과 worktree·integration 정보는 접힌 세부 정보에서 기록값 그대로 제공한다.
+6. agent 기본 화면은 모든 실행을 하나의 공통 시간축에 놓고 ID·상태만 보여 준다. 실제 시간이 겹치는 실행은 X 위치를 바꾸지 않고 같은 축 안의 layer로 쌓아 병렬 관계를 보존한다. 역할·requested/effective engine·fallback과 worktree·integration 정보는 접힌 세부 정보에서 기록값 그대로 제공한다.
 7. 자동 갱신은 선택·상세 위치·포커스를 보존하고 신선도와 갱신 실패를 실행 실패와 분리한다. 색만으로 상태를 전달하지 않으며 키보드·스크린리더·reduced motion·200% 확대를 완료 조건에 포함한다.
 8. ADR 047의 loopback·읽기 전용·Host/method/path/symlink·보안 헤더 계약과 ADR 048의 artifact 역할 분리를 유지한다. API 변경은 additive이고, 외부 문자열은 escaped React text child로만 렌더링한다. unsafe HTML·parsing·실행·style·URL sink를 금지하고 read는 bounded다.
 9. React·TypeScript·Vite source와 lockfile을 두고 production static build를 커밋한다. runtime frontend 의존성은 React·React DOM만 남기며 handoff와 시간축은 CSS로 만든다. Node/npm은 개발·빌드·테스트 의존성이고 dashboard runtime은 계속 Python 표준 라이브러리만 요구한다. CDN·remote asset·server-side 사용자 상태 저장은 도입하지 않는다.

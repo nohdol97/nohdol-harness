@@ -14,10 +14,21 @@ describe("simplified operator workspace", () => {
     expect(screen.getAllByText(/T2 task 완료/).length).toBeGreaterThan(1);
     expect(screen.queryByText("Task DAG")).not.toBeInTheDocument();
   });
-  it("uses one track for all agents and keeps details closed", () => {
-    render(<AgentTimeline agents={[{ id: "a", task_id: "T1", status: "running", wave: 1 }, { id: "b", task_id: "T2", status: "complete", wave: 2 }]} />);
-    expect(screen.getByLabelText("한 줄 agent 실행 시간축")).toBeVisible();
-    expect(screen.getByText("T1 · running")).toBeVisible();
+  it("preserves overlapping time positions and stacks them in one axis", () => {
+    const { rerender } = render(<AgentTimeline agents={[
+      { id: "a", task_id: "T1", status: "running", started_at: "2026-08-19T10:00:00", finished_at: "2026-08-19T10:10:00" },
+      { id: "b", task_id: "T2", status: "running", started_at: "2026-08-19T10:05:00", finished_at: "2026-08-19T10:15:00" },
+      { id: "c", task_id: "T3", status: "complete", started_at: "2026-08-19T10:15:00", finished_at: "2026-08-19T10:20:00" }
+    ]} />);
+    const track = screen.getByLabelText("단일 agent 실행 시간축");
+    const segments = Array.from(track.querySelectorAll<HTMLElement>(".agent-segment"));
+    expect(track).toHaveAttribute("data-mode", "time");
+    expect(track).toHaveAttribute("data-layers", "2");
+    expect(segments.map((item) => [item.style.left, item.style.width, item.dataset.layer])).toEqual([
+      ["0%", "50%", "0"], ["25%", "50%", "1"], ["75%", "25%", "0"]
+    ]);
+    rerender(<AgentTimeline agents={[{ id: "a", task_id: "T1", status: "running", started_at: "broken", wave: 2 }, { id: "b", task_id: "T2", status: "complete", wave: 3 }]} />);
+    expect(screen.getByLabelText("단일 agent 실행 시간축")).toHaveAttribute("data-mode", "order");
   });
   it("keeps coordination and execution data collapsed by default", () => {
     render(<><Coordination task={{ ...task, events: [{ ts: "now", event: "task_complete", task_id: "T1" }], dispatches: [{ wave: 1, task_ids: ["T1"] }], tasks: [{ id: "T2", ready: false, blocked_reason: "dependency 대기: T1" }] }} /><TechnicalDetails task={{ ...task, total_cost_usd: 2.5, cost_measurement: "partial", integrations: [{ wave: 1, ok: false, failure_stage: "apply" }] }} /></>);

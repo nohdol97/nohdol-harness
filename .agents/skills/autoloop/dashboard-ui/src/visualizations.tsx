@@ -13,16 +13,23 @@ export function AgentTimeline({ agents }: { agents: Agent[] }) {
   const timed = agents.length > 0 && points.every((point) => Number.isFinite(point.start) && Number.isFinite(point.end) && point.end >= point.start);
   const min = timed ? Math.min(...points.map((point) => point.start)) : 0;
   const max = timed ? Math.max(...points.map((point) => point.end)) : 1;
-  let occupied = 0;
+  const layerByIndex = Array(agents.length).fill(0) as number[];
+  const layerEnds: number[] = [];
+  if (timed) {
+    points.map((point, index) => ({ ...point, index })).sort((a, b) => a.start - b.start || a.end - b.end || a.index - b.index).forEach((point) => {
+      const reusable = layerEnds.findIndex((end) => end <= point.start);
+      const layer = reusable === -1 ? layerEnds.length : reusable;
+      layerByIndex[point.index] = layer;
+      layerEnds[layer] = point.end;
+    });
+  }
+  const layers = Math.max(timed ? layerEnds.length : agents.length ? 1 : 0, 1);
   const positions = agents.map((agent, index) => {
-    const rawLeft = timed ? ((points[index].start - min) / Math.max(max - min, 1)) * 100 : ((Number(agent.wave) || index) / Math.max(agents.length, 1)) * 100;
-    const rawWidth = timed ? Math.max(((points[index].end - points[index].start) / Math.max(max - min, 1)) * 100, 12) : Math.max(18, 88 / Math.max(agents.length, 1));
-    const left = Math.min(Math.max(rawLeft, occupied), 88);
-    const width = Math.min(rawWidth, 100 - left);
-    occupied = left + width + 1;
-    return { left, width };
+    const left = timed ? ((points[index].start - min) / Math.max(max - min, 1)) * 100 : index * (100 / Math.max(agents.length, 1));
+    const width = timed ? ((points[index].end - points[index].start) / Math.max(max - min, 1)) * 100 : 100 / Math.max(agents.length, 1);
+    return { left, width, layer: timed ? layerByIndex[index] : 0 };
   });
-  return <section><h3>한 줄 실행 시간축</h3><p className="muted">{timed ? "기록된 시간축" : "기록된 wave / 순서 축"}</p><div className="agent-track" aria-label="한 줄 agent 실행 시간축">{agents.length ? agents.map((agent, index) => <span className="agent-segment" style={{ left: `${positions[index].left}%`, width: `${positions[index].width}%` }} key={`${agent.id}-${index}`} title={`${text(agent.task_id)} · ${text(agent.status)}`}>{text(agent.task_id || agent.id)} · {text(agent.status)}</span>) : <span className="muted">agent 기록이 없습니다.</span>}</div><details><summary>Agent 세부 정보</summary><ul>{agents.map((agent, index) => <li key={`agent-${index}`}>{text(agent.task_id || agent.id)} · {text(agent.role)} · {text(agent.requested_engine)} → {text(agent.effective_engine)} · {text(agent.engine_fallback)} · {text(agent.started_at)} → {text(agent.finished_at)}</li>)}</ul></details></section>;
+  return <section><h3>단일 실행 시간축</h3><p className="muted">{timed ? `기록된 시간축 · 최대 ${layers}개 동시 실행` : "기록된 wave / 순서 축 · 겹침을 추정하지 않음"}</p><div className="agent-track" aria-label="단일 agent 실행 시간축" data-mode={timed ? "time" : "order"} data-layers={layers} style={{ height: `${layers * 2.55 + .8}rem` }}>{agents.length ? agents.map((agent, index) => <span className="agent-segment" data-layer={positions[index].layer} style={{ left: `${positions[index].left}%`, width: `${positions[index].width}%`, top: `${positions[index].layer * 2.55 + .4}rem` }} key={`${agent.id}-${index}`} title={`${text(agent.task_id)} · ${text(agent.status)}`}>{text(agent.task_id || agent.id)} · {text(agent.status)}</span>) : <span className="muted">agent 기록이 없습니다.</span>}</div><details><summary>Agent 세부 정보</summary><ul>{agents.map((agent, index) => <li key={`agent-${index}`}>{text(agent.task_id || agent.id)} · {text(agent.role)} · {text(agent.requested_engine)} → {text(agent.effective_engine)} · {text(agent.engine_fallback)} · {text(agent.started_at)} → {text(agent.finished_at)}</li>)}</ul></details></section>;
 }
 
 export function Coordination({ task }: { task: DashboardTask }) {
