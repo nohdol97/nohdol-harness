@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""autoloop driver 회귀 테스트 — 스펙 docs/specs/2026-07-19-autoloop-driver.md 완료 기준(C1~C29).
+"""autoloop driver regression tests for the driver spec and dashboard observation contract.
 
 실행: python3 .agents/skills/autoloop/scripts/driver_test.py
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다. 실제 claude CLI를 호출하지 않는다
@@ -483,6 +483,99 @@ class TestC12Artifacts(DriverTestBase):
             log = f.read()
         self.assertIn("EXIT", log)
         self.assertIn("exhausted", log)
+
+
+class TestDashboardStatus(DriverTestBase):
+    """Dashboard observation status must not alter loop gate outcomes."""
+
+    def test_phase_sequence_and_terminal_snapshot(self):
+        self.write_scenario([
+            {"text": status_text("done", 0)},
+            {"text": verdict_text("PASS")},
+        ])
+        seen = []
+        original = driver.save_run_status
+
+        def spy(cfg, payload):
+            seen.append(payload["phase"])
+            return original(cfg, payload)
+
+        driver.save_run_status = spy
+        try:
+            result = driver.Driver(self.make_config(max_iterations=1)).run()
+        finally:
+            driver.save_run_status = original
+
+        self.assertEqual(result, "done")
+        expected = ["starting", "implementing", "testing", "verifying", "finished"]
+        self.assertEqual([phase for phase in seen if phase in expected], expected)
+        with open(os.path.join(self.workdir, "run-status.json"), encoding="utf-8") as f:
+            status = json.load(f)
+        self.assertEqual(status["status"], "finished")
+        self.assertEqual(status["exit_reason"], "done")
+        self.assertEqual(status["run_iteration"], 1)
+        self.assertEqual(status["total_iterations"], 1)
+        self.assertEqual(status["cost_measurement"], "full")
+
+    def test_status_write_is_atomic(self):
+        cfg = self.make_config()
+        os.makedirs(self.workdir, exist_ok=True)
+        target = os.path.join(self.workdir, "run-status.json")
+        original = driver.os.replace
+
+        def fail_replace(src, dst):
+            raise OSError("replace blocked")
+
+        driver.os.replace = fail_replace
+        try:
+            with self.assertRaises(OSError):
+                driver.save_run_status(cfg, {"phase": "starting"})
+        finally:
+            driver.os.replace = original
+        self.assertFalse(os.path.exists(target))
+        self.assertFalse(os.path.exists(target + ".tmp"))
+
+    def test_status_write_failure_does_not_change_exit_reason(self):
+        self.write_scenario([{"text": status_text("continue", 1)}])
+        original = driver.save_run_status
+
+        def fail_status(cfg, payload):
+            raise OSError("telemetry unavailable")
+
+        driver.save_run_status = fail_status
+        try:
+            result = driver.Driver(self.make_config(max_iterations=1)).run()
+        finally:
+            driver.save_run_status = original
+        self.assertEqual(result, "exhausted")
+        with open(os.path.join(self.workdir, "driver.log"), encoding="utf-8") as f:
+            self.assertIn("run-status", f.read())
+
+    def test_cost_measurement_combines_monotonically(self):
+        self.assertEqual(driver.combine_cost_measurement("full", "full"), "full")
+        self.assertEqual(driver.combine_cost_measurement("unavailable", "unavailable"), "unavailable")
+        self.assertEqual(driver.combine_cost_measurement("full", "unavailable"), "partial")
+        self.assertEqual(driver.combine_cost_measurement("unavailable", "full"), "partial")
+        self.assertEqual(driver.combine_cost_measurement("unknown", "full"), "unknown")
+
+    def test_resumed_unmeasured_run_is_not_relabelled_full(self):
+        os.makedirs(self.workdir, exist_ok=True)
+        with open(os.path.join(self.workdir, "state.json"), "w", encoding="utf-8") as f:
+            json.dump(dict(driver.STATE_DEFAULTS, runs=1, cost_measurement="unavailable"), f)
+        self.write_scenario([{"text": status_text("continue", 1)}])
+        result = driver.Driver(self.make_config(max_iterations=1)).run()
+        self.assertEqual(result, "exhausted")
+        with open(os.path.join(self.workdir, "state.json"), encoding="utf-8") as f:
+            state = json.load(f)
+        self.assertEqual(state["cost_measurement"], "partial")
+
+    def test_codex_iteration_records_unavailable_cost(self):
+        self.write_codex_scenario([{"text": status_text("continue", 1)}])
+        result = driver.Driver(self.make_config(engine="codex", max_iterations=1)).run()
+        self.assertEqual(result, "exhausted")
+        with open(os.path.join(self.workdir, "iters", "iter-1.json"), encoding="utf-8") as f:
+            iteration = json.load(f)
+        self.assertEqual(iteration["cost_measurement"], "unavailable")
 
 
 class TestCostCeiling(DriverTestBase):

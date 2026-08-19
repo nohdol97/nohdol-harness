@@ -1,13 +1,13 @@
 ---
 name: autoloop
-description: "Run, monitor, and stop unattended multi-session claude/codex loops against one spec. Use for autoloop, 자율 루프, 무인 실행, 밤새 돌려줘. Not for interval prompts (/loop), scheduled agents, manual handoff (carryover), tracked epics (work-tracker), or infra/deploy specs. Re-run: autoloop, 자율 루프, 무인 실행, 루프 상태, 루프 정지."
+description: "Run, monitor, view, and stop unattended multi-session claude/codex loops against one spec. Use for autoloop, 자율 루프, 무인 실행, 밤새 돌려줘, autoloop 진행 대시보드. Not for product/admin dashboards, interval prompts (/loop), scheduled agents, manual handoff (carryover), tracked epics (work-tracker), or infra/deploy specs. Re-run: autoloop, 자율 루프, 무인 실행, 루프 상태, 루프 대시보드, 루프 정지."
 ---
 
 # autoloop — autonomous multi-session loop (launchpad)
 
 ## Why this skill
 
-To complete work that exceeds one session's context unattended, "wrapup → clear → resume" must be automatic, but `/clear` is a CLI command that the model inside a session cannot invoke on itself. The solution is a driver process **outside** the session that repeatedly launches `claude -p` (headless) — **new process = new context**, so clear is solved structurally, and state between iterations is handed over via a carryover note. This skill is the **launchpad** for that driver (`scripts/driver.py`): the loop body runs outside the session, and the skill only handles launch, status, and stop.
+To complete work that exceeds one session's context unattended, "wrapup → clear → resume" must be automatic, but `/clear` is a CLI command that the model inside a session cannot invoke on itself. The solution is a driver process **outside** the session that repeatedly launches `claude -p` (headless) — **new process = new context**, so clear is solved structurally, and state between iterations is handed over via a carryover note. This skill is the **launchpad** for that driver (`scripts/driver.py`): the loop body runs outside the session, and the skill handles launch, dashboard view, conversational status, and stop.
 
 The soft gates of an interactive session (review, fresh evidence) erode easily in unattended mode, so the driver enforces them structurally (spec: `docs/specs/2026-07-19-autoloop-driver.md`):
 
@@ -18,7 +18,7 @@ The soft gates of an interactive session (review, fresh evidence) erode easily i
 
 ## Verb dispatch (first decision)
 
-Determine the verb from the invocation arguments: `status`·`상태` → **status**, `stop`·`정지`·`멈춰` → **stop**, anything else (including a spec path) → **start**.
+Determine the verb from the invocation arguments: `dashboard`·`대시보드` → **dashboard**, `status`·`상태` → **status**, `stop`·`정지`·`멈춰` → **stop**, anything else (including a spec path) → **start**.
 
 ## start — launch
 
@@ -66,9 +66,21 @@ Determine the verb from the invocation arguments: `status`·`상태` → **statu
    - **The signal is best-effort and session-bound**: the watcher dies when the session ends, while the loop keeps running. Tell the user this at launch — if they close the session, `/autoloop status` is how they pick the result back up. Do not present the notification as a guarantee.
    - On notification, report per the `status` section below, tuning-signal scan included.
 
+## dashboard — local read-only view
+
+Run from the harness root:
+
+```bash
+python3 .agents/skills/autoloop/scripts/dashboard.py --root _workspace/autoloop --port 8765
+```
+
+Open `http://127.0.0.1:8765` and stop the server with `Ctrl-C`. The server binds only to loopback, polls local artifacts, and exposes no start, stop, retry, or file-write endpoint. Use another port when 8765 is occupied. The browser view shows all slugs, while `status` below remains the conversational path for one digested report and tuning-signal judgment.
+
+The dashboard prefers `run-status.json` for the current run phase and liveness, the latest `iters/iter-N.json` for open items and test outcome, and `state.json` only for cumulative position. This split is deliberate: `state.json` is a gate checkpoint, and fields such as `prev_open` are not display state. Old work directories without `run-status.json` remain visible through the conservative `launch.log` + `driver.pid` fallback. Every log and note is rendered as text, never HTML.
+
 ## status — inspect
 
-Read `driver.log` (per-iteration status, EXIT reason), `carryover.md` (done / next / blocked / needs-user-confirmation), and `state.json` (cumulative position — `runs`, `total_iterations`, `total_cost_usd`, `stall`, `last_exit_reason`) under `_workspace/autoloop/<슬러그>/` and report them **digested into Korean** (§15): which iteration, tests green/red/**runner-error**, count of open items, and if terminated, the reason. Report the cumulative figures from `state.json` alongside the current run's, because on a resumed slug the per-run iteration number understates the work and the spend — reading `driver.log` alone makes run 4 look like a first attempt. If you don't know the slug, list with `ls _workspace/autoloop/` and let the user choose. If it ended `blocked`, show the "needs user confirmation" items first — those are the decisions the loop carried over to the user.
+Read `run-status.json` (current run phase), the latest `iters/iter-N.json` (displayed open items and test outcome), `driver.log` (per-iteration status, EXIT reason), `carryover.md` (done / next / blocked / needs-user-confirmation), and `state.json` (cumulative position — `runs`, `total_iterations`, `total_cost_usd`, `stall`, `last_exit_reason`) under `_workspace/autoloop/<슬러그>/` and report them **digested into Korean** (§15): which iteration, tests green/red/**runner-error**, count of open items, and if terminated, the reason. A legacy directory may lack `run-status.json`; use `launch.log` and `driver.pid` conservatively rather than treating the stale PID file's existence as running. Report the cumulative figures from `state.json` alongside the current run's, because on a resumed slug the per-run iteration number understates the work and the spend — reading `driver.log` alone makes run 4 look like a first attempt. If you don't know the slug, list with `ls _workspace/autoloop/` and let the user choose. If it ended `blocked`, show the "needs user confirmation" items first — those are the decisions the loop carried over to the user.
 
 ### Catching tuning signals (at review time — the loop does not diagnose its own improvement points)
 
@@ -100,7 +112,7 @@ Do not kill the process — the driver shuts down gracefully at the **next itera
 - **Forbidden for infra/deploy specs**: work involving k8s, AWS, or releases goes to orchestrate (via infra-specialist) or release — it is not a target for the unattended loop.
 - **Do not use for work that fits in one context (cost boundary)**: every iteration re-pays AGENTS.md re-injection, spec/code re-exploration, and verification-session cost in a fresh `-p` session. This re-establishment cost is recouped only when the work **exceeds the context window** — at that scale, a single cumulative session re-billing its entire history every turn is actually more expensive. **Work that fits in one session goes to `/loop` (in-session iteration) or a single interactive session.** If the start preflight judges the work small, tell the user about this boundary.
 - **Multi-engine (Claude Code CLI + Codex CLI)**: the driver uses `claude -p` or `codex exec` per role (R13·R14). **Codex's safety mapping is at sandbox level**: implement=`--sandbox workspace-write` (writes confined to the workspace; network blocked only if the install config leaves the default in place — R3-2), verify=`--sandbox read-only` (writes blocked entirely). **Bypass variants absolutely forbidden** (Claude `--dangerously-skip-permissions` / Codex `--dangerously-bypass-approvals-and-sandbox`). **Honest limitation**: Codex has no fine-grained denylist, so policy cannot block local destructive commands inside the workspace (e.g. rm of project files), and containment of *remote* destruction rests entirely on the sandbox's network block — which the install config can switch off without the driver noticing (spec R3-2). Coarser than the Claude engine's blacklist, so on either engine the infra/deploy-spec ban and the backup premise are identical and blocked-carryover is the first line of defense. Codex does not provide USD cost, so `--max-cost-usd` is inactive (the iteration cap is the backstop). Also, Codex runs with `-C <project>`, so automatic loading of the harness root AGENTS.md may be weak (write-confinement takes priority) — essential gates are embedded in the prompt anchor, instructions, and untrusted envelope; the hard gate is the sandbox's job.
-- **When modifying the driver**, passing `python3 .agents/skills/autoloop/scripts/driver_test.py` is mandatory (C1–C29, same discipline as tdd-gate). The driver is a gate, so §13-4 also applies: name in the commit message the regression scenario re-run before committing, and a run of this suite counts as one.
+- **When modifying the driver**, passing `python3 .agents/skills/autoloop/scripts/driver_test.py` is mandatory (driver spec plus dashboard observation regressions, same discipline as tdd-gate). The driver is a gate, so §13-4 also applies: name in the commit message the regression scenario re-run before committing, and a run of this suite counts as one.
 - If the work needs formal tracking after completion, promote it to work-tracker (`_workspace/` is not preserved — §4).
 
 ## with / without
@@ -115,3 +127,4 @@ Do not kill the process — the driver shuts down gracefully at the **next itera
 | Broken test runner | Recorded as a failing test → the session rewrites healthy code until the budget is gone | Refused at launch if it cannot execute at all (before any spend); inside the run, classified `error` (absence of evidence), labelled in the prompt, and stopped after two consecutive failures |
 | Verifying a `done` claim | The read-only reviewer cannot run tests, so it BLOCKs for lack of a measurement it was never given | The driver's own measurement is handed to it as independent evidence — without widening the reviewer's permissions |
 | Reaching green dishonestly | Deleting a failing assertion turns the independent test run green | Ratchet prohibition in the instructions + reviewer BLOCK when a criterion has no live assertion |
+| Progress visibility | The user manually correlates five files for every slug | A loopback-only read-only dashboard separates current phase, latest iteration evidence, and cumulative gate state |

@@ -24,7 +24,7 @@
 
 실행: python3 driver.py --spec <경로> [--project DIR] [--test-cmd CMD] [--max-iterations N]
                         [--stall-limit N] [--max-cost-usd X] [--work-name SLUG]
-테스트: python3 driver_test.py (수정 시 반드시 통과 — C1~C29)
+테스트: python3 driver_test.py (수정 시 드라이버 스펙과 대시보드 관측 계약 회귀를 반드시 통과)
 """
 import argparse
 import dataclasses
@@ -79,6 +79,7 @@ VALID_STATUS = {"done", "continue", "blocked"}
 JSON_FENCE = re.compile(r"```json\s*\n(.*?)\n\s*```", re.DOTALL)
 
 STATE_FILE = "state.json"      # R16 실행 위치 체크포인트
+RUN_STATUS_FILE = "run-status.json"  # dashboard observation snapshot (never a gate input)
 TEST_TIMEOUT = 1800            # 테스트 명령 1회 상한(초) — 초과는 R5-1 `error`(kind=timeout)
 TEST_OUTCOMES = ("green", "red", "error")   # R5-1 — error 는 "실행조차 못 함"만을 뜻한다
 # 재기동 시 이어받아야 하는 실행 상태와 그 기본값. 노트(carryover.md)가 나르는 서술 상태와
@@ -87,6 +88,7 @@ STATE_DEFAULTS = {
     "runs": 0,                 # 지금까지의 기동 횟수(진단용)
     "total_iterations": 0,     # 누적 반복 수 — 상한은 런당이고 이건 기록만(R16)
     "total_cost_usd": 0.0,     # 누적 비용 — --max-cost-usd 는 이 값으로 판정(작업 예산)
+    "cost_measurement": "unknown",  # full|partial|unavailable|unknown — 누적 비용의 측정 범위
     "stall": 0,                # 연속 무진전 횟수(R7③)
     "prev_open": None,         # 직전 open_items
     "prev_outcome": None,      # 직전 테스트 결과 green|red|error (R5-1)
@@ -355,6 +357,9 @@ def load_state(cfg):
         state["runs"] = int(data.get("runs", 0))
         state["total_iterations"] = int(data.get("total_iterations", 0))
         state["total_cost_usd"] = float(data.get("total_cost_usd", 0.0))
+        measurement = data.get("cost_measurement", "unknown")
+        state["cost_measurement"] = measurement if measurement in {
+            "full", "partial", "unavailable", "unknown"} else "unknown"
         state["stall"] = int(data.get("stall", 0))
         state["prev_open"] = None if data.get("prev_open") is None else int(data["prev_open"])
         outcome = data.get("prev_outcome")
@@ -370,14 +375,9 @@ def load_state(cfg):
     return state, ""
 
 
-def save_state(cfg, state):
-    """R16 원자적 기록 — 임시 파일에 쓴 뒤 os.replace 로 갈아끼운다(부분 기록 불가).
-    실패해도 임시 파일을 남기지 않는다(R8: 그 파일이 남아 있으면 안 된다). 성공 시 replace 로
-    이미 사라졌으므로 finally 는 무동작이고, 쓰다 실패한 경우에만 치운다."""
-    path = os.path.join(cfg.workdir(), STATE_FILE)
+def atomic_write_json(path, payload):
+    """Write one JSON object through fsync + replace and remove failed temporary output."""
     tmp = path + ".tmp"
-    payload = dict(state)
-    payload["updated"] = datetime.datetime.now().isoformat(timespec="seconds")
     try:
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False)
@@ -390,6 +390,44 @@ def save_state(cfg, state):
                 os.remove(tmp)
             except OSError:
                 pass
+
+
+def save_state(cfg, state):
+    """R16 atomic checkpoint write; a failed write leaves neither partial target nor temp."""
+    payload = dict(state)
+    payload["updated"] = datetime.datetime.now().isoformat(timespec="seconds")
+    atomic_write_json(os.path.join(cfg.workdir(), STATE_FILE), payload)
+
+
+def save_run_status(cfg, payload):
+    """Atomically write the dashboard snapshot without sharing state.json's gate contract."""
+    data = dict(payload)
+    data["updated_at"] = datetime.datetime.now().isoformat(timespec="seconds")
+    atomic_write_json(os.path.join(cfg.workdir(), RUN_STATUS_FILE), data)
+
+
+def cost_measurement(cfg):
+    """Describe whether the accumulated USD value covers both loop roles."""
+    engines = {resolve_engine(cfg, readonly=False), resolve_engine(cfg, readonly=True)}
+    if engines == {"claude"}:
+        return "full"
+    if engines == {"codex"}:
+        return "unavailable"
+    return "partial"
+
+
+def combine_cost_measurement(previous, current):
+    """Combine cumulative measurement provenance without upgrading an older unknown gap."""
+    if previous == "unknown" or current == "unknown":
+        return "unknown"
+    if previous == current and current in {"full", "unavailable"}:
+        return current
+    return "partial"
+
+
+def iteration_cost_measurement(cfg):
+    """Iteration cost contains only the implementation session's CLI-reported amount."""
+    return "full" if resolve_engine(cfg, readonly=False) == "claude" else "unavailable"
 
 
 # rev-parse 는 이 변수들이 있으면 대상 경로 대신 그걸 답한다 — 남겨 두면 어떤 대상에 대해서도
@@ -630,6 +668,8 @@ class Driver:
         self.note_path = os.path.join(self.workdir, "carryover.md")
         self.log_path = os.path.join(self.workdir, "driver.log")
         self.iters_dir = os.path.join(self.workdir, "iters")
+        self.started_at = ""
+        self.run_iteration = 0
 
     # -- 파일 유틸 ---------------------------------------------------------
     def _ensure_workdir(self):
@@ -651,6 +691,29 @@ class Driver:
         stamp = datetime.datetime.now().isoformat(timespec="seconds")
         with open(self.log_path, "a", encoding="utf-8") as f:
             f.write("%s | %s\n" % (stamp, line))
+
+    def _publish_status(self, state, phase, exit_reason=""):
+        """Best-effort observation only; dashboard I/O must never change a loop verdict."""
+        payload = {
+            "schema_version": 1,
+            "work_name": self.cfg.work_name or os.path.basename(self.workdir),
+            "run": state["runs"],
+            "pid": os.getpid(),
+            "started_at": self.started_at,
+            "run_iteration": self.run_iteration,
+            "total_iterations": state["total_iterations"],
+            "total_cost_usd": state["total_cost_usd"],
+            "cost_measurement": state["cost_measurement"],
+            "phase": phase,
+            "status": "finished" if phase == "finished" else "running",
+            "exit_reason": exit_reason,
+            "spec": self.cfg.spec,
+            "project": self.cfg.project,
+        }
+        try:
+            save_run_status(self.cfg, payload)
+        except OSError as e:
+            self._log("WARN run-status write failed: %s" % e)
 
     # -- 외부 프로세스 경계 -------------------------------------------------
     def _run_session(self, prompt, readonly=False):
@@ -712,6 +775,7 @@ class Driver:
         # 그래서 stall 까지 싣는다 — 정체 카운터가 가장 낮춰 쓰기 쉬운 값이다.
         self._log("EXIT reason=%s total_cost=%.4f total_iterations=%d stall=%d"
                   % (exit_reason, state["total_cost_usd"], state["total_iterations"], state["stall"]))
+        self._publish_status(state, "finished", exit_reason=exit_reason)
         return exit_reason
 
     def run(self):
@@ -725,7 +789,12 @@ class Driver:
             self._log("EXIT reason=error %s" % state_error)
             return "error"
         anchor = build_anchor(cfg)
+        prior_runs = state["runs"]
+        state["cost_measurement"] = (
+            cost_measurement(cfg) if prior_runs == 0
+            else combine_cost_measurement(state["cost_measurement"], cost_measurement(cfg)))
         state["runs"] += 1
+        self.started_at = datetime.datetime.now().isoformat(timespec="seconds")
         # R16 이어받는 것: 게이트가 읽는 값(정체 카운터·seen_valid·누적 비용·누적 반복·미소진
         # 피드백·직전 상태 한 줄) + 직전 테스트 결과의 **라벨**(prev_outcome — 진전 판정이
         # red·error→green 전환을 보려면 필요하다).
@@ -739,6 +808,7 @@ class Driver:
                   " resumed(total_iter=%d total_cost=%.4f stall=%d)"
                   % (cfg.spec, cfg.project, cfg.max_iterations, cfg.stall_limit, state["runs"],
                      state["total_iterations"], state["total_cost_usd"], state["stall"]))
+        self._publish_status(state, "starting")
         if not cfg.test_cmd:
             self._log("WARN no --test-cmd: independent evidence is weakened (R9)")
 
@@ -756,6 +826,8 @@ class Driver:
                 exit_reason = "stopped"
                 break
 
+            self.run_iteration = n
+            self._publish_status(state, "implementing")
             prompt = build_prompt(anchor, self.note_path, self._read_note(),
                                   self._format_test(last_test), state["feedback"],
                                   state["prev_status"])
@@ -781,6 +853,7 @@ class Driver:
             # 다음 반복 프롬프트의 핸드오프 플로어(노트 파일 갱신 재량에 비의존)
             state["prev_status"] = "status=%s open_items=%s — %s" % (
                 status["status"], status["open_items"], status["note"] or "(no note)")
+            self._publish_status(state, "testing")
             last_test = self._run_test()                # R5: 세션 주장과 무관하게 실측
             # 파일명은 런당 n 이 아니라 누적 반복 수로 붙인다 — n 은 재기동마다 1로 돌아가므로
             # 같은 work-name 재기동이 직전 런의 iter-1.json 을 조용히 덮어써 감사 기록이 사라진다.
@@ -819,6 +892,7 @@ class Driver:
                     and (last_test is None or last_test["outcome"] == "green")):
                 # 검증 세션은 스스로 스위트를 못 돌린다(READONLY_ALLOW) — 드라이버가 방금 잰
                 # 값을 실어 준다. 목록을 넓히는 게 아닌 이유는 build_verify_test_block 참조.
+                self._publish_status(state, "verifying")
                 v_ok, v_text, v_cost = self._run_session(build_verify_prompt(cfg, last_test),
                                                          readonly=True)
                 state["total_cost_usd"] += v_cost
@@ -887,7 +961,9 @@ class Driver:
 
     def _write_iter(self, n, status, test, cost):
         with open(os.path.join(self.iters_dir, "iter-%d.json" % n), "w", encoding="utf-8") as f:
-            json.dump({"iter": n, "status": status, "test": test, "cost": cost}, f, ensure_ascii=False)
+            json.dump({"iter": n, "status": status, "test": test, "cost": cost,
+                       "cost_measurement": iteration_cost_measurement(self.cfg)},
+                      f, ensure_ascii=False)
 
     def _append_note(self, label, text):
         """루프가 사용자에게 이월하는 결정을 노트에 남긴다(blocked·테스트 러너 고장 등)."""

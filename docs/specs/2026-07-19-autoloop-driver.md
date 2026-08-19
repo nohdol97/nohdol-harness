@@ -104,7 +104,7 @@
 
 ### 스킬 (`.agents/skills/autoloop/SKILL.md`)
 
-- **R11 (3동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내, **종료 신호 등록** — `launch.log`의 `[autoloop] 종료:` 줄(R8 — `driver.log`가 아니다) 또는 프로세스 소멸까지 기다리는 백그라운드 감시를 걸어 기동 세션이 종료를 통보받게 한다. 무장 시점 검사는 **종료 줄 부재와 pid 부재가 함께일 때만** 설정 실패로 본다 — 루프는 무장 전에 정상 종료할 수 있으므로(R7⑦은 1초 미만) pid 부재 단독은 낡은 pid의 증거가 아니다. 감시는 소모품이고 드라이버는 아니므로 둘을 한 프로세스로 합치지 않는다. **사전 검사에 worktree 생성이 포함된다** — 대상이 하위 프로젝트면 `branch-workflow` 시작 절차대로 worktree 를 만들고 그 절대경로를 `--project`로 넘긴다. R18의 기동 거부는 이걸 빠뜨렸을 때의 백스톱이지 대체물이 아니다) / `status`(carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
+- **R11 (4동사)**: `start`(사전 검사 후 드라이버를 `nohup` detach로 기동, 로그 경로 안내, **종료 신호 등록** — `launch.log`의 `[autoloop] 종료:` 줄(R8 — `driver.log`가 아니다) 또는 프로세스 소멸까지 기다리는 백그라운드 감시를 걸어 기동 세션이 종료를 통보받게 한다. 무장 시점 검사는 **종료 줄 부재와 pid 부재가 함께일 때만** 설정 실패로 본다 — 루프는 무장 전에 정상 종료할 수 있으므로(R7⑦은 1초 미만) pid 부재 단독은 낡은 pid의 증거가 아니다. 감시는 소모품이고 드라이버는 아니므로 둘을 한 프로세스로 합치지 않는다. **사전 검사에 worktree 생성이 포함된다** — 대상이 하위 프로젝트면 `branch-workflow` 시작 절차대로 worktree 를 만들고 그 절대경로를 `--project`로 넘긴다. R18의 기동 거부는 이걸 빠뜨렸을 때의 백스톱이지 대체물이 아니다) / `dashboard`(loopback 전용 읽기 화면 — 상세 계약은 `2026-08-19-autoloop-dashboard.md`) / `status`(현재 런 스냅샷·최신 반복·carryover·driver.log 요약 보고) / `stop`(STOP 파일 생성 — 프로세스 kill 아님). 스킬은 발사대일 뿐 루프 본체가 아니다.
 - **R12 (스킬 공통 규칙)**: frontmatter 규격(첫 줄 `---`·name·description **800자 권장·1024자 하드캡**(부정 트리거가 길이보다 우선 — metaskill 공통 규칙 2)·한국어 재실행 키워드·부정 트리거), 본문 500줄 이내, with/without 표.
 
 ### 멀티 엔진 (driver.py — Claude Code CLI + Codex CLI)
@@ -155,7 +155,7 @@
 
 > 검증: 2026-07-21 `driver_test.py` 전 케이스 통과 실측(주간 정합 감사)으로 일괄 체크 — 구현 시점에 체크 표기가 누락돼 있었다. (테스트 가능한 형태)
 
-단위 테스트(`driver_test.py` — fake `claude`·fake `codex` 실행파일로 CLI 경계 모킹, 총 82항목 — 2026-08-02 `python3 .agents/skills/autoloop/scripts/driver_test.py` 실측 `Ran 82 tests ... OK`. **이 수치는 산술이 아니라 실행 출력에서 옮긴다** — 항목당 테스트 함수가 1:1이 아니라 세다가 틀리고, 틀린 채로 굳으면 다음 독자가 누락을 의심하며 없는 테스트를 찾는다):
+단위 테스트(`driver_test.py` — fake `claude`·fake `codex` 실행파일로 CLI 경계 모킹, 드라이버 완료 기준 C1~C29와 대시보드 관측 계약 C5~C7을 합쳐 총 93항목 — 2026-08-19 `python3 .agents/skills/autoloop/scripts/driver_test.py` 실측 `Ran 93 tests ... OK`. **이 수치는 산술이 아니라 실행 출력에서 옮긴다** — 항목당 테스트 함수가 1:1이 아니라 세다가 틀리고, 틀린 채로 굳으면 다음 독자가 누락을 의심하며 없는 테스트를 찾는다):
 
 - [x] C1 (R4): 유효 상태 블록이 여럿이면 마지막 것을 파싱한다; 필드 누락·비JSON이면 `continue` 폴백; 파싱 실패가 연속 2회면 루프가 `stalled`로 종료한다.
 - [x] C2 (R7③): open_items·테스트 개선이 없는 반복이 stall-limit회 연속되면 `stalled`로 종료한다; 진전이 있으면 카운터가 리셋된다; open_items 미보고(null) 반복은 첫 유효 반복 이후 무진전으로 센다.
@@ -188,7 +188,7 @@
 
 수동 확인(구현 보고에 증거 첨부):
 
-- [x] C13 (R11): SKILL.md에 start/status/stop 절차와 실제 명령이 있고, frontmatter가 `head -6` 검증을 통과한다.
+- [x] C13 (R11): SKILL.md에 start/dashboard/status/stop 절차와 실제 명령이 있고, frontmatter가 `head -6` 검증을 통과한다.
 - [x] C14 (R12): SKILL.md 500줄 이내 + with/without 표 존재.
 
 ## 미해결 질문
@@ -200,6 +200,8 @@
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
 | 2026-07-19 | 초안 작성 후 확정 | 이 문서 | 사용자 구축 승인(자율 루프 3게이트 설계 합의) — metaskill 신설 절차 §13 SDD |
+| 2026-08-19 | R11을 4동사로 확장하고 C13을 동조 | 이 문서, autoloop SKILL.md | 로컬 읽기 전용 진행 대시보드를 기존 대화형 status와 구분해 추가함. 상세 계약은 별도 대시보드 스펙이 소유함 |
+| 2026-08-19 | 표시 상태·비용 측정 범위 회귀를 드라이버 스위트에 편입하고 실측 포인터를 93건으로 갱신 | 이 문서, `driver.py`, `driver_test.py`, ADR 025 | 대시보드 관측 상태 기록 실패가 게이트를 바꾸지 않고, 재기동이 누적 비용의 미측정 범위를 완전 측정으로 승격하지 않음을 고정함 |
 | 2026-07-19 | R2에 untrusted 봉투(⑥) + 완료 기준 C18 추가 | driver.py `build_prompt`, driver_test.py | oh-my-openagent 프롬프트 인젝션 위생 이식(제안: 2026-07-19, 루트 3절) — 무인 루프 주입 표면 방어 |
 | 2026-07-26 | R11 `start`에 종료 신호 등록 추가(감시는 별도 프로세스, 드라이버는 계속 detach) | 이 문서, autoloop SKILL.md | 기동 세션이 루프 종료를 통보받을 경로가 없어 사용자가 물어야만 완료를 알 수 있었음(실사례 — agent-eval-gate 런) |
 | 2026-07-19 | 리뷰 반영 — R3 bare 인터프리터 그랜트 금지·`--allow-extra` 명시 확장(H1), 목표 절 주장 정직화(완전 봉쇄 아님+사용 가드레일), C1 파싱 실패 정체(L1)·C2 null open_items(M2)·C5 그랜트 검사 보강, R8 실패 반복 기록 명시(L2), R12 800자 권장·1024 캡 정합(M3) | 이 문서 | reviewer 독립 검증 BLOCK(H1·M1~M3·L1~L5) 반영 |
