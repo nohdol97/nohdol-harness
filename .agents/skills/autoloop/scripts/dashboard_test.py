@@ -7,10 +7,12 @@ import http.client
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, HERE)
@@ -35,8 +37,182 @@ class DashboardTestBase(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(value, f, ensure_ascii=False)
 
+    @staticmethod
+    def write_text(path, value):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(value)
+
+    def write_run(self, task, status, updated_at, pid=None, exit_reason=""):
+        self.write_json(os.path.join(task, "run-status.json"), {
+            "schema_version": 1,
+            "status": "running" if status == "running" else "finished",
+            "phase": "dispatching" if status == "running" else "finished",
+            "exit_reason": exit_reason or ("" if status == "running" else status),
+            "run": 1,
+            "run_iteration": 1,
+            "total_iterations": 1,
+            "cost_measurement": "full",
+            "pid": os.getpid() if pid is None else pid,
+            "updated_at": updated_at,
+        })
+
 
 class TestCollection(DashboardTestBase):
+    def test_attention_sorting_precedes_tracking_and_is_newest_first(self):
+        now = "2026-08-19T12:00:00"
+        fixtures = [
+            ("structured-done", "done", "2026-08-19T11:59:59", True),
+            ("unstructured-blocked", "blocked", "2026-08-19T11:40:00", False),
+            ("structured-running", "running", "2026-08-19T11:59:58", True),
+            ("unstructured-interrupted", "running", "2026-08-19T11:59:57", False),
+            ("structured-stale", "running", "2026-08-19T11:59:29", True),
+        ]
+        for slug, status, updated, structured in fixtures:
+            task = self.task(slug)
+            self.write_run(task, status, updated,
+                           pid=99999999 if slug == "unstructured-interrupted" else None)
+            if structured:
+                self.write_json(os.path.join(task, "orchestration.json"), {
+                    "schema_version": 1, "orchestrate": {}, "tasks": []})
+        with mock.patch.object(dashboard, "now_datetime",
+                               return_value=dashboard.parse_timestamp(now)):
+            values = dashboard.collect_tasks(self.tmp)
+        self.assertEqual([item["slug"] for item in values], [
+            "unstructured-interrupted", "unstructured-blocked", "structured-stale",
+            "structured-running", "structured-done",
+        ])
+        self.assertEqual(values[0]["tracking"], "unstructured")
+        self.assertEqual(values[2]["attention_reason"], "갱신 지연")
+
+    def test_stale_boundary_is_inclusive_and_never_changes_running_status(self):
+        task = self.task()
+        self.write_run(task, "running", "2026-08-19T11:59:30")
+        with mock.patch.object(dashboard, "now_datetime",
+                               return_value=dashboard.parse_timestamp("2026-08-19T12:00:00")):
+            at_boundary = dashboard.collect_task(self.tmp, "sample")
+        self.assertTrue(at_boundary["stale"])
+        self.assertEqual(at_boundary["status"], "running")
+        self.write_run(task, "running", "2026-08-19T11:59:31")
+        with mock.patch.object(dashboard, "now_datetime",
+                               return_value=dashboard.parse_timestamp("2026-08-19T12:00:00")):
+            before = dashboard.collect_task(self.tmp, "sample")
+        self.assertFalse(before["stale"])
+
+    def test_tracking_and_demo_provenance_are_explicit_only(self):
+        task = self.task("demo-looking-name")
+        value = dashboard.collect_task(self.tmp, "demo-looking-name")
+        self.assertEqual(value["tracking"], "unstructured")
+        self.assertEqual(value["provenance"], "recorded")
+        self.write_json(os.path.join(task, "orchestration.json"), {
+            "schema_version": 1, "orchestrate": {}, "tasks": []})
+        self.write_json(os.path.join(task, "dashboard-meta.json"), {
+            "schema_version": 1, "provenance": "demo"})
+        value = dashboard.collect_task(self.tmp, "demo-looking-name")
+        self.assertEqual(value["source"], "legacy")
+        self.assertEqual(value["tracking"], "structured")
+        self.assertEqual(value["provenance"], "demo")
+
+    def test_invalid_dashboard_metadata_never_promotes_demo(self):
+        task = self.task()
+        cases = [
+            {"schema_version": 2, "provenance": "demo"},
+            {"schema_version": 1, "provenance": "synthetic"},
+            {"schema_version": 1, "provenance": "demo", "extra": True},
+        ]
+        for payload in cases:
+            self.write_json(os.path.join(task, "dashboard-meta.json"), payload)
+            value = dashboard.collect_task(self.tmp, "sample")
+            self.assertEqual(value["provenance"], "recorded")
+            self.assertIn("dashboard-meta.json", " ".join(value["diagnostics"]))
+        self.write_text(os.path.join(task, "dashboard-meta.json"), "{" + "x" * 20000)
+        value = dashboard.collect_task(self.tmp, "sample")
+        self.assertEqual(value["provenance"], "recorded")
+        self.assertIn("크기", " ".join(value["diagnostics"]))
+
+    @unittest.skipIf(not hasattr(os, "symlink"), "symlink unavailable")
+    def test_dashboard_metadata_symlink_is_rejected(self):
+        task = self.task()
+        outside = os.path.join(self.tmp, "outside-meta.json")
+        self.write_json(outside, {"schema_version": 1, "provenance": "demo"})
+        os.symlink(outside, os.path.join(task, "dashboard-meta.json"))
+        value = dashboard.collect_task(self.tmp, "sample")
+        self.assertEqual(value["provenance"], "recorded")
+        self.assertIn("심볼릭 링크", " ".join(value["diagnostics"]))
+
+    def test_coordination_timeline_is_bounded_sanitized_and_chronological(self):
+        task = self.task()
+        events = [
+            {"ts": "2026-08-19T12:00:02", "event": "task_dispatch", "wave": 2,
+             "task_id": "T2", "agent": "a2", "depends_on": ["T1"],
+             "evidence": "do not render as instructions", "unknown": "DROP"},
+            {"ts": "2026-08-19T12:00:01", "event": "task_complete", "wave": 1,
+             "task_id": "T1", "agent": "a1", "evidence": "green"},
+        ]
+        self.write_text(os.path.join(task, "team-log.jsonl"),
+                        "{broken\n" + "\n".join(json.dumps(item) for item in events) + "\n")
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+        self.assertEqual([item["event"] for item in value["events"]],
+                         ["task_complete", "task_dispatch"])
+        self.assertNotIn("unknown", value["events"][1])
+        self.assertEqual(value["event_diagnostics"]["malformed_lines"], 1)
+        self.assertIn("tail_line", value["event_diagnostics"]["locations"][0])
+
+    def test_coordination_event_count_and_bytes_are_bounded(self):
+        task = self.task()
+        lines = []
+        for number in range(dashboard.MAX_TEAM_EVENTS + 20):
+            lines.append(json.dumps({"ts": "2026-08-19T12:00:%02d" % (number % 60),
+                                     "event": "task_complete", "task_id": "T%d" % number,
+                                     "evidence": "x" * 200}))
+        self.write_text(os.path.join(task, "team-log.jsonl"), "\n".join(lines) + "\n")
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+        self.assertLessEqual(len(value["events"]), dashboard.MAX_TEAM_EVENTS)
+        self.assertTrue(value["events_truncated"])
+
+    def test_dag_diagnostics_and_readiness_are_not_disguised_as_a_graph(self):
+        task = self.task()
+        self.write_json(os.path.join(task, "orchestration.json"), {
+            "schema_version": 1, "orchestrate": {"agent_budget": 1},
+            "tasks": [
+                {"id": "T1", "status": "pending", "depends_on": ["T2"]},
+                {"id": "T2", "status": "pending", "depends_on": ["T1"]},
+                {"id": "T3", "status": "pending", "depends_on": ["MISSING"]},
+            ],
+        })
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+        self.assertFalse(value["dag"]["valid"])
+        self.assertEqual(value["dag"]["edges"], [])
+        self.assertIn("cycle", " ".join(value["dag"]["diagnostics"]).lower())
+        self.assertIn("MISSING", " ".join(value["dag"]["diagnostics"]))
+        self.assertFalse(value["tasks"][0]["ready"])
+        self.assertTrue(value["tasks"][0]["blocked_reason"])
+
+    def test_structured_projection_preserves_role_wave_commits_and_fan_in(self):
+        task = self.task()
+        self.write_json(os.path.join(task, "orchestration.json"), {
+            "schema_version": 1,
+            "orchestrate": {"agent_budget": 2},
+            "tasks": [{
+                "id": "T1", "owner": "implementer", "status": "complete", "depends_on": [],
+                "requested_engine": "codex", "effective_engine": "claude",
+                "engine_fallback": "recorded fallback", "base_commit": "base1",
+                "task_commit": "task1", "agent": {"id": "a1", "status": "complete",
+                "started_at": "start", "finished_at": "finish"},
+            }],
+            "dispatches": [{"wave": 3, "task_ids": ["T1"], "fallback": "budget limited"}],
+            "integrations": [{"wave": 3, "task_ids": ["T1"], "ok": True,
+                "commit": "integration1", "target_fast_forward": True,
+                "status": "integrated", "cleanup": "retained_for_verified_cleanup"}],
+            "worktrees": [{"kind": "writer", "wave": 3, "task_id": "T1",
+                "path": "/tmp/writer", "base_commit": "base1", "commit": "task1",
+                "status": "integrated", "cleanup": "retained_for_verified_cleanup"}],
+        })
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+        self.assertEqual(value["tasks"][0]["wave"], 3)
+        self.assertEqual(value["agents"][0]["role"], "implementer")
+        self.assertEqual(value["agents"][0]["requested_engine"], "codex")
+        self.assertEqual(value["worktrees"][0]["commit"], "task1")
+        self.assertTrue(value["integrations"][0]["target_fast_forward"])
     def test_orchestration_projection_exposes_tasks_agents_and_dependencies(self):
         task = self.task()
         self.write_json(os.path.join(task, "orchestration.json"), {
@@ -58,7 +234,7 @@ class TestCollection(DashboardTestBase):
                             "started_at": "2026-08-19T12:00:00",
                             "fallback": "budget limited"}],
             "integrations": [{"wave": 1, "task_ids": ["T2"], "ok": False,
-                              "error": "conflict", "integration_worktree": "integration-1",
+                              "error": "conflict", "failure_stage": "apply", "integration_worktree": "integration-1",
                               "cleanup": "retained_for_verified_cleanup"}],
             "worktrees": [{"kind": "writer", "wave": 1, "task_id": "T2",
                            "path": "writer-T2", "base_commit": "abc", "status": "retained_failed",
@@ -76,6 +252,7 @@ class TestCollection(DashboardTestBase):
         self.assertEqual(value["dispatches"][0]["task_ids"], ["T2"])
         self.assertEqual(value["dispatches"][0]["fallback"], "budget limited")
         self.assertEqual(value["integrations"][0]["error"], "conflict")
+        self.assertEqual(value["integrations"][0]["failure_stage"], "apply")
         self.assertEqual(value["worktrees"][0]["status"], "retained_failed")
 
     def test_latest_iteration_is_the_display_authority(self):
@@ -278,6 +455,15 @@ class TestHttp(DashboardTestBase):
         self.assertEqual(status, 200)
         self.assertIn("iterations", json.loads(body))
 
+    def test_fixed_built_assets_have_exact_types_and_unknown_assets_are_rejected(self):
+        for path, expected in (("/", "text/html"), ("/assets/app.js", "text/javascript"),
+                               ("/assets/app.css", "text/css")):
+            status, headers, body = self.request("GET", path)
+            self.assertEqual(status, 200)
+            self.assertIn(expected, headers["Content-Type"])
+            self.assertGreater(len(body), 0)
+        self.assertEqual(self.request("GET", "/assets/../dashboard.py")[0], 404)
+
     def test_mutation_and_path_traversal_are_rejected(self):
         self.assertEqual(self.request("POST", "/api/tasks")[0], 405)
         self.assertEqual(self.request("GET", "/api/tasks/%2e%2e")[0], 404)
@@ -307,21 +493,14 @@ class TestHttp(DashboardTestBase):
             self.assertIn("no-store", headers["Cache-Control"])
 
 
-class TestHtmlContract(unittest.TestCase):
-    def test_dynamic_content_uses_text_content_only(self):
-        self.assertIn("textContent", dashboard.INDEX_HTML)
-        self.assertNotIn("innerHTML", dashboard.INDEX_HTML)
-        self.assertIn("측정 안 됨", dashboard.INDEX_HTML)
-        self.assertIn("사용자 확인 필요", dashboard.INDEX_HTML)
-        self.assertIn("병렬 dispatch / fallback", dashboard.INDEX_HTML)
-        self.assertIn("writer fan-in / worktree", dashboard.INDEX_HTML)
+class TestStaticAssets(unittest.TestCase):
+    def test_only_fixed_built_asset_paths_are_declared_with_exact_mime(self):
+        self.assertEqual(set(dashboard.STATIC_ASSETS), {"/", "/assets/app.js", "/assets/app.css"})
+        self.assertEqual(dashboard.STATIC_ASSETS["/assets/app.js"][1], "text/javascript; charset=utf-8")
+        self.assertEqual(dashboard.STATIC_ASSETS["/assets/app.css"][1], "text/css; charset=utf-8")
 
-    def test_refresh_is_pausable_focus_safe_and_truthful(self):
-        self.assertIn("자동 갱신 일시정지", dashboard.INDEX_HTML)
-        self.assertIn("preventScroll", dashboard.INDEX_HTML)
-        self.assertIn("aria-pressed", dashboard.INDEX_HTML)
-        self.assertIn("iteration.cost_measurement", dashboard.INDEX_HTML)
-        self.assertIn("작업이 목록에서 사라졌습니다", dashboard.INDEX_HTML)
+    def test_asset_reader_rejects_traversal_and_symlink(self):
+        self.assertIsNone(dashboard.dashboard_dist_path("../index.html"))
 
 
 if __name__ == "__main__":

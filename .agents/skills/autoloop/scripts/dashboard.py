@@ -20,403 +20,91 @@ from urllib.parse import unquote, urlparse, urlsplit
 LOOPBACK = "127.0.0.1"
 MAX_JSON_BYTES = 1024 * 1024
 MAX_TEXT_BYTES = 128 * 1024
+MAX_META_BYTES = 16 * 1024
+MAX_TEAM_LOG_BYTES = 256 * 1024
+MAX_TEAM_EVENTS = 200
 MAX_DETAIL_ITERATIONS = 200
+STALE_AFTER_SECONDS = 30
 ITER_FILE = re.compile(r"^iter-(\d+)\.json$")
 EXIT_LINE = re.compile(
     r"^\[autoloop\] 종료: (done|blocked|stalled|exhausted|stopped|cost|error)"
     r"(?: \(로그: .+\))?\s*$", re.MULTILINE)
 EXIT_REASONS = {"done", "blocked", "stalled", "exhausted", "stopped", "cost", "error"}
+TEAM_EVENTS = {"team_create", "task_dispatch", "task_complete", "task_failed",
+               "integration_complete", "shutdown_request", "team_delete"}
+STATIC_ASSETS = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/assets/app.js": ("assets/app.js", "text/javascript; charset=utf-8"),
+    "/assets/app.css": ("assets/app.css", "text/css; charset=utf-8"),
+}
 
-
-INDEX_HTML = r'''<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>autoloop 진행 대시보드</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b1020;
-      --panel: #131b2f;
-      --panel-2: #19243b;
-      --line: #2a3854;
-      --text: #e9eef8;
-      --muted: #9ba9bf;
-      --accent: #79a8ff;
-      --green: #4fd1a5;
-      --yellow: #f2c66d;
-      --red: #ff7b86;
-      --purple: #b69cff;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: radial-gradient(circle at top, #16213b 0, var(--bg) 42rem); color: var(--text); font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; }
-    button { font: inherit; }
-    header { position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem clamp(1rem, 4vw, 3rem); border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(11,16,32,.88); backdrop-filter: blur(16px); }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { margin-bottom: .15rem; font-size: clamp(1.25rem, 3vw, 1.8rem); letter-spacing: -.02em; }
-    header p { margin-bottom: 0; color: var(--muted); font-size: .88rem; }
-    .controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .55rem; }
-    .refresh { min-height: 2.75rem; border: 1px solid var(--line); border-radius: .7rem; padding: .55rem .85rem; color: var(--text); background: var(--panel-2); cursor: pointer; }
-    .refresh:hover, .refresh:focus-visible { border-color: var(--accent); outline: 2px solid transparent; }
-    main { width: min(1500px, 100%); margin: 0 auto; padding: 1.4rem clamp(1rem, 4vw, 3rem) 4rem; }
-    .summary { display: flex; flex-wrap: wrap; gap: .65rem; margin-bottom: 1.25rem; }
-    .summary span { padding: .35rem .65rem; border: 1px solid var(--line); border-radius: 999px; background: rgba(19,27,47,.7); color: var(--muted); }
-    .layout { display: grid; grid-template-columns: minmax(270px, 390px) minmax(0, 1fr); gap: 1rem; align-items: start; }
-    .tasks { display: grid; gap: .75rem; }
-    .card { width: 100%; border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; text-align: left; color: var(--text); background: linear-gradient(145deg, rgba(25,36,59,.96), rgba(19,27,47,.96)); cursor: pointer; box-shadow: 0 12px 30px rgba(0,0,0,.12); }
-    .card:hover, .card:focus-visible, .card.selected { border-color: var(--accent); outline: none; transform: translateY(-1px); }
-    .card-head { display: flex; justify-content: space-between; gap: .75rem; align-items: start; margin-bottom: .8rem; }
-    .slug { font-weight: 750; overflow-wrap: anywhere; }
-    .badge { flex: none; padding: .18rem .52rem; border-radius: 999px; font-size: .76rem; font-weight: 750; background: #293650; color: var(--muted); }
-    .badge.running, .badge.done { color: var(--green); background: rgba(79,209,165,.12); }
-    .badge.blocked, .badge.stalled, .badge.cost { color: var(--yellow); background: rgba(242,198,109,.12); }
-    .badge.error, .badge.interrupted { color: var(--red); background: rgba(255,123,134,.12); }
-    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .8rem; color: var(--muted); font-size: .83rem; }
-    .metric-grid strong { display: block; color: var(--text); font-size: .92rem; font-weight: 650; }
-    .detail { min-height: 28rem; border: 1px solid var(--line); border-radius: 1rem; background: rgba(19,27,47,.9); overflow: hidden; }
-    .empty { padding: 3rem 1.3rem; color: var(--muted); text-align: center; }
-    .detail-head { padding: 1.25rem; border-bottom: 1px solid var(--line); background: rgba(25,36,59,.62); }
-    .detail-head h2 { margin-bottom: .3rem; overflow-wrap: anywhere; }
-    .detail-head p { margin-bottom: 0; color: var(--muted); overflow-wrap: anywhere; }
-    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: .7rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); }
-    .fact { min-width: 0; }
-    .fact span { display: block; color: var(--muted); font-size: .78rem; }
-    .fact strong { display: block; overflow-wrap: anywhere; }
-    section { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--line); }
-    section:last-child { border-bottom: 0; }
-    section h3 { margin-bottom: .7rem; font-size: 1rem; }
-    pre { max-height: 22rem; margin: 0; padding: .85rem; overflow: auto; border: 1px solid var(--line); border-radius: .65rem; white-space: pre-wrap; overflow-wrap: anywhere; background: #0a0f1d; color: #dce5f5; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: .84rem; }
-    th, td { padding: .55rem .45rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    th { color: var(--muted); font-weight: 600; }
-    td.note { max-width: 30rem; overflow-wrap: anywhere; }
-    .diagnostic { color: var(--yellow); }
-    .error-box { margin-bottom: 1rem; padding: .8rem 1rem; border: 1px solid rgba(255,123,134,.5); border-radius: .7rem; background: rgba(255,123,134,.08); color: var(--red); }
-    .muted { color: var(--muted); }
-    @media (max-width: 850px) {
-      .layout { grid-template-columns: 1fr; }
-      .tasks { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-      header { position: static; }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div><h1>autoloop 진행 대시보드</h1><p>로컬 파일을 읽기만 하며 2초마다 갱신합니다.</p></div>
-    <div class="controls">
-      <button class="refresh" id="toggle-refresh" type="button" aria-pressed="false">자동 갱신 일시정지</button>
-      <button class="refresh" id="refresh" type="button">지금 새로고침</button>
-    </div>
-  </header>
-  <main>
-    <div id="error" role="status" aria-live="polite"></div>
-    <div class="summary" id="summary"></div>
-    <div class="layout">
-      <div class="tasks" id="tasks"></div>
-      <article class="detail" id="detail"><p class="empty">왼쪽에서 작업을 선택하세요.</p></article>
-    </div>
-  </main>
-  <script>
-    const labels = {
-      running: "실행 중", done: "완료", blocked: "사용자 확인 필요", stalled: "정체",
-      exhausted: "반복 소진", stopped: "정지됨", cost: "비용 상한", error: "오류",
-      interrupted: "중단 의심", unknown: "상태 미확인"
-    };
-    const phases = {
-      starting: "기동 중", planning: "DAG 계획", dispatching: "작업 배치",
-      integrating: "격리 작업 통합", implementing: "구현 세션", testing: "독립 테스트",
-      verifying: "독립 검증", finished: "종료", unknown: "확인 불가"
-    };
-    const tests = { green: "GREEN", red: "RED", error: "RUNNER ERROR", "n/a": "측정 없음" };
-    let selected = "";
-    let busy = false;
-    let autoRefresh = true;
-
-    function el(tag, className, value) {
-      const node = document.createElement(tag);
-      if (className) node.className = className;
-      if (value !== undefined && value !== null) node.textContent = String(value);
-      return node;
-    }
-
-    function clear(node) { node.replaceChildren(); }
-    function value(value, fallback = "—") { return value === null || value === undefined || value === "" ? fallback : value; }
-    function cost(task) {
-      if (task.cost_measurement === "full") return `$${Number(task.total_cost_usd || 0).toFixed(2)}`;
-      if (task.cost_measurement === "partial") return `$${Number(task.total_cost_usd || 0).toFixed(2)} (일부)`;
-      return "측정 안 됨";
-    }
-    function iterationCost(iteration) {
-      if (iteration.cost_measurement === "full") return `$${Number(iteration.cost || 0).toFixed(2)}`;
-      if (iteration.cost_measurement === "partial") return `$${Number(iteration.cost || 0).toFixed(2)} (일부)`;
-      return "측정 안 됨";
-    }
-    function fact(name, content) {
-      const node = el("div", "fact");
-      node.append(el("span", "", name), el("strong", "", value(content)));
-      return node;
-    }
-    function setError(message) {
-      const root = document.getElementById("error");
-      clear(root);
-      if (message) root.append(el("div", "error-box", message));
-    }
-
-    function renderSummary(tasks) {
-      const root = document.getElementById("summary");
-      clear(root);
-      const running = tasks.filter(task => task.status === "running").length;
-      const attention = tasks.filter(task => ["blocked", "stalled", "error", "interrupted"].includes(task.status)).length;
-      root.append(el("span", "", `전체 ${tasks.length}`), el("span", "", `실행 중 ${running}`), el("span", "", `확인 필요 ${attention}`));
-    }
-
-    function renderCards(tasks) {
-      const root = document.getElementById("tasks");
-      const focusedSlug = document.activeElement && document.activeElement.dataset
-        ? document.activeElement.dataset.slug : "";
-      let focusTarget = null;
-      clear(root);
-      if (!tasks.length) {
-        root.append(el("p", "empty", "표시할 autoloop 작업이 없습니다."));
-        return;
-      }
-      tasks.forEach(task => {
-        const card = el("button", `card${task.slug === selected ? " selected" : ""}`);
-        card.type = "button";
-        card.dataset.slug = task.slug;
-        card.setAttribute("aria-pressed", String(task.slug === selected));
-        if (task.slug === focusedSlug) focusTarget = card;
-        const head = el("div", "card-head");
-        head.append(el("span", "slug", task.slug), el("span", `badge ${task.status}`, labels[task.status] || task.status));
-        const metrics = el("div", "metric-grid");
-        metrics.append(
-          fact("현재 단계", phases[task.phase] || task.phase),
-          fact("반복", `${value(task.run_iteration, "?")} / 누적 ${value(task.total_iterations, 0)}`),
-          fact("테스트", tests[task.test_outcome] || value(task.test_outcome)),
-          fact("task", Object.entries(task.task_counts || {}).map(([key, count]) => `${key} ${count}`).join(" · ")),
-          fact("agent", Object.entries(task.agent_counts || {}).map(([key, count]) => `${key} ${count}`).join(" · ")),
-          fact("비용", cost(task)),
-          fact("갱신", value(task.updated_at))
-        );
-        card.append(head, metrics);
-        card.addEventListener("click", () => { selected = task.slug; renderCards(tasks); loadDetail(); });
-        root.append(card);
-      });
-      if (focusTarget) focusTarget.focus({ preventScroll: true });
-    }
-
-    function detailSection(title, content, className) {
-      const section = el("section");
-      section.append(el("h3", "", title));
-      if (content) section.append(el("pre", className || "", content));
-      else section.append(el("p", "muted", "기록 없음"));
-      return section;
-    }
-
-    function renderIterations(task) {
-      const iterations = task.iterations || [];
-      const section = el("section");
-      section.append(el("h3", "", "반복 타임라인"));
-      if (task.history_truncated) section.append(el("p", "muted", `최근 ${iterations.length}개만 표시합니다 (전체 ${task.iteration_count}개).`));
-      if (!iterations.length) {
-        section.append(el("p", "muted", "반복 기록 없음"));
-        return section;
-      }
-      const table = el("table");
-      const head = el("tr");
-      ["누적 반복", "상태", "남은 항목", "테스트", "비용", "메모"].forEach(name => head.append(el("th", "", name)));
-      const thead = el("thead"); thead.append(head); table.append(thead);
-      const tbody = el("tbody");
-      iterations.forEach(iteration => {
-        const row = el("tr");
-        row.append(
-          el("td", "", value(iteration.iter)),
-          el("td", "", value(iteration.status && iteration.status.status)),
-          el("td", "", value(iteration.status && iteration.status.open_items)),
-          el("td", "", tests[iteration.test && iteration.test.outcome] || "측정 없음"),
-          el("td", "", iterationCost(iteration)),
-          el("td", "note", value(iteration.status && iteration.status.note))
-        );
-        tbody.append(row);
-      });
-      table.append(tbody);
-      const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap); return section;
-    }
-
-    function renderOrchestration(task) {
-      const section = el("section");
-      section.append(el("h3", "", "구조화된 task DAG / agent"));
-      const tasks = task.tasks || [];
-      if (!tasks.length) {
-        section.append(el("p", "muted", "구조화된 task DAG 기록 없음"));
-        return section;
-      }
-      const table = el("table");
-      const head = el("tr");
-      ["작업", "기준", "의존", "소유자 / agent", "engine / fallback", "상태", "시작 / 종료", "worktree", "증거", "blocker"].forEach(name => head.append(el("th", "", name)));
-      const thead = el("thead"); thead.append(head); table.append(thead);
-      const tbody = el("tbody");
-      tasks.forEach(item => {
-        const row = el("tr");
-        row.append(
-          el("td", "", value(item.id)),
-          el("td", "", (item.criterion_ids || []).join(", ") || "—"),
-          el("td", "", (item.depends_on || []).join(", ") || "—"),
-          el("td", "", [item.owner, item.agent_id].filter(Boolean).join(" / ") || "—"),
-          el("td", "note", [[item.requested_engine, item.effective_engine].filter(Boolean).join(" → "), item.engine_fallback].filter(Boolean).join(" / ") || "—"),
-          el("td", "", value(item.status)),
-          el("td", "note", [item.started_at, item.finished_at].filter(Boolean).join(" / ") || "—"),
-          el("td", "note", value(item.worktree)),
-          el("td", "note", (item.observed_evidence || []).join("\n") || "—"),
-          el("td", "note", value(item.blocker))
-        );
-        tbody.append(row);
-      });
-      table.append(tbody);
-      const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
-      return section;
-    }
-
-    function renderDispatches(task) {
-      const section = el("section");
-      section.append(el("h3", "", "병렬 dispatch / fallback"));
-      const items = task.dispatches || [];
-      if (!items.length) { section.append(el("p", "muted", "dispatch 기록 없음")); return section; }
-      const table = el("table");
-      const head = el("tr");
-      ["wave", "task", "시작 / 종료", "fallback"].forEach(name => head.append(el("th", "", name)));
-      const thead = el("thead"); thead.append(head); table.append(thead);
-      const tbody = el("tbody");
-      items.forEach(item => {
-        const row = el("tr");
-        row.append(el("td", "", value(item.wave)),
-          el("td", "", (item.task_ids || []).join(", ") || "—"),
-          el("td", "note", [item.started_at, item.finished_at].filter(Boolean).join(" / ") || "—"),
-          el("td", "note", value(item.fallback)));
-        tbody.append(row);
-      });
-      table.append(tbody); const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
-      return section;
-    }
-
-    function renderIntegrations(task) {
-      const section = el("section");
-      section.append(el("h3", "", "writer fan-in / worktree"));
-      const integrations = task.integrations || [];
-      const worktrees = task.worktrees || [];
-      if (!integrations.length && !worktrees.length) {
-        section.append(el("p", "muted", "integration/worktree 기록 없음")); return section;
-      }
-      if (integrations.length) {
-        const table = el("table"); const head = el("tr");
-        ["wave", "task", "결과", "commit", "integration worktree", "오류 / 정리"].forEach(name => head.append(el("th", "", name)));
-        const thead = el("thead"); thead.append(head); table.append(thead); const tbody = el("tbody");
-        integrations.forEach(item => {
-          const row = el("tr");
-          row.append(el("td", "", value(item.wave)), el("td", "", (item.task_ids || []).join(", ") || "—"),
-            el("td", "", item.ok ? "성공" : "실패"), el("td", "note", value(item.commit)),
-            el("td", "note", value(item.integration_worktree)),
-            el("td", "note", [item.error, item.cleanup].filter(Boolean).join(" / ") || "—"));
-          tbody.append(row);
-        });
-        table.append(tbody); const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
-      }
-      if (worktrees.length) {
-        const table = el("table"); const head = el("tr");
-        ["종류", "wave / task", "상태", "경로", "base", "정리"].forEach(name => head.append(el("th", "", name)));
-        const thead = el("thead"); thead.append(head); table.append(thead); const tbody = el("tbody");
-        worktrees.forEach(item => {
-          const row = el("tr");
-          row.append(el("td", "", value(item.kind)), el("td", "", [item.wave, item.task_id].filter(value => value !== "" && value !== null && value !== undefined).join(" / ") || "—"),
-            el("td", "", value(item.status)), el("td", "note", value(item.path)),
-            el("td", "note", value(item.base_commit)), el("td", "note", value(item.cleanup)));
-          tbody.append(row);
-        });
-        table.append(tbody); const wrap = el("div", "table-wrap"); wrap.append(table); section.append(wrap);
-      }
-      return section;
-    }
-
-    function renderEmptyDetail(message) {
-      const root = document.getElementById("detail");
-      clear(root);
-      root.append(el("p", "empty", message || "왼쪽에서 작업을 선택하세요."));
-    }
-
-    function renderDetail(task) {
-      const root = document.getElementById("detail");
-      clear(root);
-      const head = el("div", "detail-head");
-      head.append(el("h2", "", task.slug), el("p", "", value(task.spec, "스펙 경로 미기록")));
-      const facts = el("div", "facts");
-      facts.append(
-        fact("상태", labels[task.status] || task.status), fact("단계", phases[task.phase] || task.phase),
-        fact("기동 횟수", task.run), fact("현재 / 누적 반복", `${value(task.run_iteration, "?")} / ${value(task.total_iterations, 0)}`),
-        fact("최신 테스트", tests[task.test_outcome] || value(task.test_outcome)), fact("남은 항목", task.open_items),
-        fact("누적 비용", cost(task)), fact("마지막 갱신", task.updated_at),
-        fact("orchestrate 판정", task.orchestrate_verdict), fact("agent 예산", task.agent_budget),
-        fact("task 상태", Object.entries(task.task_counts || {}).map(([key, count]) => `${key} ${count}`).join(" · "))
-      );
-      root.append(head, facts);
-      if (task.diagnostics && task.diagnostics.length) root.append(detailSection("진단", task.diagnostics.join("\n"), "diagnostic"));
-      root.append(renderOrchestration(task));
-      root.append(renderDispatches(task));
-      root.append(renderIntegrations(task));
-      root.append(detailSection("사용자 확인 필요 / carryover", task.carryover));
-      root.append(renderIterations(task));
-      root.append(detailSection("driver.log 최근 기록", task.log_tail));
-    }
-
-    async function loadDetail() {
-      if (!selected) return;
-      try {
-        const response = await fetch(`/api/tasks/${encodeURIComponent(selected)}`, { cache: "no-store" });
-        if (!response.ok) throw new Error(`상세 조회 실패: HTTP ${response.status}`);
-        renderDetail(await response.json());
-      } catch (error) { setError(String(error)); }
-    }
-
-    async function refresh() {
-      if (busy) return;
-      busy = true;
-      try {
-        const response = await fetch("/api/tasks", { cache: "no-store" });
-        if (!response.ok) throw new Error(`목록 조회 실패: HTTP ${response.status}`);
-        const data = await response.json();
-        setError("");
-        renderSummary(data.tasks);
-        if (selected && !data.tasks.some(task => task.slug === selected)) {
-          selected = "";
-          renderEmptyDetail("선택한 작업이 목록에서 사라졌습니다.");
-        }
-        renderCards(data.tasks);
-        if (selected) await loadDetail();
-      } catch (error) { setError(String(error)); }
-      finally { busy = false; }
-    }
-
-    document.getElementById("refresh").addEventListener("click", refresh);
-    document.getElementById("toggle-refresh").addEventListener("click", event => {
-      autoRefresh = !autoRefresh;
-      event.currentTarget.setAttribute("aria-pressed", String(!autoRefresh));
-      event.currentTarget.textContent = autoRefresh ? "자동 갱신 일시정지" : "자동 갱신 다시 시작";
-    });
-    refresh();
-    setInterval(() => { if (autoRefresh) refresh(); }, 2000);
-  </script>
-</body>
-</html>
-'''
 
 
 def now_iso():
     return datetime.datetime.now().isoformat(timespec="seconds")
 
 
+def now_datetime():
+    return datetime.datetime.now()
+
+
+def parse_timestamp(value):
+    """Parse an artifact timestamp into a comparable local-naive datetime."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone().replace(tzinfo=None)
+        return parsed
+    except ValueError:
+        return None
+
+
+def freshness(updated_at):
+    parsed = parse_timestamp(updated_at)
+    if parsed is None:
+        return {"age_seconds": None, "stale": False, "relative": "시각 미확인"}
+    age = max(0, int((now_datetime() - parsed).total_seconds()))
+    if age < 60:
+        relative = "%d초 전" % age
+    elif age < 3600:
+        relative = "%d분 전" % (age // 60)
+    elif age < 86400:
+        relative = "%d시간 전" % (age // 3600)
+    else:
+        relative = "%d일 전" % (age // 86400)
+    return {"age_seconds": age, "stale": age >= STALE_AFTER_SECONDS,
+            "relative": relative}
+
+
 def root_id(path):
     return hashlib.sha256(os.fsencode(os.path.realpath(path))).hexdigest()
+
+
+def dashboard_dist_path(relative):
+    """Return a regular, non-symlink committed dashboard asset or None."""
+    dist = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "dashboard-ui", "dist"))
+    candidate = os.path.join(dist, relative)
+    try:
+        if os.path.islink(candidate) or not os.path.isfile(candidate):
+            return None
+        if os.path.commonpath((dist, os.path.realpath(candidate))) != dist:
+            return None
+        return candidate
+    except (OSError, ValueError):
+        return None
+
+
+def read_dashboard_asset(relative):
+    path = dashboard_dist_path(relative)
+    if path is None:
+        return None
+    try:
+        with open(path, "rb") as handle:
+            return handle.read()
+    except OSError:
+        return None
 
 
 def confined_path(path, boundary, diagnostics):
@@ -458,7 +146,7 @@ def ensure_finite(value):
             ensure_finite(child)
 
 
-def read_json(path, diagnostics, boundary=None):
+def read_json(path, diagnostics, boundary=None, limit=MAX_JSON_BYTES):
     if boundary is not None:
         path = confined_path(path, boundary, diagnostics)
         if path is None:
@@ -467,9 +155,9 @@ def read_json(path, diagnostics, boundary=None):
         return None
     try:
         with open(path, "r", encoding="utf-8", errors="strict") as f:
-            raw = f.read(MAX_JSON_BYTES + 1)
-        if len(raw.encode("utf-8")) > MAX_JSON_BYTES:
-            raise ValueError("file exceeds %d bytes" % MAX_JSON_BYTES)
+            raw = f.read(limit + 1)
+        if len(raw.encode("utf-8")) > limit:
+            raise ValueError("크기 제한 %d bytes 초과" % limit)
         value = json.loads(raw, parse_constant=reject_nonfinite)
         if not isinstance(value, dict):
             raise ValueError("top level is not an object")
@@ -478,6 +166,27 @@ def read_json(path, diagnostics, boundary=None):
     except (OSError, UnicodeError, ValueError, RecursionError) as e:
         diagnostics.append("%s 읽기 실패: %s" % (os.path.basename(path), e))
         return None
+
+
+def artifact_exists(path, diagnostics, boundary):
+    confined = confined_path(path, boundary, diagnostics)
+    if confined is None or not os.path.exists(confined):
+        return False
+    if not os.path.isfile(confined):
+        diagnostics.append("%s regular file 아님" % os.path.basename(path))
+        return False
+    return True
+
+
+def dashboard_provenance(task_path, diagnostics):
+    path = os.path.join(task_path, "dashboard-meta.json")
+    if not artifact_exists(path, diagnostics, task_path):
+        return "recorded"
+    value = read_json(path, diagnostics, boundary=task_path, limit=MAX_META_BYTES)
+    if value == {"schema_version": 1, "provenance": "demo"}:
+        return "demo"
+    diagnostics.append("dashboard-meta.json 스키마 또는 값 거부")
+    return "recorded"
 
 
 def read_tail(path, diagnostics, limit=MAX_TEXT_BYTES, boundary=None):
@@ -590,10 +299,142 @@ def legacy_status(task_path, state, launch_log, diagnostics):
     return "unknown", "unknown"
 
 
+def coordination_events(task_path, diagnostics):
+    """Read only the bounded tail of the append-only coordination audit."""
+    path = os.path.join(task_path, "team-log.jsonl")
+    path = confined_path(path, task_path, diagnostics)
+    empty = {"events": [], "events_truncated": False,
+             "event_diagnostics": {"malformed_lines": 0, "rejected_events": 0,
+                                   "locations": []}}
+    if path is None or not os.path.exists(path):
+        return empty
+    try:
+        with open(path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            offset = max(0, size - MAX_TEAM_LOG_BYTES)
+            handle.seek(offset)
+            raw = handle.read(MAX_TEAM_LOG_BYTES)
+        byte_truncated = offset > 0
+        if byte_truncated:
+            split = raw.find(b"\n")
+            raw = raw[split + 1:] if split >= 0 else b""
+        lines = raw.decode("utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        diagnostics.append("team-log.jsonl 읽기 실패: %s" % exc)
+        return empty
+
+    malformed = 0
+    rejected = 0
+    locations = []
+    accepted = []
+
+    def text(value, limit=1000):
+        return str(value or "")[:limit]
+
+    def string_list(value):
+        if not isinstance(value, list):
+            return []
+        return [str(item)[:200] for item in value if isinstance(item, (str, int))]
+
+    for index, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line, parse_constant=reject_nonfinite)
+            ensure_finite(item)
+            if not isinstance(item, dict):
+                raise ValueError("event is not an object")
+        except (ValueError, TypeError, RecursionError):
+            malformed += 1
+            if len(locations) < 20:
+                locations.append({"tail_line": index})
+            continue
+        kind = item.get("event")
+        if kind not in TEAM_EVENTS:
+            rejected += 1
+            continue
+        event = {
+            "ts": text(item.get("ts"), 100),
+            "event": kind,
+            "wave": item.get("wave") if isinstance(item.get("wave"), int) else None,
+            "task_id": text(item.get("task_id"), 200),
+            "task_ids": string_list(item.get("task_ids")),
+            "agent": text(item.get("agent"), 200),
+            "depends_on": string_list(item.get("depends_on")),
+            "worktree": text(item.get("worktree")),
+            "evidence": text(item.get("evidence")),
+            "reason": text(item.get("reason") or item.get("error")),
+            "ok": item.get("ok") if isinstance(item.get("ok"), bool) else None,
+            "commit": text(item.get("commit"), 200),
+        }
+        accepted.append(event)
+    count_truncated = len(accepted) > MAX_TEAM_EVENTS
+    if count_truncated:
+        accepted = accepted[-MAX_TEAM_EVENTS:]
+    accepted.sort(key=lambda item: (parse_timestamp(item["ts"]) or datetime.datetime.min,
+                                    item["event"], item["task_id"]))
+    return {
+        "events": accepted,
+        "events_truncated": byte_truncated or count_truncated,
+        "event_diagnostics": {"malformed_lines": malformed, "rejected_events": rejected,
+                              "locations": locations},
+    }
+
+
+def dag_projection(tasks):
+    ids = {task["id"] for task in tasks if task["id"]}
+    diagnostics = []
+    edges = []
+    missing = set()
+    dependencies = {task["id"]: task["depends_on"] for task in tasks if task["id"]}
+    complete = {task["id"] for task in tasks if task["status"] == "complete"}
+    for task in tasks:
+        absent = [dependency for dependency in task["depends_on"] if dependency not in ids]
+        missing.update(absent)
+        unmet = [dependency for dependency in task["depends_on"] if dependency not in complete]
+        task["ready"] = task["status"] == "pending" and not absent and not unmet
+        task["blocked_reason"] = task["blocker"] or (
+            "누락 dependency: %s" % ", ".join(absent) if absent else
+            ("dependency 대기: %s" % ", ".join(unmet) if unmet else ""))
+        for dependency in task["depends_on"]:
+            if dependency in ids:
+                edges.append({"from": dependency, "to": task["id"]})
+
+    visiting = set()
+    visited = set()
+    cycle = False
+
+    def visit(task_id):
+        nonlocal cycle
+        if task_id in visiting:
+            cycle = True
+            return
+        if task_id in visited:
+            return
+        visiting.add(task_id)
+        for dependency in dependencies.get(task_id, []):
+            if dependency in ids:
+                visit(dependency)
+        visiting.remove(task_id)
+        visited.add(task_id)
+
+    for task_id in ids:
+        visit(task_id)
+    if missing:
+        diagnostics.append("누락 dependency: %s" % ", ".join(sorted(missing)))
+    if cycle:
+        diagnostics.append("cycle detected")
+    valid = not diagnostics
+    return {"valid": valid, "edges": edges if valid else [], "diagnostics": diagnostics}
+
+
 def orchestration_projection(task_path, diagnostics, details=False):
     """Expose only the bounded task/agent fields needed by the dashboard."""
-    raw = read_json(
-        os.path.join(task_path, "orchestration.json"), diagnostics, boundary=task_path) or {}
+    orchestration_path = os.path.join(task_path, "orchestration.json")
+    tracking = ("structured" if artifact_exists(orchestration_path, diagnostics, task_path)
+                else "unstructured")
+    raw = read_json(orchestration_path, diagnostics, boundary=task_path) or {}
     raw_tasks = raw.get("tasks") if isinstance(raw.get("tasks"), list) else []
     raw_dispatches = raw.get("dispatches") if isinstance(raw.get("dispatches"), list) else []
     raw_integrations = raw.get("integrations") if isinstance(raw.get("integrations"), list) else []
@@ -604,7 +445,6 @@ def orchestration_projection(task_path, diagnostics, details=False):
     agent_counts = {}
     orchestrate = raw.get("orchestrate") if isinstance(raw.get("orchestrate"), dict) else {}
     allowed_status = {"pending", "running", "complete", "blocked", "failed", "skipped"}
-
     def string_list(value):
         if isinstance(value, list):
             return [str(item) for item in value if isinstance(item, (str, int))]
@@ -614,6 +454,12 @@ def orchestration_projection(task_path, diagnostics, details=False):
 
     def bounded_text(value, limit=1000):
         return str(value or "")[:limit]
+
+    dispatch_wave = {}
+    for dispatch in raw_dispatches:
+        if isinstance(dispatch, dict):
+            for task_id in string_list(dispatch.get("task_ids", [])):
+                dispatch_wave[task_id] = dispatch.get("wave")
 
     for item in raw_tasks:
         if not isinstance(item, dict):
@@ -633,6 +479,7 @@ def orchestration_projection(task_path, diagnostics, details=False):
             "status": status,
             "worktree": str(item.get("worktree") or agent.get("worktree") or ""),
             "agent_id": str(agent.get("id") or item.get("agent_id") or ""),
+            "wave": dispatch_wave.get(str(item.get("id") or ""), item.get("wave")),
             "requested_engine": str(item.get("requested_engine") or ""),
             "effective_engine": str(item.get("effective_engine") or ""),
             "engine_fallback": bounded_text(item.get("engine_fallback")),
@@ -640,6 +487,8 @@ def orchestration_projection(task_path, diagnostics, details=False):
             "finished_at": str(agent.get("finished_at") or ""),
             "observed_evidence": string_list(item.get("observed_evidence", [])),
             "blocker": str(item.get("blocker") or ""),
+            "base_commit": bounded_text(item.get("base_commit"), 200),
+            "task_commit": bounded_text(item.get("task_commit") or item.get("commit"), 200),
         }
         tasks.append(task)
         if task["agent_id"]:
@@ -651,12 +500,20 @@ def orchestration_projection(task_path, diagnostics, details=False):
                 "worktree": task["worktree"],
                 "started_at": str(agent.get("started_at") or ""),
                 "finished_at": str(agent.get("finished_at") or ""),
+                "role": task["owner"],
+                "wave": task["wave"],
+                "requested_engine": task["requested_engine"],
+                "effective_engine": task["effective_engine"],
+                "engine_fallback": task["engine_fallback"],
             })
+    dag = dag_projection(tasks)
     result = {
+        "tracking": tracking,
         "orchestrate_verdict": str(orchestrate.get("verdict") or ""),
         "agent_budget": orchestrate.get("agent_budget"),
         "task_counts": counts,
         "agent_counts": agent_counts,
+        "dag": dag,
     }
     if details:
         dispatches = []
@@ -680,8 +537,12 @@ def orchestration_projection(task_path, diagnostics, details=False):
                 "ok": item.get("ok") is True,
                 "commit": bounded_text(item.get("commit"), 200),
                 "error": bounded_text(item.get("error")),
+                "failure_stage": bounded_text(item.get("failure_stage"), 100),
                 "integration_worktree": bounded_text(item.get("integration_worktree")),
                 "cleanup": bounded_text(item.get("cleanup"), 200),
+                "status": bounded_text(item.get("status"), 100),
+                "target_fast_forward": item.get("target_fast_forward") is True,
+                "base_commit": bounded_text(item.get("base_commit"), 200),
             })
         worktrees = []
         for item in raw_worktrees:
@@ -693,6 +554,7 @@ def orchestration_projection(task_path, diagnostics, details=False):
                 "task_id": bounded_text(item.get("task_id"), 200),
                 "path": bounded_text(item.get("path")),
                 "base_commit": bounded_text(item.get("base_commit"), 200),
+                "commit": bounded_text(item.get("commit") or item.get("task_commit"), 200),
                 "status": bounded_text(item.get("status"), 100),
                 "cleanup": bounded_text(item.get("cleanup"), 200),
             })
@@ -715,6 +577,7 @@ def collect_task(root, slug, details=False):
     latest_test = latest.get("test") if isinstance(latest.get("test"), dict) else {}
     launch_log = read_tail(os.path.join(task_path, "launch.log"), diagnostics, boundary=task_path)
     orchestration = orchestration_projection(task_path, diagnostics, details=details)
+    provenance = dashboard_provenance(task_path, diagnostics)
 
     if run_status:
         source = "run-status"
@@ -742,11 +605,32 @@ def collect_task(root, slug, details=False):
         except OSError:
             pass
 
+    current_freshness = freshness(updated)
+    stale = status == "running" and current_freshness["stale"]
+    attention_statuses = {"blocked", "stalled", "error", "interrupted", "stopped",
+                          "exhausted", "cost"}
+    if status in attention_statuses:
+        attention_rank = 0
+        attention_reason = "운영 확인 필요"
+    elif stale:
+        attention_rank = 1
+        attention_reason = "갱신 지연"
+    elif status == "running":
+        attention_rank = 2
+        attention_reason = "정상 실행"
+    elif status == "done":
+        attention_rank = 3
+        attention_reason = "완료"
+    else:
+        attention_rank = 4
+        attention_reason = "상태 확인 필요"
+
     result = {
         "slug": slug,
         "status": status,
         "phase": phase,
         "source": source,
+        "provenance": provenance,
         "run": (run_status or {}).get("run", state.get("runs")),
         "run_iteration": (run_status or {}).get("run_iteration"),
         "total_iterations": state.get("total_iterations", (run_status or {}).get("total_iterations", 0)),
@@ -756,6 +640,12 @@ def collect_task(root, slug, details=False):
         "cost_measurement": (run_status or {}).get(
             "cost_measurement", state.get("cost_measurement", "unknown")),
         "updated_at": updated,
+        "updated_relative": current_freshness["relative"],
+        "age_seconds": current_freshness["age_seconds"],
+        "stale": stale,
+        "stale_after_seconds": STALE_AFTER_SECONDS,
+        "attention_rank": attention_rank,
+        "attention_reason": attention_reason,
         "spec": (run_status or {}).get("spec", ""),
         "project": (run_status or {}).get("project", ""),
         "diagnostics": diagnostics,
@@ -769,6 +659,7 @@ def collect_task(root, slug, details=False):
             "carryover": read_tail(os.path.join(task_path, "carryover.md"), diagnostics, boundary=task_path),
             "log_tail": read_tail(os.path.join(task_path, "driver.log"), diagnostics, boundary=task_path),
         })
+        result.update(coordination_events(task_path, diagnostics))
     return result
 
 
@@ -788,8 +679,12 @@ def collect_tasks(root):
             tasks.append(collect_task(root_real, name))
         except KeyError:
             continue
-    priority = {"running": 0, "blocked": 1, "stalled": 2, "error": 3, "interrupted": 4}
-    tasks.sort(key=lambda task: (priority.get(task["status"], 5), task["slug"]))
+    def key(task):
+        updated = parse_timestamp(task["updated_at"]) or datetime.datetime.min
+        return (task["attention_rank"], -updated.timestamp() if updated != datetime.datetime.min else 0,
+                0 if task["tracking"] == "structured" else 1, task["slug"])
+
+    tasks.sort(key=key)
     return tasks
 
 
@@ -805,7 +700,7 @@ def make_handler(root):
 
         def security_headers(self):
             self.send_header("X-Autoloop-Root-Id", root_id(root))
-            self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Cache-Control", "no-store, max-age=0")
             self.send_header("Referrer-Policy", "no-referrer")
@@ -853,8 +748,13 @@ def make_handler(root):
             if not self.require_local_host():
                 return
             parsed = urlparse(self.path)
-            if parsed.path == "/":
-                self.send_bytes(200, INDEX_HTML.encode("utf-8"), "text/html; charset=utf-8")
+            if parsed.path in STATIC_ASSETS:
+                relative, content_type = STATIC_ASSETS[parsed.path]
+                body = read_dashboard_asset(relative)
+                if body is None:
+                    self.send_json(503, {"error": "대시보드 build asset을 찾을 수 없습니다"})
+                    return
+                self.send_bytes(200, body, content_type)
                 return
             if parsed.path == "/api/tasks":
                 self.send_json(200, {"tasks": collect_tasks(root), "generated_at": now_iso()})
