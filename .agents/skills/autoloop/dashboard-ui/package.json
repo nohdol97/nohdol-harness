@@ -9,8 +9,6 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^1.1.5",
-    "@xyflow/react": "^12.8.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },

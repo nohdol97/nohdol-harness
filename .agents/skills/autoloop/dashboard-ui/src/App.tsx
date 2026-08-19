@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTask, listTasks } from "./api";
 import type { DashboardTask, Status } from "./types";
-import { AgentActivity, CoordinationAndFanIn, CostView, TaskGraph } from "./visualizations";
+import { AgentTimeline, Coordination, HandoffStrip, TechnicalDetails } from "./visualizations";
 
 const labels: Record<Status, string> = { running: "실행 중", done: "완료", blocked: "사용자 확인 필요", stalled: "정체", exhausted: "반복 소진", stopped: "정지됨", cost: "비용 상한", error: "오류", interrupted: "중단 의심", unknown: "상태 미확인" };
 const icons: Record<Status, string> = { running: "▶", done: "✓", blocked: "!", stalled: "!", exhausted: "■", stopped: "■", cost: "!", error: "×", interrupted: "×", unknown: "?" };
@@ -79,6 +79,5 @@ export function App({ initialTasks }: { initialTasks?: DashboardTask[] }) {
 }
 
 function Detail({ task, onBack }: { task: DashboardTask; onBack: () => void }) {
-  const active = (task.agents ?? []).filter((agent) => agent.status === "running").length;
-  return <><button className="back" onClick={onBack}>← 목록으로</button><header className="detail-head"><h2>{task.slug}</h2><p>{statusText(task)} · {task.phase ?? "단계 미확인"}</p></header><section className="facts"><p><b>주의</b>{task.attention_reason ?? "—"}</p><p><b>작업</b>{task.tasks?.length ?? 0}개</p><p><b>활성 agent</b>{active}명</p><p><b>최신 test</b>{task.test_outcome ?? "측정 없음"}</p><p><b>남은 항목</b>{task.open_items ?? "—"}</p><p><b>갱신</b>{task.updated_relative ?? "시각 미확인"}<small>{task.updated_at ?? ""}</small></p></section><CostView task={task} /><TaskGraph task={task} /><AgentActivity task={task} /><CoordinationAndFanIn task={task} /><details><summary>Evidence & logs</summary><pre>{task.carryover || task.log_tail || "기록 없음"}</pre></details><details><summary>진단 정보</summary><ul>{(task.diagnostics ?? []).map((item) => <li key={item}>{item}</li>)}</ul></details></>;
+  return <><button className="back" onClick={onBack}>← 목록으로</button><header className="detail-head"><h2>{task.slug}</h2><p>{statusText(task)} · {task.phase ?? "단계 미확인"}</p></header><section className="facts"><p><b>주의</b>{task.attention_reason ?? "—"}</p><p><b>최신 test</b>{task.test_outcome ?? "측정 없음"}</p><p><b>남은 항목</b>{task.open_items ?? "—"}</p><p><b>갱신</b>{task.updated_relative ?? "시각 미확인"}<small>{task.updated_at ?? ""}</small></p></section><HandoffStrip events={task.events ?? []} /><AgentTimeline agents={task.agents ?? []} /><Coordination task={task} /><TechnicalDetails task={task} /></>;
 }
