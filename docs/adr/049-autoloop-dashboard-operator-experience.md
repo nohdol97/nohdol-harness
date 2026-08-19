@@ -1,0 +1,39 @@
+# ADR 049: autoloop 대시보드를 운영자 중심 작업공간으로 개편
+
+- **날짜**: 2026-08-19
+- **변경 내용**: 기존 autoloop 읽기 대시보드의 raw projection 중심 화면을 주의 우선 작업 목록과 task·agent·coordination·worktree·evidence 흐름을 연결한 운영자 중심 master-detail 화면으로 개편한다.
+- **대상**: `docs/specs/2026-08-19-autoloop-dashboard-operator-ux.md`, `docs/adr/049-autoloop-dashboard-operator-experience.md`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/harness-ops-log.md`
+- **사유**: ADR 047·048로 관측 데이터와 구조화 artifact는 생겼지만 현재 화면은 상태·의존성·병렬 실행·fan-in·주의 지점을 빠르게 판단하도록 우선순위를 설계하지 않았다. 구현 전에 UX 의미와 안전 경계를 고정하지 않으면 시각 개선이 기록에 없는 agent 대화를 꾸며 내거나 legacy를 오류로 보이게 하거나 기존 읽기 전용 경계를 넓힐 수 있다.
+
+## 결정
+
+1. 작업 목록과 선택 작업 상세의 master-detail 구조를 유지하고, 구조화 기록 유무보다 운영 상태를 먼저 판정해 차단·실패·중단·갱신 지연·실행 중·완료 순으로 주의가 필요한 작업을 드러낸다. tracking과 provenance는 배지·필터·동률 보조축이다.
+2. 상세 정보 구조는 `개요`, `Task DAG`, `Agents`, `Coordination`, `Worktrees & fan-in`, `Evidence & logs`로 나눈다. 핵심 상태는 먼저, 원시 로그와 긴 경로는 점진적으로 공개한다.
+3. task dependency는 시각적 DAG와 동일 정보를 담은 키보드 접근 가능 표 또는 순서 목록을 함께 제공한다. 외부 그래프 라이브러리는 쓰지 않는다.
+4. `team-log.jsonl`은 bounded coordination timeline으로 읽는다. 현재 감사 가능한 것은 선행 task 완료 뒤 후속 task가 dispatch된 event 순서이며, dependency evidence 전달은 별도로 기록되지 않는다. 이를 전달·자유 대화·내부 추론으로 해석하지 않는다.
+5. 기존 API의 `source` 의미는 보존한다. `orchestration.json` 존재 여부를 나타내는 additive `tracking`과 명시적 `dashboard-meta.json`만 읽는 `provenance`를 추가한다. unstructured 작업은 당시 구조화 추적이 없었다고 설명하고 누락 정보를 추정하지 않는다. 이름·경로로 demo를 판정하지 않는다.
+6. agent 화면은 task·역할·wave·requested/effective engine·fallback을, worktree 화면은 writer 격리 경로·commit·integration·fast-forward·cleanup retained 상태를 연결한다.
+7. 자동 갱신은 선택·상세 위치·포커스를 보존하고 신선도와 갱신 실패를 실행 실패와 분리한다. 색만으로 상태를 전달하지 않으며 키보드·스크린리더·reduced motion·200% 확대를 완료 조건에 포함한다.
+8. ADR 047의 loopback·읽기 전용·Host/method/path/symlink·보안 헤더 계약과 ADR 048의 artifact 역할 분리를 유지한다. API 변경은 additive이고, 동적 문자열은 `textContent`로만 삽입하며 read는 bounded다.
+9. Python 표준 라이브러리와 기존 단일 HTML/CSS/JS 구조를 유지한다. npm, 프레임워크, CDN, 외부 그래프 라이브러리와 서버 측 사용자 상태 저장은 도입하지 않는다.
+10. 구현과 독립 검증의 정본은 `docs/specs/2026-08-19-autoloop-dashboard-operator-ux.md`의 R1~R15와 C1~C16이다. 이 ADR은 설계 선택을, 해당 스펙은 테스트 가능한 동작을 소유한다.
+
+## 기각한 대안
+
+- **CSS만 다듬기**: 문제는 색과 간격만이 아니라 상태 우선순위, 관계 연결, legacy 의미의 부재다.
+- **채팅형 agent 화면**: runtime은 task 완료와 후속 dispatch 같은 coordinator-mediated event를 기록할 뿐 결과 전달이나 자유 대화를 별도 증명하지 않아 채팅 표현이 기록보다 강한 사실을 암시한다.
+- **프런트엔드 프레임워크·그래프 라이브러리**: 표준 라이브러리·무빌드 도구의 배포 단순성을 깨고 필요한 상호작용보다 의존성 비용이 크다.
+- **legacy 데이터 소급 생성**: 과거 기록에 없는 agent·dependency·worktree를 추정하면 감사 가능한 사실 대신 생성된 서사를 보여 준다.
+- **재시도·중단·cleanup 제어**: 관측면과 제어면을 합치며 ADR 047의 안전 경계를 바꾼다. 별도 결정 없이는 허용하지 않는다.
+
+## 결과
+
+- 사용자는 첫 화면에서 주의 작업을 찾고 DAG → agent/dispatch → coordination → writer/fan-in → evidence를 같은 맥락에서 추적할 수 있다.
+- agent 간 소통은 실제 event가 있는 범위에서만 관찰되며 직접 채팅 여부를 과장하지 않는다.
+- legacy와 synthetic demo의 출처가 명확해져 빈 구조화 영역이 데이터 손실이나 현재 런 오류로 오해되지 않는다.
+- 접근성·반응형·polling 안정성·보안 회귀가 시각 품질과 같은 완료 게이트에 들어간다.
+- 구현은 다음 세션으로 남으며 현재 dashboard runtime은 이 결정만으로 바뀌지 않는다.
+
+## 영향
+
+`docs/specs/2026-08-19-autoloop-dashboard-operator-ux.md`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/harness-ops-log.md`
