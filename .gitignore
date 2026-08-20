@@ -21,6 +21,9 @@ REGISTRY.md
 !.codex/agents/*.toml
 !.codex/config.toml
 
+# Playwright MCP 세션 산출물 — 스냅샷·콘솔 로그, 하네스가 아님
+.playwright-mcp/
+
 # OS
 .DS_Store
 

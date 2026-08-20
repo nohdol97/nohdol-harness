@@ -49,30 +49,6 @@ export function HandoffStrip({ events }: { events: Event[] }) {
   return <section><h3>T 핸드오프</h3>{ordered.length ? <><div className="handoff" aria-label="기록된 task handoff 흐름">{ordered.map((event, index) => <span className="handoff-chip" key={`${event.ts}-${index}`}>{handoffLabel(event)}</span>)}</div><ol className="sr-only">{ordered.map((event, index) => <li key={`text-${index}`}>{handoffLabel(event)} · {text(event.ts)}</li>)}</ol></> : <p className="muted">기록된 handoff event가 없습니다.</p>}</section>;
 }
 
-export function AgentTimeline({ agents }: { agents: Agent[] }) {
-  const points = agents.map((agent) => ({ start: Date.parse(agent.started_at ?? ""), end: Date.parse(agent.finished_at ?? "") }));
-  const timed = agents.length > 0 && points.every((point) => Number.isFinite(point.start) && Number.isFinite(point.end) && point.end >= point.start);
-  const min = timed ? Math.min(...points.map((point) => point.start)) : 0;
-  const max = timed ? Math.max(...points.map((point) => point.end)) : 1;
-  const layerByIndex = Array(agents.length).fill(0) as number[];
-  const layerEnds: number[] = [];
-  if (timed) {
-    points.map((point, index) => ({ ...point, index })).sort((a, b) => a.start - b.start || a.end - b.end || a.index - b.index).forEach((point) => {
-      const reusable = layerEnds.findIndex((end) => end <= point.start);
-      const layer = reusable === -1 ? layerEnds.length : reusable;
-      layerByIndex[point.index] = layer;
-      layerEnds[layer] = point.end;
-    });
-  }
-  const layers = Math.max(timed ? layerEnds.length : agents.length ? 1 : 0, 1);
-  const positions = agents.map((agent, index) => {
-    const left = timed ? ((points[index].start - min) / Math.max(max - min, 1)) * 100 : index * (100 / Math.max(agents.length, 1));
-    const width = timed ? ((points[index].end - points[index].start) / Math.max(max - min, 1)) * 100 : 100 / Math.max(agents.length, 1);
-    return { left, width, layer: timed ? layerByIndex[index] : 0 };
-  });
-  return <section><h3>단일 실행 시간축</h3><p className="muted">{timed ? `기록된 시간축 · 최대 ${layers}개 동시 실행` : "기록된 wave / 순서 축 · 겹침을 추정하지 않음"}</p><div className="agent-track" aria-label="단일 agent 실행 시간축" data-mode={timed ? "time" : "order"} data-layers={layers} style={{ height: `${layers * 2.55 + .8}rem` }}>{agents.length ? agents.map((agent, index) => <span className="agent-segment" data-layer={positions[index].layer} style={{ left: `${positions[index].left}%`, width: `${positions[index].width}%`, top: `${positions[index].layer * 2.55 + .4}rem` }} key={`${agent.id}-${index}`} title={`${text(agent.task_id)} · ${text(agent.status)}`}>{text(agent.task_id || agent.id)} · {text(agent.status)}</span>) : <span className="muted">agent 기록이 없습니다.</span>}</div></section>;
-}
-
 export function Coordination({ task }: { task: DashboardTask }) {
   const waits = (task.tasks ?? []).filter((item) => item.ready === false && item.blocked_reason?.startsWith("dependency 대기:"));
   const fallbacks = (task.dispatches ?? []).filter((item) => item.fallback).length;

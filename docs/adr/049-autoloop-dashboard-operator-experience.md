@@ -8,6 +8,8 @@
 
 > **후속 정교화(2026-08-20, 정보 중복 제거)**: 결정 2·3·6·10을 보완했다. 핵심 lifecycle은 T 핸드오프 한 곳에 합치고, 같은 task lifecycle의 중복 감사 event는 strip에서만 한 번으로 압축한다. 실행 조율은 실행 묶음·선행 대기·조정만 맡고, agent 기술 정보는 단일 접힌 세부 정보만 맡는다.
 
+> **부분 대체(2026-08-20, 실행 시간축 제거)**: 사용자 판단에 따라 결정 2·6·8·9에서 `한 줄 실행 시간축`을 제거했다. 기본 상세는 최소 개요·T 핸드오프·실행 조율만 남고, agent 실행 시각은 `실행 세부 정보 > 에이전트`에서만 제공한다. 축이 유일한 inline style 소비처였으므로 CSP `style-src`의 `'unsafe-inline'`도 함께 회수한다.
+
 - **날짜**: 2026-08-19
 - **변경 내용**: 기존 autoloop 읽기 대시보드의 raw projection 중심 화면을 주의 우선 작업 목록과 task·agent·coordination·worktree·evidence 흐름을 연결한 운영자 중심 master-detail 화면으로 개편한다.
 - **대상**: `docs/specs/2026-08-19-autoloop-dashboard-operator-ux.md`, `docs/adr/049-autoloop-dashboard-operator-experience.md`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/harness-ops-log.md`
@@ -16,14 +18,14 @@
 ## 결정
 
 1. 작업 목록과 선택 작업 상세의 master-detail 구조를 유지하고, 구조화 기록 유무보다 운영 상태를 먼저 판정해 차단·실패·중단·갱신 지연·실행 중·완료 순으로 주의가 필요한 작업을 드러낸다. tracking과 provenance는 배지·필터·동률 보조축이다.
-2. 상세 기본 구조는 `최소 개요`, `T 핸드오프`, `한 줄 실행 시간축`, `실행 조율 요약`으로 제한한다. 실행 조율은 실행 묶음·선행 작업 대기·실행 조정만 답하며 handoff event 수·최신 event·전체 event 목록을 반복하지 않는다. 비용·engine·worktree·integration·commit·evidence·diagnostics는 초기 접힘 세부 정보로 이동한다. 펼친 내용은 에이전트·통합 결과·작업 공간·실행 기록·확인할 문제로 나누고, 한국어 라벨과 상태 요약을 사용한다.
+2. 상세 기본 구조는 `최소 개요`, `T 핸드오프`, `실행 조율 요약`으로 제한한다. 실행 조율은 실행 묶음·선행 작업 대기·실행 조정만 답하며 handoff event 수·최신 event·전체 event 목록을 반복하지 않는다. 비용·engine·worktree·integration·commit·evidence·diagnostics는 초기 접힘 세부 정보로 이동한다. 펼친 내용은 에이전트·통합 결과·작업 공간·실행 기록·확인할 문제로 나누고, 한국어 라벨과 상태 요약을 사용한다.
 3. task 관계는 그래프 대신 기록된 `team-log.jsonl`의 `team_create`·task lifecycle·`integration_complete` event를 시간순 chip과 방향 cue로 잇는다. 같은 task·wave·event가 통합 전후에 반복되면 원본 감사 기록은 보존하되 strip에서는 한 번만 표시하고, 같은 timestamp에서는 팀 생성→작업 시작→작업 완료/실패→통합 완료 순으로 정렬한다. 이는 대화가 아니라 기록된 작업 전이이며, event가 없을 때 dependency로 추정하지 않는다.
 4. `team-log.jsonl`은 bounded coordination timeline으로 읽는다. 현재 감사 가능한 것은 선행 task 완료 뒤 후속 task가 dispatch된 event 순서이며, dependency evidence 전달은 별도로 기록되지 않는다. 이를 전달·자유 대화·내부 추론으로 해석하지 않는다.
 5. 기존 API의 `source` 의미는 보존한다. `orchestration.json` 존재 여부를 나타내는 additive `tracking`과 명시적 `dashboard-meta.json`만 읽는 `provenance`를 추가한다. unstructured 작업은 당시 구조화 추적이 없었다고 설명하고 누락 정보를 추정하지 않는다. 이름·경로로 demo를 판정하지 않는다.
-6. agent 기본 화면은 모든 실행을 하나의 공통 시간축에 놓고 ID·상태만 보여 준다. 실제 시간이 겹치는 실행은 X 위치를 바꾸지 않고 같은 축 안의 layer로 쌓아 병렬 관계를 보존한다. 시간축 아래에 별도 agent disclosure를 반복하지 않고, 역할·tier·model·requested/effective engine·실행 시간·fallback은 하나의 `실행 세부 정보 > 에이전트`에서만 제공한다. worktree·integration 정보도 같은 접힘 안에서 기록값을 보존하되 사람이 읽는 제목·라벨·상태 문장으로 제공한다.
+6. agent 실행은 기본 화면에 축으로 그리지 않는다. 역할·tier·model·requested/effective engine·실행 시간·fallback은 하나의 `실행 세부 정보 > 에이전트`에서만 제공하며, 기본 화면에는 agent 전용 영역을 두지 않는다. worktree·integration 정보도 같은 접힘 안에서 기록값을 보존하되 사람이 읽는 제목·라벨·상태 문장으로 제공한다.
 7. 자동 갱신은 선택·상세 위치·포커스를 보존하고 신선도와 갱신 실패를 실행 실패와 분리한다. 색만으로 상태를 전달하지 않으며 키보드·스크린리더·reduced motion·200% 확대를 완료 조건에 포함한다.
-8. ADR 047의 loopback·읽기 전용·Host/method/path/symlink·보안 헤더 계약과 ADR 048의 artifact 역할 분리를 유지한다. API 변경은 additive이고, 외부 문자열은 escaped React text child로만 렌더링한다. unsafe HTML·parsing·실행·style·URL sink를 금지하고 read는 bounded다.
-9. React·TypeScript·Vite source와 lockfile을 두고 production static build를 커밋한다. runtime frontend 의존성은 React·React DOM만 남기며 handoff와 시간축은 CSS로 만든다. Node/npm은 개발·빌드·테스트 의존성이고 dashboard runtime은 계속 Python 표준 라이브러리만 요구한다. CDN·remote asset·server-side 사용자 상태 저장은 도입하지 않는다.
+8. ADR 047의 loopback·읽기 전용·Host/method/path/symlink·보안 헤더 계약과 ADR 048의 artifact 역할 분리를 유지한다. API 변경은 additive이고, 외부 문자열은 escaped React text child로만 렌더링한다. unsafe HTML·parsing·실행·style·URL sink를 금지하고 read는 bounded다. CSP `style-src`는 inline style을 허용하지 않는다.
+9. React·TypeScript·Vite source와 lockfile을 두고 production static build를 커밋한다. runtime frontend 의존성은 React·React DOM만 남기며 handoff strip은 CSS로 만든다. Node/npm은 개발·빌드·테스트 의존성이고 dashboard runtime은 계속 Python 표준 라이브러리만 요구한다. CDN·remote asset·server-side 사용자 상태 저장은 도입하지 않는다.
 10. 구현과 독립 검증의 정본은 `docs/specs/2026-08-19-autoloop-dashboard-operator-ux.md`의 R1~R19와 C1~C22이다. 이 ADR은 설계 선택을, 해당 스펙은 테스트 가능한 동작을 소유한다.
 
 ## 기각한 대안
@@ -37,12 +39,12 @@
 
 ## 결과
 
-- 사용자는 첫 화면에서 주의 작업을 찾고 T 핸드오프 → 한 줄 실행 시간축 → 실행 조율 요약을 같은 맥락에서 추적할 수 있다.
+- 사용자는 첫 화면에서 주의 작업을 찾고 T 핸드오프 → 실행 조율 요약을 같은 맥락에서 추적할 수 있다.
 - agent 간 소통은 실제 event가 있는 범위에서만 관찰되며 직접 채팅 여부를 과장하지 않는다.
 - legacy와 synthetic demo의 출처가 명확해져 빈 구조화 영역이 데이터 손실이나 현재 런 오류로 오해되지 않는다.
 - 접근성·반응형·polling 안정성·보안 회귀가 시각 품질과 같은 완료 게이트에 들어간다.
 - frontend source는 모듈·타입·component test로 분리되고 runtime은 커밋된 정적 build를 Python이 제공한다.
-- Light를 첫 방문 기본값으로 두고 System·Dark를 선택할 수 있으며, handoff strip과 한 줄 시간축이 운영 상태를 시각적으로 설명한다.
+- Light를 첫 방문 기본값으로 두고 System·Dark를 선택할 수 있으며, handoff strip이 운영 상태를 시각적으로 설명한다.
 
 ## 영향
 

@@ -548,6 +548,8 @@ class TestHttp(DashboardTestBase):
             status, headers, _ = self.request(method, path)
             self.assertEqual(status, expected)
             self.assertIn("default-src 'self'", headers["Content-Security-Policy"])
+            self.assertIn("style-src 'self'", headers["Content-Security-Policy"])
+            self.assertNotIn("unsafe-inline", headers["Content-Security-Policy"])
             self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
             self.assertIn("no-store", headers["Cache-Control"])
 
