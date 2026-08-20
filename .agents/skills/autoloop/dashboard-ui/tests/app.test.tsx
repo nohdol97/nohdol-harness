@@ -10,9 +10,30 @@ describe("simplified operator workspace", () => {
   const task = { slug: "sample", status: "running" as const, phase: "dispatching", attention_reason: "정상 실행", test_outcome: "green", open_items: 2, updated_relative: "10초 전" };
   it("shows ordered recorded handoffs without a graph fallback", () => {
     render(<HandoffStrip events={[{ ts: "2026-08-19T10:02:00", event: "task_complete", task_id: "T2" }, { ts: "2026-08-19T10:01:00", event: "task_dispatch", task_id: "T2" }]} />);
-    expect(screen.getAllByText(/T2 task dispatch/).length).toBeGreaterThan(1);
-    expect(screen.getAllByText(/T2 task 완료/).length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/T2 시작/).length).toBeGreaterThan(1);
+    expect(screen.getAllByText(/T2 완료/).length).toBeGreaterThan(1);
     expect(screen.queryByText("Task DAG")).not.toBeInTheDocument();
+  });
+  it("merges lifecycle and task events into Korean handoffs without empty lifecycle prefixes", () => {
+    const view = render(<HandoffStrip events={[
+      { ts: "2026-08-19T10:01:00", event: "task_complete", task_id: "T1", wave: 1, evidence: "duplicate completion" },
+      { ts: "2026-08-19T10:00:00", event: "integration_complete", wave: 1 },
+      { ts: "2026-08-19T10:00:00", event: "task_complete", task_id: "T1", wave: 1, evidence: "first completion" },
+      { ts: "2026-08-19T10:00:00", event: "task_dispatch", task_id: "T1", wave: 1 },
+      { ts: "2026-08-19T10:00:00", event: "team_create" },
+      { ts: "2026-08-19T10:02:00", event: "integration_complete" },
+      { ts: "2026-08-19T10:03:00", event: "integration_complete", wave: 2 },
+    ]} />);
+    const handoff = within(view.container).getByLabelText("기록된 task handoff 흐름");
+    expect(handoff.textContent).toBe("팀 생성T1 시작T1 완료1차 통합 완료통합 완료2차 통합 완료");
+    expect(within(handoff).getAllByText("T1 완료")).toHaveLength(1);
+    const accessibleCompletion = Array.from(within(view.container).getByRole("list").querySelectorAll("li")).find((item) => item.textContent?.includes("T1 완료"));
+    expect(accessibleCompletion?.textContent).toContain("2026-08-19T10:00:00");
+    expect(within(view.container).getByRole("list").textContent).toContain("팀 생성");
+    expect(within(view.container).getByRole("list").textContent).toContain("2차 통합 완료");
+    expect(within(view.container).getByRole("list").textContent).toContain("통합 완료");
+    expect(handoff.textContent).not.toContain("undefined");
+    expect(handoff.textContent).not.toContain("—차");
   });
   it("preserves overlapping time positions and stacks them in one axis", () => {
     const { rerender } = render(<AgentTimeline agents={[
@@ -32,9 +53,27 @@ describe("simplified operator workspace", () => {
   });
   it("keeps coordination and execution data collapsed by default", () => {
     render(<><Coordination task={{ ...task, events: [{ ts: "now", event: "task_complete", task_id: "T1" }], dispatches: [{ wave: 1, task_ids: ["T1"] }], tasks: [{ id: "T2", ready: false, blocked_reason: "dependency 대기: T1" }] }} /><TechnicalDetails task={{ ...task, total_cost_usd: 2.5, cost_measurement: "partial", integrations: [{ wave: 1, ok: false, failure_stage: "apply" }] }} /></>);
-    expect(screen.getByText(/dispatch wave 1/)).toBeVisible();
+    expect(screen.getByText(/실행 묶음 1/)).toBeVisible();
     expect(screen.getByText("실행 세부 정보").parentElement).not.toHaveAttribute("open");
     expect(screen.getByText("협업 세부 정보").parentElement).not.toHaveAttribute("open");
+  });
+  it("deduplicates coordination events and keeps agent detail only in technical details", () => {
+    const coordination = render(<Coordination task={{ ...task, events: [{ ts: "now", event: "task_complete", task_id: "T1" }], dispatches: [{ wave: 1, task_ids: ["T1"] }], tasks: [{ id: "T2", ready: false, blocked_reason: "dependency 대기: T1" }], agents: [{ id: "agent-1", task_id: "T1", started_at: "2026-08-19T10:00:00", finished_at: "2026-08-19T10:01:00" }] }} />);
+    expect(within(coordination.container).getByRole("heading", { name: "실행 조율" })).toBeVisible();
+    expect(coordination.container.textContent).toContain("실행 묶음 1");
+    expect(coordination.container.textContent).toContain("선행 작업 대기 1");
+    expect(coordination.container.textContent).toContain("실행 조정 0");
+    expect(coordination.container.textContent).not.toMatch(/event|최신|최근 협업 기록/);
+    fireEvent.click(within(coordination.container).getByText("협업 세부 정보"));
+    expect(coordination.container.textContent).not.toContain("최근 협업 기록");
+
+    const timeline = render(<AgentTimeline agents={[{ id: "agent-1", task_id: "T1", started_at: "2026-08-19T10:00:00", finished_at: "2026-08-19T10:01:00" }]} />);
+    expect(timeline.queryByText("에이전트 세부 정보")).not.toBeInTheDocument();
+
+    const technical = render(<TechnicalDetails task={{ ...task, agents: [{ id: "agent-1", task_id: "T1", role: "implementer", status: "complete", requested_engine: "codex", effective_engine: "codex", started_at: "2026-08-19T10:00:00", finished_at: "2026-08-19T10:01:00" }] }} />);
+    fireEvent.click(technical.container.querySelector("summary")!);
+    const agentCard = technical.container.querySelector<HTMLElement>(".detail-card")!;
+    expect(Array.from(agentCard.querySelectorAll("dt")).map((node) => node.textContent)).toEqual(["역할", "티어", "모델", "엔진", "실행 시간", "에이전트 ID"]);
   });
   it("keeps the first detail viewport limited to operator facts", () => {
     render(<App initialTasks={[task]} />);
@@ -80,7 +119,7 @@ describe("simplified operator workspace", () => {
     ] }} />);
     fireEvent.click(view.container.querySelector("summary")!);
     const cards = Array.from(view.container.querySelectorAll<HTMLElement>(".detail-card"));
-    expect(Array.from(cards[0].querySelectorAll("dt")).map((node) => node.textContent)).toEqual(["역할", "티어", "모델", "엔진", "에이전트 ID"]);
+    expect(Array.from(cards[0].querySelectorAll("dt")).map((node) => node.textContent)).toEqual(["역할", "티어", "모델", "엔진", "실행 시간", "에이전트 ID"]);
     expect(within(cards[0]).getByText("설계")).toBeVisible();
     expect(within(cards[0]).getByText("design-current · tier 선택")).toBeVisible();
     expect(within(cards[0]).getByText("Codex 요청 → Codex 실행")).toBeVisible();

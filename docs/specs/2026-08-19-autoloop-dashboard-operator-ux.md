@@ -39,14 +39,14 @@
 - **R3 (상태와 신선도)**: 모든 상태를 색상 외 아이콘·텍스트·형태로 구분하고 상대·절대 갱신 시각을 함께 표시한다. stale 경계 이상인 running은 기록 상태를 실패로 바꾸지 않고 “갱신 지연”으로 표시한다.
 - **R4 (안정적인 폴링 상호작용)**: 폴링 뒤에도 선택, 열린 상세, scroll과 focus를 가능한 범위에서 유지한다. 자동 갱신 일시정지·재개, 수동 갱신, 마지막 성공, 실패·회복·선택 소멸을 loop 실패와 구분해 알린다.
 - **R5 (최소 개요)**: 선택 작업의 phase·주의 이유·최신 test·남은 항목·freshness만 첫 상세 화면에 둔다. task 수·활성 agent·비용·엔진·commit은 기본 화면에서 제외하고 기록에 없는 완료율도 표시하지 않는다.
-- **R6 (T 핸드오프 흐름)**: 허용된 `team-log.jsonl` task event를 시간순으로 정렬해 `T1 완료 → T2 시작 → T2 완료`처럼 한눈에 읽히는 연속 strip으로 표시한다. task ID·event·상태는 기록값만 사용하고 dependency·대화·결과 전달을 추정하지 않는다. event가 없으면 빈 상태를 표시하며 DAG fallback을 만들지 않는다.
-- **R7 (단일 실행 시간축)**: 모든 agent를 하나의 공통 수평 시간 좌표계에 표시한다. 유효한 양 끝 timestamp가 모두 있으면 각 segment의 실제 시작 위치와 길이를 보존하고, 시간이 겹치는 segment는 X 위치를 밀지 않은 채 같은 축 안에서 위아래 층으로 쌓아 병렬 실행을 드러낸다. 축 높이는 최대 동시 실행 수만큼만 확장한다. timestamp가 불완전하면 wave·기록 순서의 단일 축으로 전환해 지속 시간이나 겹침을 추정하지 않는다. 기본 segment에는 task/agent ID와 상태만 두고 role·engine·fallback·endpoint는 접근 가능한 접힌 세부 정보에 둔다.
-- **R8 (압축 Coordination)**: 기본 화면은 dispatch wave 수·기록 event 수·dependency 대기 수·fallback/실패 유무와 최신 event 한 줄만 보여 준다. 접힌 상세를 열면 wave·대기·event를 각각 제목·상태·시간이 있는 짧은 카드나 시간순 기록으로 제공한다. chat·추론·direct message·기록되지 않은 결과 전달로 표현하지 않는다.
-- **R9 (사람이 읽는 실행 세부)**: integration·worktree·engine/fallback·model tier/실제 전달 모델/source·path·base/task/integration commit·fast-forward·cleanup·실패 단계는 하나의 초기 접힘 “실행 세부 정보” 안에서 정확히 표시한다. 에이전트 카드는 `역할 · tier · 모델 · 엔진` 순으로 사람이 읽게 하며, 모델 미지정은 실제 CLI 기본 이름을 추정하지 않고 `CLI 기본값 · 미보고`로 표시한다. 펼친 내용은 내부 필드명과 구분점 나열 대신 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`의 의미 단위, 한국어 라벨, 상태 요약, 빈 상태로 구성한다. 원문이 필요한 경로·commit·log만 고정폭으로 보존한다. worktree 경로는 복사만 허용하고 integration은 worktree row 유무와 독립적으로 표시한다.
+- **R6 (T 핸드오프 흐름)**: 허용된 `team-log.jsonl` event를 시간순으로 정렬해 `팀 생성 → T1 시작 → T1 완료 → 통합 완료`처럼 한눈에 읽히는 연속 strip으로 표시한다. task event 외 lifecycle event는 `team_create`와 `integration_complete`만 포함하며 각각 `팀 생성`, `N차 통합 완료`처럼 짧게 표시한다. 같은 task·wave·event가 감사 기록에 반복되면 원본은 보존하되 strip에서는 한 번만 표시한다. timestamp가 같으면 `팀 생성 → 작업 시작 → 작업 완료/실패 → 통합 완료` 순으로 표시해 lifecycle 인과를 읽을 수 있게 한다. task ID·wave·event·상태는 기록값만 사용하고 dependency·대화·결과 전달을 추정하지 않는다. event가 없으면 빈 상태를 표시하며 DAG fallback을 만들지 않는다.
+- **R7 (단일 실행 시간축)**: 모든 agent를 하나의 공통 수평 시간 좌표계에 표시한다. 유효한 양 끝 timestamp가 모두 있으면 각 segment의 실제 시작 위치와 길이를 보존하고, 시간이 겹치는 segment는 X 위치를 밀지 않은 채 같은 축 안에서 위아래 층으로 쌓아 병렬 실행을 드러낸다. 축 높이는 최대 동시 실행 수만큼만 확장한다. timestamp가 불완전하면 wave·기록 순서의 단일 축으로 전환해 지속 시간이나 겹침을 추정하지 않는다. segment에는 task/agent ID와 상태만 둔다. role·engine·fallback·실행 시각은 시간축 아래에서 반복하지 않고 R9의 단일 에이전트 세부 정보에 둔다.
+- **R8 (압축 실행 조율)**: 기본 화면은 실행 묶음 수·선행 작업 대기 수·실행 조정 수만 한국어로 보여 준다. event 수와 최신 event는 T 핸드오프와 같은 사실을 다시 요약하므로 표시하지 않는다. 접힌 상세를 열면 실행 묶음과 대기만 각각 제목·상태·시간이 있는 짧은 카드로 제공한다. `최근 협업 기록`처럼 T 핸드오프와 같은 event를 다시 나열하는 영역은 두지 않는다. chat·추론·direct message·기록되지 않은 결과 전달로 표현하지 않는다.
+- **R9 (사람이 읽는 실행 세부)**: integration·worktree·engine/fallback·model tier/실제 전달 모델/source·agent 시작·종료 시각·path·base/task/integration commit·fast-forward·cleanup·실패 단계는 하나의 초기 접힘 “실행 세부 정보” 안에서 정확히 표시한다. 에이전트 카드는 `역할 · tier · 모델 · 엔진 · 실행 시간` 순으로 사람이 읽게 하며, 모델 미지정은 실제 CLI 기본 이름을 추정하지 않고 `CLI 기본값 · 미보고`로 표시한다. 펼친 내용은 내부 필드명과 구분점 나열 대신 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`의 의미 단위, 한국어 라벨, 상태 요약, 빈 상태로 구성한다. 원문이 필요한 경로·commit·log만 고정폭으로 보존한다. worktree 경로는 복사만 허용하고 integration은 worktree row 유무와 독립적으로 표시한다.
 - **R10 (접힌 비용 정보)**: 비용은 초기 접힘 “실행 세부 정보” 안에 누적 숫자와 `full`·`partial`·`unavailable`·`unknown` 의미만 표시한다. 반복별 비용 그래프는 제거하고 미측정 값을 `$0.00`으로 표시하지 않는다.
 - **R11 (bounded artifact 수집)**: `team-log.jsonl`과 `dashboard-meta.json`에 작업 경계·심볼릭 링크 방어를 적용한다. 제한 바이트·event 수만 읽고 손상은 해당 작업 diagnostics로 격리하며 allowlist 밖 필드는 view model로 승격하지 않는다.
 - **R12 (tracking·legacy·demo 진실성)**: 기존 `source` 의미를 보존하고 `tracking`은 `orchestration.json`, `provenance=demo`는 정확한 bounded metadata schema만 정본으로 삼는다. unstructured 실행은 aggregate 정보를 유지하고 누락된 agent·edge를 복원하지 않는다.
-- **R13 (점진적 공개·반응형)**: 기본 상세에는 최소 개요·T 핸드오프·한 줄 실행 시간축·압축 Coordination만 이 순서로 둔다. 비용·engine·worktree·integration·commit·diagnostics·evidence·log는 초기 접힘으로 두고, 넓은 화면은 목록+상세, 좁은 화면은 목록→상세를 제공한다.
+- **R13 (점진적 공개·반응형)**: 기본 상세에는 최소 개요·T 핸드오프·한 줄 실행 시간축·압축 실행 조율만 이 순서로 둔다. 비용·engine·worktree·integration·commit·diagnostics·evidence·log는 초기 접힘으로 두고, 넓은 화면은 목록+상세, 좁은 화면은 목록→상세를 제공한다.
 - **R14 (테마와 시각 체계)**: semantic token으로 Light·System·Dark를 제공한다. 첫 방문은 Light이며 유효한 local preference만 저장하고 System은 OS 변경을 따른다. 서버에 preference를 쓰지 않는다.
 - **R15 (접근성)**: 모든 control·handoff·timeline segment·disclosure·filter·selection·copy·theme 선택에 accessible name, visible focus와 keyboard operation을 제공한다. landmark·heading·live region·reduced motion·200% 확대·WCAG AA 명암과 시각 strip의 동등한 텍스트를 완료 조건으로 둔다.
 - **R16 (React·TypeScript 빌드 경계)**: strict TypeScript·React·Vite로 frontend를 작성하고 결정적 production build를 커밋한다. Node/npm은 개발·빌드·테스트에만 사용하며 정상 dashboard 실행은 `python3 dashboard.py`만 요구하고 Node process·CDN·remote asset을 사용하지 않는다.
@@ -68,9 +68,9 @@ flowchart LR
   BUILD["React · TypeScript source<br/>npm build/test only"] --> DIST["커밋된 결정적 static assets"]
   API --> APP["React 운영자 작업공간"]
   DIST --> APP
-  APP --> HANDOFF["T 핸드오프 strip<br/>기록된 task event만"]
+  APP --> HANDOFF["T 핸드오프 strip<br/>task + 핵심 lifecycle event"]
   APP --> ACTIVITY["한 줄 실행 시간축"]
-  APP --> COORD["압축 Coordination"]
+  APP --> COORD["압축 실행 조율"]
   APP --> DETAILS["비용 · engine · worktree · fan-in · evidence<br/>초기 접힘"]
   APP -.-> CONTROL["mutation·control path 없음"]
 ```
@@ -89,12 +89,12 @@ flowchart LR
 - [x] **C5 (R6)**: out-of-order task event fixture를 렌더링하면 timestamp 순서의 `T ID + event` chip과 chip 사이 방향 cue가 하나의 handoff strip에 있고, source 어디에도 React Flow·Dagre import나 `Task DAG` UI가 없다. event 없는 fixture는 빈 상태만 보인다.
 - [x] **C6 (R6·R15)**: T 핸드오프 strip은 시각 순서와 같은 accessible ordered text를 제공하며 기록에 없는 dependency·대화·결과 전달 문구가 없다.
 - [x] **C7 (R7)**: 겹치는 valid timestamp fixture를 렌더링하면 segment의 left·width가 실제 endpoint 비율을 유지하고, 겹친 segment는 서로 다른 layer에 있으며, 겹치지 않은 segment는 가능한 낮은 layer를 재사용한다. 모두 하나의 공통 시간축 안에 있고 축 높이는 최대 동시 실행 layer 수와 일치한다. invalid timestamp fixture는 wave·기록 순서축을 사용하며 지속 시간이나 겹침을 추정하지 않는다. role·engine·fallback·endpoint는 초기 접힘 상세에서 API와 같은 값으로 읽힌다.
-- [x] **C8 (R8)**: dispatch·dependency wait·fallback·event fixture를 렌더링하면 기본 Coordination은 count와 최신 event 한 줄뿐이고 하나의 초기 접힘 상세을 열었을 때만 wave·대기·event가 구분된 제목과 시간순 기록으로 읽힌다. 비dependency blocker를 wait로 재해석하지 않고 chat·reasoning·direct message·미기록 결과 전달 문구가 없다.
+- [x] **C8 (R8)**: dispatch·dependency wait·fallback·event fixture를 렌더링하면 기본 실행 조율은 실행 묶음·선행 작업 대기·실행 조정 count만 표시하고 event 수·최신 event를 반복하지 않는다. 하나의 초기 접힘 상세을 열었을 때 wave와 대기만 구분된 제목으로 읽힌다. 비dependency blocker를 wait로 재해석하지 않고 chat·reasoning·direct message·미기록 결과 전달 문구가 없다.
 - [x] **C9 (R9)**: 초기 화면에 worktree·integration·engine·commit 목록이 없고 “실행 세부 정보”를 열면 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`별 카드에서 정확한 path·engine/fallback·commit·fast-forward·cleanup·failure stage를 한국어 라벨과 상태 요약으로 읽는다. 빈 묶음은 빈 상태를 표시하고 내부 영문 복수형 제목이나 구분점 한 줄 나열을 사용하지 않는다. integration은 worktree row 유무와 무관하며 path 동작은 copy뿐이다.
 - [x] **C10 (R10)**: 초기 화면에 비용 그래프가 없고 “실행 세부 정보”를 열면 full·partial·unavailable·unknown 누적 비용 텍스트만 정확히 나타난다. unavailable·unknown은 `$0.00`이 아니며 percent·budget line이 없다.
 - [x] **C11 (R11)**: event·metadata가 oversized·malformed·unsupported·symlink이면 나머지 task API는 성공하고 byte·event limit, diagnostics·truncation이 남으며 allowlist 밖 필드가 노출되지 않는다.
 - [x] **C12 (R12)**: exact·missing·malformed·oversized·symlink·misleading-name fixture를 읽으면 기존 `source`가 유지되고 tracking·provenance는 명시 artifact만 따른다. unstructured 실행은 aggregate를 유지하고 node·agent를 만들지 않는다.
-- [x] **C13 (R13)**: 1440px·390px browser smoke에서 최소 개요→T 핸드오프→한 줄 시간축→압축 Coordination 순서만 기본 노출되고 기술 세부는 접혀 있다. mobile에서 목록으로 돌아가며 document horizontal overflow가 없다.
+- [x] **C13 (R13)**: 1440px·390px browser smoke에서 최소 개요→T 핸드오프→한 줄 시간축→압축 실행 조율 순서만 기본 노출되고 기술 세부는 접혀 있다. mobile에서 목록으로 돌아가며 document horizontal overflow가 없다.
 - [x] **C14 (R14)**: Light·Dark·System을 선택하면 semantic token이 해석되고 첫 방문은 Light이며 유효 mode만 지속된다. System은 OS 변경을 따르고 server preference mutation은 없다.
 - [x] **C15 (R15)**: keyboard-only·200% zoom·reduced motion으로 동작하면 모든 path가 사용 가능하고 focus·live update가 정확하며 automated accessibility serious/critical finding이 없고 theme/state text와 focus가 WCAG AA를 충족한다.
 - [x] **C16 (R16·R18)**: lockfile 기준으로 typecheck·test·build하면 React·React DOM만 runtime frontend dependency로 남고 `dist/index.html`, `assets/app.js`, `assets/app.css`가 결정적으로 생성된다. Node를 `PATH`에서 제거해도 `python3 dashboard.py`가 같은 build를 CDN·remote request 없이 제공한다.
@@ -102,6 +102,7 @@ flowchart LR
 - [x] **C18 (R19)**: structured·unstructured·corrupt·attention fixture를 unit/component·real browser로 실행하면 list·최소 overview·T handoff·한 줄 timeline·압축 coordination·접힌 technical detail·polling·theme·responsive·keyboard 동작이 포함된다.
 - [x] **C19 (R19)**: 기존 dirty collector 작업을 migration하면 collector·freshness·tracking/provenance·bounded event·DAG validation·worktree/integration·legacy·cost·symlink·JSON·API·driver 회귀가 모두 통과하고 obsolete inline-HTML assertion만 동등 frontend test로 대체된다.
 - [x] **C21 (R9)**: structured task의 agent record에 model tier와 모델명이 있으면 API detail과 펼친 `에이전트` 카드가 역할·tier·모델·엔진을 정확히 표시한다. 모델명이 비어 있고 source가 `cli_default_unreported`면 `CLI 기본값 · 미보고`로 표시하며 engine이나 tier를 모델명처럼 대체하지 않는다. legacy artifact는 기존 빈 상태를 유지한다.
+- [x] **C22 (R6·R7·R8·R9·R15)**: `team_create`·task dispatch/complete·`integration_complete`가 섞이고 동일 task 완료가 통합 전후에 반복된 fixture를 렌더링하면 T 핸드오프가 `팀 생성`·`T ID 시작/완료`·`N차 통합 완료` chip과 동등한 접근성 텍스트를 한 번씩 표시한다. 동일 timestamp에서는 lifecycle 인과 순서를 지키고, 서로 다른 timestamp는 시간순을 지킨다. `실행 조율` 기본 요약은 실행 묶음·선행 작업 대기·실행 조정만 표시하고 event 수·최신 event를 반복하지 않으며, 펼친 상세에는 실행 묶음과 선행 작업 대기만 있고 `최근 협업 기록`이나 동일 event 목록이 없다. 시간축에는 별도 `에이전트 세부 정보`가 없고, 역할·tier·모델·엔진·실행 시간·fallback은 `실행 세부 정보 > 에이전트` 한 곳에서만 확인된다. task ID나 wave가 없는 lifecycle event도 빈 `undefined` 문구 없이 읽힌다.
 - [x] **C20 (전체)**: Python dashboard·driver, npm typecheck·unit·build, browser smoke·accessibility, diagram, integrity, `git diff --check`를 실행하면 모두 통과하고 independent reviewer가 개정 스펙과 ADR 047·048·049에 PASS한다.
 
 ## 미해결 질문
@@ -112,6 +113,7 @@ flowchart LR
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-08-20 | R6~R9·R13·C8·C13·C22에서 화면 간·화면 내 정보 중복 제거와 lifecycle handoff 통합 | T 핸드오프·실행 시간축·실행 조율·실행 세부 정보·frontend tests | `최근 협업 기록`과 이중 agent disclosure를 제거하고, 핵심 lifecycle을 handoff에 합치며 실제 운영 기록에서 반복된 task 완료도 strip에서 한 번으로 압축하라는 사용자 요청 |
 | 2026-08-20 | R9·C21에 agent별 model tier와 실제 전달 모델 표시 추가 | collector/API·React 실행 세부 카드·tests | tier별 모델 선택이 실제로 적용됐는지 사용자가 대시보드에서 확인할 수 있어야 함 |
 | 2026-08-19 | 최초 확정 | autoloop 대시보드 운영자 UX | 다음 세션 구현 전에 정보 구조·coordination 의미·legacy·접근성·보안 완료 기준을 단일 정본으로 고정하기 위함 |
 | 2026-08-19 | 시각화·TypeScript 개편으로 재확정 | R1~R19·C1~C20·설계 경계 | 사용자가 장식된 표가 아닌 실제 graph·agent 활동·비용 시각화와 밝고 친근한 경험을 명시해, 기존 무빌드·외부 graph 의존성 금지 결정을 부분 대체함 |
