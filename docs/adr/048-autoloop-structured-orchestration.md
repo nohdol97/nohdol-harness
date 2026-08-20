@@ -1,5 +1,7 @@
 # ADR 048: autoloop 구조화 오케스트레이션과 writer 격리
 
+> **부분 확장:** ADR 050이 결정 3의 직렬화 근거에 writer `file_scope` 중첩을 추가하고, planner 구조 오류의 1회 자동 수정과 실제 patch 범위 검증을 정의한다. 기존 budget·dependency·fan-in 차단은 그대로 유효하다.
+
 - **날짜**: 2026-08-19
 - **변경 내용**: autoloop을 단일 구현 세션 반복에서 구조화 task DAG 기반 scheduler로 확장한다. read-only planner가 `orchestrate` verdict·budget·DAG를 만들고, driver가 검증한 ready set을 병렬 dispatch하며, concurrent writer를 task별 worktree에 격리하고 dashboard가 같은 artifact를 투영한다.
 - **대상**: `.agents/skills/autoloop/SKILL.md`, `.agents/skills/autoloop/scripts/{driver.py,driver_test.py,dashboard.py,dashboard_test.py}`, `.agents/skills/README.ko.md`, `docs/specs/{2026-07-19-autoloop-driver.md,2026-08-03-autoloop-engine-harness-load-symmetry.md,2026-08-19-autoloop-dashboard.md,2026-08-19-autoloop-orchestration-runtime.md}`, `docs/adr/{025-autoloop-driver.md,047-autoloop-observation-dashboard.md,048-autoloop-structured-orchestration.md}`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/{autoloop-orchestration-review,harness-ops-log.md}`

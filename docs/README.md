@@ -59,6 +59,7 @@
 | [047](adr/047-autoloop-observation-dashboard.md) | 2026-08-19 | 활성 | autoloop 표시 상태를 게이트 체크포인트에서 분리하고 loopback 전용 읽기 대시보드 추가 |
 | [048](adr/048-autoloop-structured-orchestration.md) | 2026-08-19 | 활성 | autoloop 구조화 task DAG·ready-set 병렬 dispatch·writer별 worktree 격리·agent/task dashboard 투영 |
 | [049](adr/049-autoloop-dashboard-operator-experience.md) | 2026-08-19 | 활성·부분 대체 | autoloop 대시보드의 최소 개요·T 핸드오프·한 줄 실행 시간축·압축 Coordination을 고정 |
+| [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | 활성 | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 

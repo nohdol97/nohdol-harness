@@ -227,7 +227,7 @@ class TestStructuredOrchestration(DriverTestBase):
     def plan(tasks, criteria=None):
         return {
             "schema_version": 1,
-            "contract_version": "autoloop-orchestrate-v1",
+            "contract_version": driver.ORCHESTRATE_CONTRACT_VERSION,
             "criteria": criteria or ["C1", "C2"],
             "orchestrate": {"verdict": "team", "reason": "independent tasks",
                             "agent_budget": 2},
@@ -237,8 +237,9 @@ class TestStructuredOrchestration(DriverTestBase):
         }
 
     @staticmethod
-    def task(task_id, criteria, depends_on=None, mutability="write", owner="implementer"):
-        return {
+    def task(task_id, criteria, depends_on=None, mutability="write", owner="implementer",
+             file_scope=None):
+        task = {
             "id": task_id,
             "criterion_ids": criteria,
             "deliverable": "deliverable %s" % task_id,
@@ -250,6 +251,13 @@ class TestStructuredOrchestration(DriverTestBase):
             "observed_evidence": "",
             "status": "pending",
         }
+        task["file_scope"] = ([] if mutability == "read" else
+                              (file_scope if file_scope is not None else [
+                                  "base.txt", "a.txt", "b.txt", "renamed.txt",
+                                  "replacement.txt", "link.txt", "nested", "writer.txt",
+                                  "src/**", "test/**",
+                              ]))
+        return task
 
     def test_criterion_extraction_and_complete_coverage(self):
         with open(self.spec, "w") as f:
@@ -257,6 +265,12 @@ class TestStructuredOrchestration(DriverTestBase):
         self.assertEqual(driver.extract_criterion_ids(self.spec), ["C1", "C2"])
         plan = self.plan([self.task("T1", ["C1"]), self.task("T2", ["C2"])])
         self.assertEqual(driver.validate_orchestration(plan, ["C1", "C2"]), [])
+
+    def test_previous_contract_is_rejected_instead_of_silently_skipping_scopes(self):
+        plan = self.plan([self.task("T1", ["C1"]), self.task("T2", ["C2"])])
+        plan["contract_version"] = "autoloop-orchestrate-v1"
+        self.assertTrue(any("autoloop-orchestrate-v2" in error for error in
+                            driver.validate_orchestration(plan, ["C1", "C2"])))
 
     def test_missing_criterion_dangling_dependency_and_cycle_are_rejected(self):
         missing = self.plan([self.task("T1", ["C1"])])
@@ -290,6 +304,35 @@ class TestStructuredOrchestration(DriverTestBase):
         mismatched["tasks"][0]["model_tier"] = "implement"
         self.assertTrue(any("model_tier" in item for item in
                             driver.validate_orchestration(mismatched, ["C1", "C2"])))
+
+    def test_write_file_scope_requires_safe_repo_relative_files_or_directory_globs(self):
+        valid = self.plan([
+            self.task("T1", ["C1"], file_scope=["src/server.js", "test/http/**"]),
+            self.task("T2", ["C2"], mutability="read"),
+        ])
+        self.assertEqual(driver.validate_orchestration(valid, ["C1", "C2"]), [])
+
+        for scope in ([], ["/tmp/server.js"], ["../server.js"], ["src/*.js"]):
+            invalid = self.plan([
+                self.task("T1", ["C1"], file_scope=scope),
+                self.task("T2", ["C2"], mutability="read"),
+            ])
+            self.assertTrue(any("file_scope" in item for item in
+                                driver.validate_orchestration(invalid, ["C1", "C2"])), scope)
+
+    def test_ready_wave_serializes_overlapping_writers_but_keeps_safe_parallelism(self):
+        tasks = [
+            self.task("T4", ["C1"], file_scope=["src/server.js", "test/http-journey.test.js"]),
+            self.task("T5", ["C2"], file_scope=["src/**"]),
+            self.task("T6", ["C2"], file_scope=["docs/runbook.md"]),
+            self.task("T7", ["C1"], mutability="read"),
+        ]
+        selected, fallback = driver.select_ready_wave(tasks, budget=4)
+        self.assertEqual([task["id"] for task in selected], ["T4", "T6", "T7"])
+        self.assertIn("T4", fallback)
+        self.assertIn("T5", fallback)
+        self.assertIn("src/server.js", fallback)
+        self.assertIn("src/**", fallback)
 
     def test_roster_roles_have_exactly_one_declared_tier(self):
         self.assertEqual(driver.ROLE_TIERS, {
@@ -452,8 +495,31 @@ class TestWriterWorktreeIsolation(DriverTestBase):
         result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=4)
         self.assertFalse(result["ok"])
         self.assertIn("empty patch", result["error"])
-        self.assertTrue(os.path.isdir(result["integration_worktree"]))
+        self.assertFalse(result.get("integration_worktree"))
         self.assertEqual(result["cleanup"], "retained_for_verified_cleanup")
+
+    def test_out_of_scope_writer_patch_is_blocked_before_integration_worktree(self):
+        cfg = self.make_config(project=self.repo)
+        task = TestStructuredOrchestration.task(
+            "A", ["C1"], file_scope=["src/allowed.js"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=25)
+        self.assertEqual(error, "")
+        with open(os.path.join(assignments["A"]["path"], "outside.txt"), "w") as f:
+            f.write("outside\n")
+        before_head = subprocess.run(
+            ["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True,
+            text=True, check=True).stdout.strip()
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=25)
+        self.assertFalse(result["ok"])
+        self.assertIn("outside.txt", result["error"])
+        self.assertIn("file_scope", result["error"])
+        self.assertFalse(result.get("integration_worktree"))
+        self.assertEqual(subprocess.run(
+            ["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True,
+            text=True, check=True).stdout.strip(), before_head)
+        self.assertEqual(subprocess.run(
+            ["git", "-C", self.repo, "status", "--porcelain"], capture_output=True,
+            text=True, check=True).stdout, "")
 
     def test_fan_in_applies_nonoverlapping_writer_patches_in_task_order(self):
         cfg = self.make_config(project=self.repo)
@@ -759,12 +825,63 @@ class TestOrchestratedDriver(DriverTestBase):
         return TestStructuredOrchestration.plan(tasks, criteria=["C1"])
 
     def test_invalid_planner_output_blocks_before_any_task_dispatch(self):
-        self.write_scenario([{"text": "no valid plan"}])
         cfg = self.make_config(max_iterations=1)
         loop = driver.OrchestratedDriver(cfg)
-        with mock.patch.object(loop, "_execute_task") as execute:
+        with mock.patch.object(loop, "_execute_task") as execute, \
+                mock.patch.object(loop, "_run_session", side_effect=[
+                    (True, "no valid plan", 0.1), (True, "still invalid", 0.2),
+                ]) as session:
             self.assertEqual(loop.run(), "blocked")
         execute.assert_not_called()
+        self.assertEqual(session.call_count, 2)
+        self.assertFalse(os.path.exists(os.path.join(cfg.workdir(), "writers")))
+        with open(os.path.join(cfg.workdir(), driver.STATE_FILE)) as f:
+            self.assertAlmostEqual(json.load(f)["total_cost_usd"], 0.3)
+        with open(os.path.join(cfg.workdir(), "driver.log")) as f:
+            log = f.read()
+        self.assertEqual(log.count("planner attempt"), 2)
+        self.assertIn("orchestration JSON block missing or invalid", log)
+
+    def test_planner_repair_does_not_bypass_the_cumulative_cost_cap(self):
+        cfg = self.make_config(max_iterations=1, max_cost_usd=0.15)
+        loop = driver.OrchestratedDriver(cfg)
+        with mock.patch.object(loop, "_run_session", side_effect=[
+                    (True, "invalid", 0.2), (True, "must not run", 0.3),
+                ]) as session, \
+                mock.patch.object(loop, "_execute_task") as execute:
+            self.assertEqual(loop.run(), "cost")
+        self.assertEqual(session.call_count, 1)
+        execute.assert_not_called()
+        self.assertFalse(os.path.exists(os.path.join(cfg.workdir(), "writers")))
+
+    def test_invalid_planner_is_repaired_once_before_any_task_dispatch(self):
+        task = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
+        valid_text = "```json\n%s\n```" % json.dumps(self.plan([task]))
+        cfg = self.make_config(max_iterations=1)
+        loop = driver.OrchestratedDriver(cfg)
+        dispatched_after_calls = []
+
+        def execute(_task, _path, _wave):
+            dispatched_after_calls.append(session.call_count)
+            return {"ok": True, "status": "done", "evidence": "proof", "cost": 0.0}
+
+        invalid = self.plan([task])
+        invalid["tasks"][0]["criterion_ids"] = []
+        invalid_text = "```json\n%s\n```" % json.dumps(invalid)
+        with mock.patch.object(loop, "_run_session", side_effect=[
+                    (True, invalid_text, 0.1), (True, valid_text, 0.2),
+                    (True, verdict_text("PASS"), 0.0),
+                ]) as session, \
+                mock.patch.object(loop, "_execute_task", side_effect=execute):
+            self.assertEqual(loop.run(), "done")
+        self.assertEqual(dispatched_after_calls, [2])
+        self.assertIn("task A has no criterion_ids", session.call_args_list[1].args[0])
+        self.assertEqual(session.call_args_list[1].kwargs["tier"], "design")
+        with open(os.path.join(cfg.workdir(), driver.ORCHESTRATION_FILE)) as f:
+            attempts = json.load(f)["planner_attempts"]
+        self.assertEqual([item["status"] for item in attempts], ["invalid", "valid"])
+        self.assertIn("task A has no criterion_ids", attempts[0]["validation_error"])
+        self.assertEqual([item["cost_usd"] for item in attempts], [0.1, 0.2])
         self.assertFalse(os.path.exists(os.path.join(cfg.workdir(), "writers")))
 
     def test_planner_and_final_reviewer_use_design_tier(self):
@@ -825,6 +942,51 @@ class TestOrchestratedDriver(DriverTestBase):
             self.assertEqual(loop.run(), "done")
         self.assertLess(intervals["A"][0], intervals["B"][1])
         self.assertLess(intervals["B"][0], intervals["A"][1])
+
+    def test_overlapping_writers_run_in_separate_waves_on_the_integrated_base(self):
+        repo = os.path.join(self.tmp, "target")
+        subprocess.run(["git", "init", "-q", "-b", "main", repo], check=True)
+        subprocess.run(["git", "-C", repo, "config", "user.email", "test@example.com"],
+                       check=True)
+        subprocess.run(["git", "-C", repo, "config", "user.name", "Test"], check=True)
+        with open(os.path.join(repo, "base.txt"), "w") as f:
+            f.write("base\n")
+        subprocess.run(["git", "-C", repo, "add", "base.txt"], check=True)
+        subprocess.run(["git", "-C", repo, "commit", "-qm", "initial"], check=True)
+        tasks = [
+            TestStructuredOrchestration.task("T4", ["C1"], file_scope=["base.txt"]),
+            TestStructuredOrchestration.task("T5", ["C1"], file_scope=["base.txt"]),
+        ]
+        cfg = self.make_config(project=repo, max_iterations=2, max_agents=2)
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(cfg, self.plan(tasks))
+        loop = driver.OrchestratedDriver(cfg)
+        execution = []
+
+        def execute(task, target, wave):
+            base = subprocess.run(
+                ["git", "-C", target, "rev-parse", "HEAD"], capture_output=True,
+                text=True, check=True).stdout.strip()
+            execution.append((task["id"], wave, base))
+            with open(os.path.join(target, "base.txt"), "w") as f:
+                f.write(task["id"] + "\n")
+            return {"ok": True, "status": "done", "evidence": "edited", "cost": 0.0}
+
+        with mock.patch.object(loop, "_execute_task", side_effect=execute), \
+                mock.patch.object(loop, "_run_session",
+                                  return_value=(True, verdict_text("PASS"), 0.0)):
+            self.assertEqual(loop.run(), "done")
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        self.assertEqual([item[:2] for item in execution], [("T4", 1), ("T5", 2)])
+        self.assertNotEqual(execution[0][2], execution[1][2])
+        self.assertEqual(execution[1][2], saved["integrations"][0]["commit"])
+        self.assertIn("file_scope serialized", saved["dispatches"][0]["fallback"])
+        self.assertIn("T4", saved["dispatches"][0]["fallback"])
+        self.assertIn("T5", saved["dispatches"][0]["fallback"])
+        self.assertEqual(saved["dispatches"][1]["fallback"], "")
+        with open(os.path.join(repo, "base.txt")) as f:
+            self.assertEqual(f.read(), "T5\n")
 
     def test_resume_uses_wave_after_persisted_maximum(self):
         parent = TestStructuredOrchestration.task("A", ["C1"], mutability="read")

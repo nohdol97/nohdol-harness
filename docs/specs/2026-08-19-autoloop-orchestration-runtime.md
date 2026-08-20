@@ -26,9 +26,9 @@
 ## 요구사항
 
 - **R1 (orchestrate runtime gate)**: 첫 mutation 전에 read-only planner 세션을 실행한다. 세션은 `orchestrate` verdict, 근거, agent-call budget, 완료 기준 목록, task DAG를 구조화 출력한다. 이 기록이 없거나 유효하지 않으면 worktree 생성·구현 session·제품 파일 변경 없이 `blocked`로 끝난다.
-- **R2 (구조화 task DAG)**: `orchestration.json`은 schema version, spec criterion IDs, orchestrate verdict·budget, task 목록, 선점 저장된 wave reservation, dispatch wave, integration·cleanup 기록을 갖는다. 각 task는 task ID, criterion IDs, 하나의 deliverable, `depends_on`, owner, mode, mutability, expected/observed evidence, status를 갖는다.
-- **R3 (DAG 검증)**: driver는 spec의 완료 기준 ID 전체 coverage, 미지 criterion, 중복 task ID, unknown/self dependency, cycle, 빈 deliverable/evidence, 허용되지 않은 상태·mode·mutability를 검사한다. mutation 전과 `done` 수락 전에 모두 검사한다.
-- **R4 (ready-set scheduling)**: dependency가 모두 `complete`인 `pending` task만 ready다. 같은 wave의 독립 task는 agent budget 범위에서 동시에 dispatch한다. budget·비-Git writer·기타 격리 불가 때문에 직렬화하면 구조화된 fallback reason을 남긴다. dependency가 남은 task는 dispatch하지 않는다.
+- **R2 (구조화 task DAG)**: `orchestration.json`은 schema version, spec criterion IDs, orchestrate verdict·budget, task 목록, 선점 저장된 wave reservation, dispatch wave, integration·cleanup 기록을 갖는다. 각 task는 task ID, criterion IDs, 하나의 deliverable, `depends_on`, owner, mode, mutability, expected/observed evidence, status를 갖는다. 쓰기 task는 정확한 저장소 상대 파일 또는 `디렉터리/**`만 담는 비어 있지 않은 `file_scope`를 추가로 선언한다. 이 필드가 없던 `autoloop-orchestrate-v1`은 조용히 병렬 실행하지 않고 비호환으로 거부하며, 새 계획은 `autoloop-orchestrate-v2`를 사용한다.
+- **R3 (DAG 검증)**: driver는 spec의 완료 기준 ID 전체 coverage, 미지 criterion, 중복 task ID, unknown/self dependency, cycle, 빈 deliverable/evidence, 허용되지 않은 상태·mode·mutability와 잘못된 `file_scope`를 검사한다. mutation 전과 `done` 수락 전에 모두 검사한다.
+- **R4 (ready-set scheduling)**: dependency가 모두 `complete`인 `pending` task만 ready다. 같은 wave의 독립 task는 agent budget과 `file_scope` 비중첩 범위에서 동시에 dispatch한다. 두 쓰기 task의 정확한 파일이 같거나 한 task의 `디렉터리/**`가 다른 scope를 포함하면 뒤 task를 다음 wave로 직렬화하고 task ID와 겹친 scope가 포함된 구조화 fallback reason을 남긴다. budget·비-Git writer·기타 격리 불가 직렬화도 같은 방식으로 기록한다. dependency가 남은 task는 dispatch하지 않는다.
 - **R5 (writer worktree isolation)**: writer 수와 무관하게 모든 mutating task를 대상 HEAD에서 만든 task별 detached child worktree에 bind한다. task ID·agent ID·path·base commit을 기록한다. mapping이 없거나 같은 path가 두 writer에 배정되면 dispatch를 거부한다.
 - **R6 (fan-in)**: 각 writer 결과는 base commit 대비 binary patch로 수집한다. 별도 integration worktree에서 task ID 순으로 patch를 적용해 충돌을 검사하고 combined result를 그 worktree에서 먼저 commit한다. commit hook까지 성공한 뒤 대상 worktree가 여전히 clean이고 base HEAD인 경우에만 검증된 commit으로 fast-forward한다. 충돌·빈 writer patch·hook·승격 실패는 `blocked`이며 대상 HEAD·index·working tree에 부분 fan-in을 남기지 않는다.
 - **R7 (engine symmetry + launcher inheritance)**: Claude와 Codex의 planner·worker·reviewer prompt에는 versioned bounded orchestrate contract를 주입한다. `--engine`을 생략하면 driver는 launcher 환경을 감지해 Codex 세션에서는 Codex, Claude 세션에서는 Claude를 선택하며, 명시한 `--engine`·역할별 override가 우선한다. 판별 표지가 없으면 기존 호환성을 위해 Claude를 택한다. Codex read-only 세션은 `-C <task worktree>`, `--sandbox read-only`, writer는 격리된 task worktree를 `-C`로 고정한 `--sandbox workspace-write`를 사용한다. 둘 다 `--ignore-user-config`, `approval_policy="never"`, core 환경변수만 상속, `sandbox_workspace_write.network_access=false`를 고정하고 루트 하네스 자동 로드·`--add-dir`·bypass에 기대지 않는다. Codex writer patch는 fan-in 전에 삭제·rename·파일 타입 변경·symlink·submodule을 기계적으로 거부한다. 정상 파일 편집·추가는 R6의 integration worktree와 commit hook을 통과해야만 대상 worktree로 승격된다.
@@ -38,6 +38,8 @@
 - **R11 (resume)**: 같은 work-name 재기동은 기존 `orchestration.json`을 검증해 completed task와 dispatch 이력을 이어받는다. complete task에 evidence·dispatch·agent·writer integration이 빠지면 의존 task를 풀지 않는다. 새 wave ID는 worktree 생성보다 먼저 원자 예약하고, reservation·dispatch·integration·worktree에 저장된 최댓값 다음으로 단조 증가한다. 중단된 writer worktree는 cleanup 이력에 보존한 채 새 attempt path를 쓴다. integration commit은 target fast-forward 전에 저장하며, 재기동은 이 commit·base와 clean target HEAD를 대조해 이미 승격된 task를 complete로 복구하고, 미승격 attempt는 보존한 채 새 wave로 넘기며, 분기한 target은 fail-closed한다. 손상·schema 불일치는 zero-state로 낮추지 않고 기동을 거부한다.
 - **R12 (표준 라이브러리·안전)**: 구현은 Python 3 표준 라이브러리만 사용한다. child worktree 자동 삭제, force, deploy, push, DB migration을 실행하지 않는다.
 - **R13 (agent tier 모델 기록)**: driver는 표준 roster의 owner→tier 매핑을 단일 상수로 유지하고 planner/final reviewer=`design`, task agent=`owner의 tier`로 실행한다. 기동 세션이 현재 CLI 라인업에서 선택해 전달한 `design`·`implement`·`explore` 모델명을 각 task와 agent record의 `model_tier`·`requested_model`·`effective_model`·`model_source`에 저장하고 `task_dispatch` event에도 싣는다. 명시 모델이 없으면 실제 CLI 기본 모델명을 추정하지 않고 빈 `effective_model`과 `cli_default_unreported` source를 기록한다. 손상되거나 알려지지 않은 owner/tier는 임의 모델로 낮추지 않고 orchestration 검증에서 거부한다.
+- **R14 (planner 자기 수정 1회)**: 첫 planner 출력이 구조 검증에 실패하면 mutation·worktree 생성 전에 정확한 오류 목록과 원래 criterion ID를 같은 read-only design tier에 돌려 한 번만 재계획한다. 단, 첫 시도 비용으로 누적 비용 상한을 넘으면 repair를 추가 호출하지 않고 `cost`로 종료한다. 두 번째 출력도 유효하지 않으면 기존처럼 `blocked`로 종료한다. 비용·세션 실패·검증 오류는 실행된 시도마다 누적·기록하며 세 번째 시도는 없다.
+- **R15 (선언 scope와 실제 patch 일치)**: writer가 만든 patch의 모든 경로는 자기 `file_scope`에 포함돼야 한다. 범위 밖 파일이 하나라도 있으면 integration worktree 생성 전에 task를 실패시키고 대상 HEAD·index·working tree를 유지한다. `file_scope`는 격리의 대체물이 아니라 충돌 가능 writer를 다른 base commit의 다음 wave로 보내는 사전 스케줄링 입력이다.
 
 ## 인터페이스 / 설계 개요
 
@@ -47,11 +49,20 @@
 flowchart LR
   SPEC["스펙 완료 기준"] --> PLAN["read-only orchestrate planner"]
   PLAN --> VALID{"DAG coverage·dependency·cycle 유효?"}
-  VALID -->|"아니오"| BLOCK["blocked · mutation 없음"]
-  VALID -->|"예"| READY["ready set 계산"]
-  READY --> BUDGET{"agent budget 안인가?"}
+  VALID -->|"첫 실패"| REPLAN["오류 목록으로 read-only 재계획 1회"]
+  REPLAN --> VALID2{"수정 DAG 유효?"}
+  VALID2 -->|"아니오"| BLOCK["blocked · mutation 없음"]
+  VALID2 -->|"예"| READY["검증된 orchestration"]
+  VALID -->|"예"| READY
+```
+
+```mermaid
+flowchart LR
+  READY["ready set 계산"] --> BUDGET{"agent budget 안인가?"}
   BUDGET -->|"아니오 · fallback reason 기록"| SPLIT["budget 크기로 wave 분할"]
-  BUDGET -->|"예"| DISPATCH["같은 wave 병렬 dispatch"]
+  BUDGET -->|"예"| SCOPE{"writer file_scope가 겹치는가?"}
+  SCOPE -->|"예 · fallback reason 기록"| SPLIT
+  SCOPE -->|"아니오"| DISPATCH["같은 wave 병렬 dispatch"]
   SPLIT --> DISPATCH
   DISPATCH --> WRITERS["writer별 detached worktree"]
   WRITERS --> FANIN{"파괴 diff 없음 + integration commit·hook 성공?"}
@@ -77,6 +88,7 @@ flowchart LR
   "owner": "implementer",
   "mode": "worker",
   "mutability": "write",
+  "file_scope": ["src/domain.py", "tests/domain/**"],
   "expected_evidence": "검증 명령 또는 파일 단언",
   "observed_evidence": "",
   "status": "pending"
@@ -96,6 +108,8 @@ flowchart LR
 - [x] **C9 (R10)**: dashboard detail API와 화면 데이터에 task ID·criterion·dependency·owner/agent·status·blocker·timestamps·worktree·evidence와 dispatch/fallback·integration/cleanup 이력이 포함되고, 동적 문자열은 `innerHTML` 없이 표시된다.
 - [x] **C10 (전체 회귀)**: `driver_test.py`, `dashboard_test.py`, diagram checker, integrity check가 모두 통과한다.
 - [x] **C11 (R13)**: planner·final reviewer는 design 모델, architect/troubleshooter/reviewer/integrator task는 design 모델, implementer/infra-specialist는 implement 모델, explorer는 explore 모델 인자로 실행된다. 각 task·agent·dispatch event에는 tier와 전달한 실제 모델명이 보존된다. tier별 값이 없고 균일 모델만 있으면 그 값으로, 둘 다 없으면 `cli_default_unreported`로 기록되며 모델명을 추정하지 않는다. unknown owner/tier는 mutation 전에 거부된다.
+- [x] **C12 (R14)**: criterion 없는 task나 잘못된 dependency를 낸 첫 planner 출력은 writer·worktree 생성 0회 상태에서 오류 목록을 포함한 두 번째 planner prompt로 이어진다. 두 번째가 유효하면 실행하고, 두 번째도 무효면 정확히 두 planner 호출 뒤 `blocked`가 된다. 첫 시도에서 비용 상한을 넘으면 두 번째 호출 없이 `cost`가 된다.
+- [x] **C13 (R2·R4·R15)**: 같은 `src/server.js` 또는 포함 관계의 `src/**`를 선언한 독립 writer 둘은 서로 다른 wave에 실행되고, 두 번째 writer의 base는 첫 integration commit이며, persisted fallback에 두 task와 scope가 남는다. 비중첩 writer와 read task는 기존대로 병렬 실행된다. 실제 patch가 선언 범위를 벗어나면 integration 생성·대상 fast-forward 0회로 차단된다.
 
 ## 미해결 질문
 
@@ -105,6 +119,7 @@ flowchart LR
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-08-20 | R14·R15와 C12·C13 추가 | planner 검증·ready-set scheduler·writer fan-in | 실제 CareOS 실행에서 criterion 없는 planner task로 사용자 차단 1회, 같은 파일을 고친 독립 writer의 fan-in 충돌로 사용자 차단 1회가 연속 발생해 오류 자동 수정과 충돌 사전 직렬화가 필요함 |
 | 2026-08-20 | R13·C11에 agent tier별 모델 라우팅과 관측 계약 추가 | driver·dashboard projection·React UI·tests·autoloop skill | agent마다 §9 tier에 맞는 모델을 사용하고 사용자가 대시보드에서 실제 전달 모델을 확인하게 해 달라는 요청 |
 | 2026-08-20 | R7·C6을 launcher CLI 자동 상속과 격리된 Codex writer 계약으로 개정 | autoloop driver·tests·skill·ADR 025·048 | Codex에서 시작한 무인 작업이 Claude로 전환되지 않고 같은 CLI로 완주하되, network 차단·일회성 worktree·fan-in 전 파괴 diff 차단으로 안전 경계를 유지하라는 사용자 요구 |
 | 2026-08-19 | 최초 확정 | autoloop orchestration runtime | 독립 통합 검토의 must-fix 5건을 하나의 실행 계약으로 고정 |
