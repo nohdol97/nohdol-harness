@@ -72,6 +72,22 @@ describe("simplified operator workspace", () => {
     expect(detail.queryByText("Integrations")).not.toBeInTheDocument();
     expect(detail.queryByText("Worktrees")).not.toBeInTheDocument();
   });
+  it("shows role, tier, reported model, and engine in order without inventing a CLI model", () => {
+    const view = render(<TechnicalDetails task={{ ...task, agents: [
+      { id: "agent-1", task_id: "T1", role: "reviewer", status: "complete", model_tier: "design", requested_model: "design-current", effective_model: "design-current", model_source: "tier_override", requested_engine: "codex", effective_engine: "codex" },
+      { id: "agent-2", task_id: "T2", role: "explorer", status: "running", model_tier: "explore", requested_model: "", effective_model: "", model_source: "cli_default_unreported", requested_engine: "claude", effective_engine: "claude" },
+      { id: "agent-3", task_id: "T3", role: "implementer", status: "pending", requested_engine: "codex", effective_engine: "codex" },
+    ] }} />);
+    fireEvent.click(view.container.querySelector("summary")!);
+    const cards = Array.from(view.container.querySelectorAll<HTMLElement>(".detail-card"));
+    expect(Array.from(cards[0].querySelectorAll("dt")).map((node) => node.textContent)).toEqual(["역할", "티어", "모델", "엔진", "에이전트 ID"]);
+    expect(within(cards[0]).getByText("설계")).toBeVisible();
+    expect(within(cards[0]).getByText("design-current · tier 선택")).toBeVisible();
+    expect(within(cards[0]).getByText("Codex 요청 → Codex 실행")).toBeVisible();
+    expect(within(cards[1]).getByText("CLI 기본값 · 미보고")).toBeVisible();
+    expect(within(cards[2]).getAllByText("—")).toHaveLength(2);
+    expect(cards[2].textContent).not.toContain("Codex · 미보고");
+  });
   it("uses mobile master-detail state and contains no unsafe sink wording", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => task }));
     const view = render(<App initialTasks={[task]} />);

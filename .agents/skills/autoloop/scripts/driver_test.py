@@ -237,13 +237,13 @@ class TestStructuredOrchestration(DriverTestBase):
         }
 
     @staticmethod
-    def task(task_id, criteria, depends_on=None, mutability="write"):
+    def task(task_id, criteria, depends_on=None, mutability="write", owner="implementer"):
         return {
             "id": task_id,
             "criterion_ids": criteria,
             "deliverable": "deliverable %s" % task_id,
             "depends_on": depends_on or [],
-            "owner": "implementer",
+            "owner": owner,
             "mode": "worker",
             "mutability": mutability,
             "expected_evidence": "evidence %s" % task_id,
@@ -274,6 +274,30 @@ class TestStructuredOrchestration(DriverTestBase):
         ])
         self.assertTrue(any("cycle" in item for item in
                             driver.validate_orchestration(cycle, ["C1", "C2"])))
+
+    def test_owner_must_have_one_known_model_tier(self):
+        unknown = self.plan([
+            self.task("T1", ["C1"], owner="mystery-role"),
+            self.task("T2", ["C2"]),
+        ])
+        self.assertTrue(any("unknown owner" in item for item in
+                            driver.validate_orchestration(unknown, ["C1", "C2"])))
+
+        mismatched = self.plan([
+            self.task("T1", ["C1"], owner="reviewer"),
+            self.task("T2", ["C2"]),
+        ])
+        mismatched["tasks"][0]["model_tier"] = "implement"
+        self.assertTrue(any("model_tier" in item for item in
+                            driver.validate_orchestration(mismatched, ["C1", "C2"])))
+
+    def test_roster_roles_have_exactly_one_declared_tier(self):
+        self.assertEqual(driver.ROLE_TIERS, {
+            "architect": "design", "troubleshooter": "design",
+            "reviewer": "design", "integrator": "design",
+            "implementer": "implement", "infra-specialist": "implement",
+            "explorer": "explore",
+        })
 
     def test_ready_set_releases_dependent_task_only_after_both_parents(self):
         tasks = [
@@ -702,6 +726,7 @@ class TestOrchestrationPersistence(DriverTestBase):
         parsed, error = driver.parse_orchestration_block(text, ["C1"])
         self.assertEqual(error, "")
         self.assertEqual(parsed["tasks"][0]["status"], "pending")
+        self.assertEqual(parsed["tasks"][0]["model_tier"], "implement")
 
     def test_corrupt_persisted_orchestration_is_a_startup_blocker(self):
         cfg = self.make_config()
@@ -741,6 +766,23 @@ class TestOrchestratedDriver(DriverTestBase):
             self.assertEqual(loop.run(), "blocked")
         execute.assert_not_called()
         self.assertFalse(os.path.exists(os.path.join(cfg.workdir(), "writers")))
+
+    def test_planner_and_final_reviewer_use_design_tier(self):
+        task = TestStructuredOrchestration.task(
+            "A", ["C1"], mutability="read", owner="reviewer")
+        planner_text = "```json\n%s\n```" % json.dumps(self.plan([task]))
+        cfg = self.make_config(max_iterations=1)
+        loop = driver.OrchestratedDriver(cfg)
+        done = {"ok": True, "status": "done", "evidence": "proof", "cost": 0.0}
+        with mock.patch.object(loop, "_execute_task", return_value=done), \
+                mock.patch.object(loop, "_run_session", side_effect=[
+                    (True, planner_text, 0.0), (True, verdict_text("PASS"), 0.0),
+                ]) as session:
+            self.assertEqual(loop.run(), "done")
+        self.assertEqual(
+            [(call.kwargs["out_name"], call.kwargs["tier"]) for call in session.call_args_list],
+            [("planner", "design"), ("final-review", "design")],
+        )
 
     def test_claude_writer_session_is_bound_to_assigned_worktree_cwd(self):
         cfg = self.make_config(engine="claude")
@@ -862,6 +904,44 @@ class TestOrchestratedDriver(DriverTestBase):
         self.assertTrue(result["ok"])
         child_driver = session.call_args.args[0]
         self.assertEqual(driver.resolve_engine(child_driver.cfg, readonly=False), "codex")
+        self.assertEqual(session.call_args.kwargs["tier"], "implement")
+
+    def test_dispatch_persists_tier_model_and_unreported_default(self):
+        tasks = [
+            TestStructuredOrchestration.task(
+                "A", ["C1"], mutability="read", owner="explorer"),
+        ]
+        cfg = self.make_config(max_iterations=1, explore_model="explore-current")
+        os.makedirs(cfg.workdir())
+        driver.save_orchestration(cfg, self.plan(tasks))
+        loop = driver.OrchestratedDriver(cfg)
+        done = {"ok": True, "status": "done", "evidence": "proof", "cost": 0.0}
+        with mock.patch.object(loop, "_execute_task", return_value=done), \
+                mock.patch.object(loop, "_run_session",
+                                  return_value=(True, verdict_text("PASS"), 0.0)):
+            self.assertEqual(loop.run(), "done")
+        saved, error = driver.load_orchestration(cfg, ["C1"])
+        self.assertEqual(error, "")
+        task = saved["tasks"][0]
+        self.assertEqual(task["model_tier"], "explore")
+        self.assertEqual(task["requested_model"], "explore-current")
+        self.assertEqual(task["effective_model"], "explore-current")
+        self.assertEqual(task["model_source"], "tier_override")
+        self.assertEqual(task["agent"]["requested_model"], "explore-current")
+        self.assertEqual(task["agent"]["effective_model"], "explore-current")
+        self.assertEqual(task["agent"]["model_source"], "tier_override")
+        with open(os.path.join(cfg.workdir(), driver.TEAM_LOG_FILE)) as f:
+            dispatch = next(json.loads(line) for line in f if '"task_dispatch"' in line)
+        self.assertEqual(dispatch["model_tier"], "explore")
+        self.assertEqual(dispatch["requested_model"], "explore-current")
+        self.assertEqual(dispatch["effective_model"], "explore-current")
+        self.assertEqual(dispatch["model_source"], "tier_override")
+
+        bare = self.make_config()
+        self.assertEqual(driver.describe_model(bare, "design"), {
+            "model_tier": "design", "requested_model": "", "effective_model": "",
+            "model_source": "cli_default_unreported",
+        })
 
     def test_resume_skips_completed_tasks_and_reviews_persisted_evidence(self):
         task = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
@@ -1058,19 +1138,30 @@ class TestC5SafetyArgs(DriverTestBase):
             self.assertIn("project", sources)
 
     def test_role_tier_model_routing(self):
-        # 기능별 티어(§9): 검증(readonly)=design 티어 모델, 구현=implement 티어 모델.
+        # 역할별 티어(§9): design/implement/explore 각각 기동 세션이 고른 모델을 쓴다.
         # 드라이버 코드엔 모델명이 없다 — 값은 기동 세션이 라인업에서 골라 넘긴다.
-        cfg = self.make_config(implement_model="impl-tier-model", verify_model="design-tier-model")
-        work = driver.build_claude_args(cfg, "p")
-        verify = driver.build_claude_args(cfg, "p", readonly=True)
+        cfg = self.make_config(design_model="design-tier-model",
+                               implement_model="impl-tier-model",
+                               explore_model="explore-tier-model")
+        work = driver.build_claude_args(cfg, "p", tier="implement")
+        verify = driver.build_claude_args(cfg, "p", readonly=True, tier="design")
+        explore = driver.build_claude_args(cfg, "p", readonly=True, tier="explore")
         self.assertEqual(work[work.index("--model") + 1], "impl-tier-model")
         self.assertEqual(verify[verify.index("--model") + 1], "design-tier-model")
+        self.assertEqual(explore[explore.index("--model") + 1], "explore-tier-model")
+
+    def test_verify_model_remains_a_design_compatibility_alias(self):
+        alias = self.make_config(verify_model="legacy-design")
+        self.assertEqual(driver.resolve_model(alias, tier="design"), "legacy-design")
+        preferred = self.make_config(design_model="current-design", verify_model="legacy-design")
+        self.assertEqual(driver.resolve_model(preferred, tier="design"), "current-design")
 
     def test_role_model_falls_back_to_uniform_then_inherit(self):
         # 역할별 미지정 → 균일 --model, 그것도 없으면 --model 아예 미출력(세션 기본 상속)
         cfg = self.make_config(model="uniform-model")
-        self.assertEqual(driver.resolve_model(cfg), "uniform-model")
-        self.assertEqual(driver.resolve_model(cfg, readonly=True), "uniform-model")
+        self.assertEqual(driver.resolve_model(cfg, tier="implement"), "uniform-model")
+        self.assertEqual(driver.resolve_model(cfg, tier="design"), "uniform-model")
+        self.assertEqual(driver.resolve_model(cfg, tier="explore"), "uniform-model")
         bare = self.make_config()
         self.assertEqual(driver.resolve_model(bare), "")
         self.assertNotIn("--model", driver.build_claude_args(bare, "p"))
@@ -1228,9 +1319,13 @@ class TestC17CodexSafety(DriverTestBase):
         self.assertEqual(args[args.index("--sandbox") + 1], "read-only")
 
     def test_codex_model_flag(self):
-        cfg = self.make_config(implement_model="impl-m", verify_model="ver-m")
-        verify = driver.build_codex_args(cfg, "P", True, "/o")
-        self.assertEqual(verify[verify.index("-m") + 1], "ver-m")
+        cfg = self.make_config(design_model="design-m", implement_model="impl-m",
+                               explore_model="explore-m")
+        for tier, expected, readonly in [
+                ("design", "design-m", True), ("implement", "impl-m", False),
+                ("explore", "explore-m", True)]:
+            args = driver.build_codex_args(cfg, "P", readonly, "/o", tier=tier)
+            self.assertEqual(args[args.index("-m") + 1], expected)
 
     def test_no_bypass_in_either_engine(self):
         cfg = self.make_config()

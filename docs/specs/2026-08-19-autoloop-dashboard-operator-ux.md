@@ -42,7 +42,7 @@
 - **R6 (T 핸드오프 흐름)**: 허용된 `team-log.jsonl` task event를 시간순으로 정렬해 `T1 완료 → T2 시작 → T2 완료`처럼 한눈에 읽히는 연속 strip으로 표시한다. task ID·event·상태는 기록값만 사용하고 dependency·대화·결과 전달을 추정하지 않는다. event가 없으면 빈 상태를 표시하며 DAG fallback을 만들지 않는다.
 - **R7 (단일 실행 시간축)**: 모든 agent를 하나의 공통 수평 시간 좌표계에 표시한다. 유효한 양 끝 timestamp가 모두 있으면 각 segment의 실제 시작 위치와 길이를 보존하고, 시간이 겹치는 segment는 X 위치를 밀지 않은 채 같은 축 안에서 위아래 층으로 쌓아 병렬 실행을 드러낸다. 축 높이는 최대 동시 실행 수만큼만 확장한다. timestamp가 불완전하면 wave·기록 순서의 단일 축으로 전환해 지속 시간이나 겹침을 추정하지 않는다. 기본 segment에는 task/agent ID와 상태만 두고 role·engine·fallback·endpoint는 접근 가능한 접힌 세부 정보에 둔다.
 - **R8 (압축 Coordination)**: 기본 화면은 dispatch wave 수·기록 event 수·dependency 대기 수·fallback/실패 유무와 최신 event 한 줄만 보여 준다. 접힌 상세를 열면 wave·대기·event를 각각 제목·상태·시간이 있는 짧은 카드나 시간순 기록으로 제공한다. chat·추론·direct message·기록되지 않은 결과 전달로 표현하지 않는다.
-- **R9 (사람이 읽는 실행 세부)**: integration·worktree·engine/fallback·path·base/task/integration commit·fast-forward·cleanup·실패 단계는 하나의 초기 접힘 “실행 세부 정보” 안에서 정확히 표시한다. 펼친 내용은 내부 필드명과 구분점 나열 대신 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`의 의미 단위, 한국어 라벨, 상태 요약, 빈 상태로 구성한다. 원문이 필요한 경로·commit·log만 고정폭으로 보존한다. worktree 경로는 복사만 허용하고 integration은 worktree row 유무와 독립적으로 표시한다.
+- **R9 (사람이 읽는 실행 세부)**: integration·worktree·engine/fallback·model tier/실제 전달 모델/source·path·base/task/integration commit·fast-forward·cleanup·실패 단계는 하나의 초기 접힘 “실행 세부 정보” 안에서 정확히 표시한다. 에이전트 카드는 `역할 · tier · 모델 · 엔진` 순으로 사람이 읽게 하며, 모델 미지정은 실제 CLI 기본 이름을 추정하지 않고 `CLI 기본값 · 미보고`로 표시한다. 펼친 내용은 내부 필드명과 구분점 나열 대신 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`의 의미 단위, 한국어 라벨, 상태 요약, 빈 상태로 구성한다. 원문이 필요한 경로·commit·log만 고정폭으로 보존한다. worktree 경로는 복사만 허용하고 integration은 worktree row 유무와 독립적으로 표시한다.
 - **R10 (접힌 비용 정보)**: 비용은 초기 접힘 “실행 세부 정보” 안에 누적 숫자와 `full`·`partial`·`unavailable`·`unknown` 의미만 표시한다. 반복별 비용 그래프는 제거하고 미측정 값을 `$0.00`으로 표시하지 않는다.
 - **R11 (bounded artifact 수집)**: `team-log.jsonl`과 `dashboard-meta.json`에 작업 경계·심볼릭 링크 방어를 적용한다. 제한 바이트·event 수만 읽고 손상은 해당 작업 diagnostics로 격리하며 allowlist 밖 필드는 view model로 승격하지 않는다.
 - **R12 (tracking·legacy·demo 진실성)**: 기존 `source` 의미를 보존하고 `tracking`은 `orchestration.json`, `provenance=demo`는 정확한 bounded metadata schema만 정본으로 삼는다. unstructured 실행은 aggregate 정보를 유지하고 누락된 agent·edge를 복원하지 않는다.
@@ -101,6 +101,7 @@ flowchart LR
 - [x] **C17 (R17)**: root·API·asset·error route를 요청하면 loopback Host, read-only method, fixed static confinement, symlink/path traversal, MIME, CSP, `nosniff`, `no-store`, referrer header가 통과한다. 앱 소유 source와 렌더 경로에서 외부 artifact가 unsafe HTML·실행·style·URL sink로 흐르지 않으며, dependency bundle 내부 API 이름의 단순 문자열 부재를 완료 조건으로 삼지 않는다.
 - [x] **C18 (R19)**: structured·unstructured·corrupt·attention fixture를 unit/component·real browser로 실행하면 list·최소 overview·T handoff·한 줄 timeline·압축 coordination·접힌 technical detail·polling·theme·responsive·keyboard 동작이 포함된다.
 - [x] **C19 (R19)**: 기존 dirty collector 작업을 migration하면 collector·freshness·tracking/provenance·bounded event·DAG validation·worktree/integration·legacy·cost·symlink·JSON·API·driver 회귀가 모두 통과하고 obsolete inline-HTML assertion만 동등 frontend test로 대체된다.
+- [x] **C21 (R9)**: structured task의 agent record에 model tier와 모델명이 있으면 API detail과 펼친 `에이전트` 카드가 역할·tier·모델·엔진을 정확히 표시한다. 모델명이 비어 있고 source가 `cli_default_unreported`면 `CLI 기본값 · 미보고`로 표시하며 engine이나 tier를 모델명처럼 대체하지 않는다. legacy artifact는 기존 빈 상태를 유지한다.
 - [x] **C20 (전체)**: Python dashboard·driver, npm typecheck·unit·build, browser smoke·accessibility, diagram, integrity, `git diff --check`를 실행하면 모두 통과하고 independent reviewer가 개정 스펙과 ADR 047·048·049에 PASS한다.
 
 ## 미해결 질문
@@ -111,6 +112,7 @@ flowchart LR
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-08-20 | R9·C21에 agent별 model tier와 실제 전달 모델 표시 추가 | collector/API·React 실행 세부 카드·tests | tier별 모델 선택이 실제로 적용됐는지 사용자가 대시보드에서 확인할 수 있어야 함 |
 | 2026-08-19 | 최초 확정 | autoloop 대시보드 운영자 UX | 다음 세션 구현 전에 정보 구조·coordination 의미·legacy·접근성·보안 완료 기준을 단일 정본으로 고정하기 위함 |
 | 2026-08-19 | 시각화·TypeScript 개편으로 재확정 | R1~R19·C1~C20·설계 경계 | 사용자가 장식된 표가 아닌 실제 graph·agent 활동·비용 시각화와 밝고 친근한 경험을 명시해, 기존 무빌드·외부 graph 의존성 금지 결정을 부분 대체함 |
 | 2026-08-19 | C17 bundle 검사를 trust boundary에 맞게 정교화 | C17 | React DOM dependency bundle에는 내부 sink API 이름이 존재하므로 문자열 0건은 외부 artifact의 실제 흐름을 증명하지 않는다. 앱 소유 source·렌더 경로와 서버 CSP를 검증 대상으로 고정함 |

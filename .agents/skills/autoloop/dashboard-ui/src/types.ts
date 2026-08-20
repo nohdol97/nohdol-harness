@@ -1,7 +1,7 @@
 export type Status = "running" | "done" | "blocked" | "stalled" | "exhausted" | "stopped" | "cost" | "error" | "interrupted" | "unknown";
 export type CostMeasurement = "full" | "partial" | "unavailable" | "unknown";
-export interface TaskNode { id: string; owner?: string; status?: string; ready?: boolean; blocked_reason?: string; depends_on?: string[]; wave?: number; requested_engine?: string; effective_engine?: string; engine_fallback?: string; base_commit?: string; task_commit?: string; }
-export interface Agent { id?: string; task_id?: string; role?: string; status?: string; wave?: number; requested_engine?: string; effective_engine?: string; engine_fallback?: string; started_at?: string; finished_at?: string; }
+export interface TaskNode { id: string; owner?: string; status?: string; ready?: boolean; blocked_reason?: string; depends_on?: string[]; wave?: number; requested_engine?: string; effective_engine?: string; engine_fallback?: string; model_tier?: string; requested_model?: string; effective_model?: string; model_source?: string; base_commit?: string; task_commit?: string; }
+export interface Agent { id?: string; task_id?: string; role?: string; status?: string; wave?: number; requested_engine?: string; effective_engine?: string; engine_fallback?: string; model_tier?: string; requested_model?: string; effective_model?: string; model_source?: string; started_at?: string; finished_at?: string; }
 export interface Worktree { task_id?: string; path?: string; base_commit?: string; commit?: string; status?: string; cleanup?: string; wave?: number; }
 export interface Integration { wave?: number; task_ids?: string[]; ok?: boolean; commit?: string; target_fast_forward?: boolean; status?: string; cleanup?: string; failure_stage?: string; error?: string; integration_worktree?: string; base_commit?: string; }
 export interface Dispatch { wave?: number; task_ids?: string[]; started_at?: string; finished_at?: string; fallback?: string; }

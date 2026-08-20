@@ -213,6 +213,65 @@ class TestCollection(DashboardTestBase):
         self.assertEqual(value["agents"][0]["requested_engine"], "codex")
         self.assertEqual(value["worktrees"][0]["commit"], "task1")
         self.assertTrue(value["integrations"][0]["target_fast_forward"])
+
+    def test_structured_projection_exposes_bounded_model_observability_without_inference(self):
+        task = self.task()
+        self.write_json(os.path.join(task, "orchestration.json"), {
+            "schema_version": 1,
+            "orchestrate": {"agent_budget": 2},
+            "tasks": [
+                {
+                    "id": "T1", "owner": "reviewer", "status": "complete",
+                    "model_tier": "design", "requested_model": "design-current",
+                    "effective_model": "design-current", "model_source": "tier_override",
+                    "agent": {"id": "a1"},
+                },
+                {
+                    "id": "T2", "owner": "explorer", "status": "running",
+                    "agent": {
+                        "id": "a2", "model_tier": "explore", "requested_model": "",
+                        "effective_model": "", "model_source": "cli_default_unreported",
+                    },
+                },
+                {
+                    "id": "T3", "owner": "implementer", "status": "pending",
+                    "model_tier": "x" * 300, "requested_model": "y" * 600,
+                    "effective_model": "z" * 600, "model_source": "s" * 300,
+                    "agent": {"id": "a3"},
+                },
+            ],
+        })
+
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+
+        self.assertEqual(value["tasks"][0]["model_tier"], "design")
+        self.assertEqual(value["tasks"][0]["requested_model"], "design-current")
+        self.assertEqual(value["agents"][0]["effective_model"], "design-current")
+        self.assertEqual(value["agents"][0]["model_source"], "tier_override")
+        self.assertEqual(value["agents"][1]["model_tier"], "explore")
+        self.assertEqual(value["agents"][1]["effective_model"], "")
+        self.assertEqual(value["agents"][1]["model_source"], "cli_default_unreported")
+        self.assertLessEqual(len(value["tasks"][2]["model_tier"]), 100)
+        self.assertLessEqual(len(value["tasks"][2]["requested_model"]), 200)
+        self.assertLessEqual(len(value["tasks"][2]["effective_model"]), 200)
+        self.assertLessEqual(len(value["tasks"][2]["model_source"]), 100)
+
+    def test_legacy_projection_keeps_model_fields_empty_and_does_not_infer_from_engine(self):
+        task = self.task()
+        self.write_json(os.path.join(task, "orchestration.json"), {
+            "schema_version": 1,
+            "orchestrate": {},
+            "tasks": [{
+                "id": "T1", "owner": "reviewer", "status": "running",
+                "effective_engine": "codex", "agent": {"id": "a1"},
+            }],
+        })
+
+        value = dashboard.collect_task(self.tmp, "sample", details=True)
+
+        for field in ("model_tier", "requested_model", "effective_model", "model_source"):
+            self.assertEqual(value["tasks"][0][field], "")
+            self.assertEqual(value["agents"][0][field], "")
     def test_orchestration_projection_exposes_tasks_agents_and_dependencies(self):
         task = self.task()
         self.write_json(os.path.join(task, "orchestration.json"), {

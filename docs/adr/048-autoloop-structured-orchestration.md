@@ -19,6 +19,7 @@
 10. `team-log.jsonl`은 append-only event audit, `orchestration.json`은 현재 graph projection, `run-status.json`은 현재 loop phase, `state.json`은 재기동 gate라는 네 역할을 분리한다.
 11. dashboard는 task·agent·dependency·dispatch·fallback·integration·worktree·evidence를 읽기 전용으로 표시한다. 제어 endpoint는 계속 금지한다.
 12. completion reviewer는 code/test만 아니라 orchestration artifact와 event record도 감사한다. green suite만으로 scheduler 계약을 PASS하지 않는다.
+13. task owner는 루트 §9의 단일 역할표로 `design`·`implement`·`explore` 중 하나에 매핑한다. 기동 세션이 현재 CLI 라인업에서 티어별 모델을 골라 전달하고 driver는 구체 모델명을 내장하지 않는다. task·agent·dispatch event에는 tier·요청 모델·실행 모델·출처를 기록하며, CLI 기본값을 쓴 경우 모델명을 추정하지 않고 `cli_default_unreported`로 남긴다. dashboard는 이 값을 역할→티어→모델→엔진 순서로 표시한다.
 
 ## 결과
 
@@ -27,6 +28,7 @@
 - concurrent writer 충돌이 shared working tree 오염 대신 fan-in 경계의 명시적 `blocked`로 바뀐다.
 - Codex는 대상 task worktree 밖 쓰기 범위를 얻지 않으면서도 필수 오케스트레이션 계약을 받고 native writer로 완주한다.
 - 사용자는 dashboard에서 어떤 agent가 어느 task를 어느 worktree에서 수행 중인지 확인한다.
+- 사용자는 각 agent가 어떤 역할·티어·기록된 모델·엔진으로 실행됐는지 확인하고, 미보고 CLI 기본값을 실제 모델명으로 오해하지 않는다.
 
 ## 영향
 

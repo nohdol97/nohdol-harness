@@ -86,6 +86,15 @@ CRITERION_LINE = re.compile(r"^\s*-\s*\[[ xX]\]\s*\**(C[0-9A-Za-z_.-]+)\b", re.M
 ORCHESTRATE_CONTRACT_VERSION = "autoloop-orchestrate-v1"
 ORCHESTRATION_FILE = "orchestration.json"
 TEAM_LOG_FILE = "team-log.jsonl"
+ROLE_TIERS = {
+    "architect": "design",
+    "troubleshooter": "design",
+    "reviewer": "design",
+    "integrator": "design",
+    "implementer": "implement",
+    "infra-specialist": "implement",
+    "explorer": "explore",
+}
 ORCHESTRATE_CONTRACT = """[BOUNDED ORCHESTRATE CONTRACT: autoloop-orchestrate-v1]
 This contract is injected because a task worktree can be a separate Git project root and therefore
 cannot be assumed to auto-load the harness root AGENTS.md. Apply it on every engine and role:
@@ -140,8 +149,10 @@ class Config:
     implement_engine: str = ""   # 구현 반복 엔진 오버라이드(claude|codex)
     verify_engine: str = ""      # 검증 세션 엔진 오버라이드(claude|codex)
     model: str = ""              # 균일 오버라이드(역할별 미지정 시 폴백)
+    design_model: str = ""       # 설계·검증·최종판단 티어(§9)
     implement_model: str = ""    # 구현 반복 = implement 티어(§9). 기동 세션이 라인업에서 해석해 전달
-    verify_model: str = ""       # 검증 세션 = design 티어(§9, reviewer 역할)
+    explore_model: str = ""      # 탐색·수집 티어(§9)
+    verify_model: str = ""       # 이전 CLI 호환 별칭. design_model 미지정 때만 사용
     claude_timeout: int = 3600   # 반복 1회 상한(초)
     allow_extra: list = dataclasses.field(default_factory=list)  # 사용자 명시 확장 그랜트(R3)
     max_agents: int = 3          # one wave's hard concurrency cap; planner budget may be lower
@@ -285,8 +296,13 @@ def validate_orchestration(plan, criterion_ids, final=False, resume=False):
             errors.append("task %s has an empty deliverable" % task_id)
         if not isinstance(task.get("depends_on"), list):
             errors.append("task %s depends_on must be a list" % task_id)
-        if not str(task.get("owner", "")).strip():
+        owner = str(task.get("owner", "")).strip()
+        if not owner:
             errors.append("task %s has no owner" % task_id)
+        elif owner not in ROLE_TIERS:
+            errors.append("task %s has unknown owner %s" % (task_id, owner))
+        elif task.get("model_tier") not in (None, "", ROLE_TIERS[owner]):
+            errors.append("task %s model_tier does not match owner %s" % (task_id, owner))
         if task.get("mode") not in allowed_mode:
             errors.append("task %s has invalid mode" % task_id)
         if task.get("mutability") not in allowed_mutability:
@@ -444,6 +460,7 @@ def parse_orchestration_block(text, criterion_ids):
     selected.setdefault("worktrees", [])
     selected.setdefault("wave_reservations", [])
     for task in selected["tasks"]:
+        _normalize_task_model_record(task)
         task["status"] = "pending"
         task["observed_evidence"] = ""
         task["blocker"] = ""
@@ -465,7 +482,29 @@ def load_orchestration(cfg, criterion_ids):
     errors = validate_orchestration(plan, criterion_ids, resume=True)
     if errors:
         return None, "orchestration state is invalid: %s" % "; ".join(errors)
+    for task in plan["tasks"]:
+        _normalize_task_model_record(task)
     return plan, ""
+
+
+def tier_for_owner(owner):
+    """Return the one §9 tier for a roster role; unknown owners are not dispatchable."""
+    return ROLE_TIERS.get(str(owner or "").strip(), "")
+
+
+def _normalize_task_model_record(task):
+    """Upgrade legacy task/agent records without inventing an actual CLI model name."""
+    tier = tier_for_owner(task.get("owner"))
+    task["model_tier"] = tier
+    task.setdefault("requested_model", "")
+    task.setdefault("effective_model", "")
+    task.setdefault("model_source", "cli_default_unreported")
+    agent = task.get("agent")
+    if isinstance(agent, dict):
+        agent.setdefault("model_tier", tier)
+        agent.setdefault("requested_model", task["requested_model"])
+        agent.setdefault("effective_model", task["effective_model"])
+        agent.setdefault("model_source", task["model_source"])
 
 
 def save_orchestration(cfg, plan):
@@ -872,11 +911,35 @@ def build_verify_prompt(cfg, test_result=None):
     )
 
 
-def resolve_model(cfg, readonly=False):
-    """역할→티어→모델 해석(§9). 검증(readonly)=design 티어, 구현=implement 티어.
+def resolve_model(cfg, readonly=False, tier=""):
+    """역할→티어→모델 해석(§9). readonly는 이전 호출부의 design 호환 기본값이다.
     드라이버는 모델명을 박지 않는다 — 기동 세션이 현재 CLI 라인업에서 골라 넘긴 값을 쓴다.
     역할별 미지정 시 균일 --model, 그것도 없으면 미지정(세션 기본 상속)."""
-    return (cfg.verify_model if readonly else cfg.implement_model) or cfg.model
+    resolved_tier = tier or ("design" if readonly else "implement")
+    if resolved_tier == "design":
+        return cfg.design_model or cfg.verify_model or cfg.model
+    if resolved_tier == "implement":
+        return cfg.implement_model or cfg.model
+    if resolved_tier == "explore":
+        return cfg.explore_model or cfg.model
+    raise ValueError("unknown model tier: %s" % resolved_tier)
+
+
+def describe_model(cfg, tier):
+    """Return the persisted request/effective record without guessing a CLI default."""
+    model = resolve_model(cfg, tier=tier)
+    if tier == "design":
+        tier_model = cfg.design_model or cfg.verify_model
+    elif tier == "implement":
+        tier_model = cfg.implement_model
+    elif tier == "explore":
+        tier_model = cfg.explore_model
+    else:
+        raise ValueError("unknown model tier: %s" % tier)
+    source = ("tier_override" if tier_model else
+              "uniform_override" if cfg.model else "cli_default_unreported")
+    return {"model_tier": tier, "requested_model": model, "effective_model": model,
+            "model_source": source}
 
 
 def resolve_engine(cfg, readonly=False):
@@ -899,14 +962,14 @@ def resolve_cli_engine(value, environ=None):
     return detect_launch_engine(environ) if value == "auto" else value
 
 
-def build_claude_args(cfg, prompt, readonly=False):
+def build_claude_args(cfg, prompt, readonly=False, tier=""):
     """Claude 헤드리스 인자(R14). bypassPermissions·--dangerously-skip-permissions 금지(§3)."""
     # --setting-sources project: 설치처 사용자 설정을 상속하지 않는다(위 목록 주석의 ①②).
     # user 를 빼면 게이트가 아래 목록 그대로 서고, project 를 남겨야 항상-온이 로드된다(§12).
     args = ["-p", inject_orchestrate_contract(prompt), "--output-format", "json",
             "--permission-mode", "acceptEdits",
             "--setting-sources", "project"]
-    model = resolve_model(cfg, readonly=readonly)
+    model = resolve_model(cfg, readonly=readonly, tier=tier)
     if model:
         args += ["--model", model]
     # 검증 세션(readonly)에는 사용자 확장 그랜트도 주지 않는다 — 판정자는 최소 권한.
@@ -915,7 +978,7 @@ def build_claude_args(cfg, prompt, readonly=False):
     return args
 
 
-def build_codex_args(cfg, prompt, readonly, out_file):
+def build_codex_args(cfg, prompt, readonly, out_file, tier=""):
     """Build a Codex invocation bounded to read-only review or an isolated writer worktree."""
     sandbox = "read-only" if readonly else "workspace-write"
     args = ["exec", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config",
@@ -923,7 +986,7 @@ def build_codex_args(cfg, prompt, readonly, out_file):
             "-c", 'approval_policy="never"',
             "-c", 'shell_environment_policy.inherit="core"',
             "--sandbox", sandbox, "-C", cfg.project, "-o", out_file]
-    model = resolve_model(cfg, readonly=readonly)
+    model = resolve_model(cfg, readonly=readonly, tier=tier)
     if model:
         args += ["-m", model]
     args.append(inject_orchestrate_contract(prompt))  # 프롬프트는 positional(마지막)
@@ -1318,15 +1381,16 @@ class Driver:
             self._log("WARN run-status write failed: %s" % e)
 
     # -- 외부 프로세스 경계 -------------------------------------------------
-    def _run_session(self, prompt, readonly=False, out_name=""):
+    def _run_session(self, prompt, readonly=False, out_name="", tier=""):
         """역할 엔진으로 헤드리스 세션 1회 실행(R13). 반환: (ok, text, cost)."""
         if resolve_engine(self.cfg, readonly=readonly) == "codex":
-            return self._run_codex(prompt, readonly, out_name=out_name)
-        return self._run_claude(prompt, readonly)
+            return self._run_codex(prompt, readonly, out_name=out_name, tier=tier)
+        return self._run_claude(prompt, readonly, tier=tier)
 
-    def _run_claude(self, prompt, readonly=False):
+    def _run_claude(self, prompt, readonly=False, tier=""):
         """claude 1회 실행 — stdout json에서 결과·비용 취득. 반환: (ok, text, cost)."""
-        cmd = list(self.cfg.claude_cmd) + build_claude_args(self.cfg, prompt, readonly=readonly)
+        cmd = list(self.cfg.claude_cmd) + build_claude_args(
+            self.cfg, prompt, readonly=readonly, tier=tier)
         try:
             proc = subprocess.run(cmd, cwd=self.cfg.cwd, capture_output=True, text=True,
                                   timeout=self.cfg.claude_timeout)
@@ -1341,7 +1405,7 @@ class Driver:
         cost = data.get("total_cost_usd") or 0.0
         return True, str(data.get("result", "")), float(cost)
 
-    def _run_codex(self, prompt, readonly=False, out_name=""):
+    def _run_codex(self, prompt, readonly=False, out_name="", tier=""):
         """codex exec 1회 실행 — -o 파일에서 최종 메시지 취득(USD 비용 미제공 → 0)."""
         suffix = re.sub(r"[^A-Za-z0-9_.-]", "-", out_name) if out_name else "last-msg"
         out_file = os.path.join(self.workdir, ".codex-%s.txt" % suffix)
@@ -1349,7 +1413,8 @@ class Driver:
             os.remove(out_file)
         except OSError:
             pass
-        cmd = list(self.cfg.codex_cmd) + build_codex_args(self.cfg, prompt, readonly, out_file)
+        cmd = list(self.cfg.codex_cmd) + build_codex_args(
+            self.cfg, prompt, readonly, out_file, tier=tier)
         try:
             proc = subprocess.run(cmd, cwd=self.cfg.cwd, capture_output=True, text=True,
                                   timeout=self.cfg.claude_timeout)
@@ -1590,7 +1655,8 @@ def build_planner_prompt(cfg, criterion_ids):
         "\"criteria\":%s,\"orchestrate\":{\"verdict\":\"direct|single|generate-verify|team\","
         "\"reason\":\"...\",\"agent_budget\":2},\"tasks\":[{\"id\":\"T1\","
         "\"criterion_ids\":[\"C1\"],\"deliverable\":\"...\",\"depends_on\":[],"
-        "\"owner\":\"implementer\",\"mode\":\"worker\",\"mutability\":\"read|write\","
+        "\"owner\":\"architect|troubleshooter|reviewer|integrator|implementer|"
+        "infra-specialist|explorer\",\"mode\":\"worker\",\"mutability\":\"read|write\","
         "\"expected_evidence\":\"...\",\"observed_evidence\":\"\","
         "\"status\":\"pending\"}],\"dispatches\":[],\"integrations\":[]}\n```"
         % (cfg.spec, cfg.project, ", ".join(criterion_ids), ORCHESTRATE_CONTRACT_VERSION,
@@ -1656,7 +1722,8 @@ class OrchestratedDriver(Driver):
         runner = Driver(task_cfg)
         ok, text, cost = runner._run_session(
             prompt, readonly=task.get("mutability") == "read",
-            out_name="wave-%d-%s" % (wave, task["id"]))
+            out_name="wave-%d-%s" % (wave, task["id"]),
+            tier=tier_for_owner(task.get("owner")))
         if not ok:
             return {"ok": False, "status": "failed", "evidence": text[:500], "cost": cost}
         status = parse_status_block(text)
@@ -1683,7 +1750,7 @@ class OrchestratedDriver(Driver):
         self._publish_status(state, "verifying")
         ok, text, cost = self._run_session(
             build_orchestration_verify_prompt(self.cfg, self.plan, last_test),
-            readonly=True, out_name="final-review")
+            readonly=True, out_name="final-review", tier="design")
         state["total_cost_usd"] += cost
         verdict = parse_verdict_block(text) if ok else {
             "verdict": "BLOCK", "reason": "verify session failed: %s" % text[:200]}
@@ -1780,7 +1847,8 @@ class OrchestratedDriver(Driver):
 
         if self.plan is None:
             ok, text, cost = self._run_session(
-                build_planner_prompt(cfg, self.criteria), readonly=True, out_name="planner")
+                build_planner_prompt(cfg, self.criteria), readonly=True, out_name="planner",
+                tier="design")
             state["total_cost_usd"] += cost
             if not ok:
                 self._append_note("orchestration", "planner session failed: %s" % text[:500])
@@ -1914,13 +1982,17 @@ class OrchestratedDriver(Driver):
                 task["requested_engine"] = requested_engine
                 task["effective_engine"] = requested_engine
                 task["engine_fallback"] = ""
+                model_record = describe_model(cfg, tier_for_owner(task.get("owner")))
+                task.update(model_record)
                 task["agent"] = {"id": "wave-%d-%s" % (wave, task["id"]),
                                  "status": "running", "started_at": now,
-                                 "finished_at": "", "worktree": target}
+                                 "finished_at": "", "worktree": target,
+                                 **model_record}
                 append_team_event(cfg, "task_dispatch", wave=wave, task_id=task["id"],
                                   agent=task["agent"]["id"], worktree=target,
                                   criterion_ids=task.get("criterion_ids", []),
-                                  depends_on=task.get("depends_on", []), started_at=now)
+                                  depends_on=task.get("depends_on", []), started_at=now,
+                                  **model_record)
             save_orchestration(cfg, self.plan)
             self._publish_status(state, "dispatching")
 
@@ -2118,10 +2190,14 @@ def main(argv=None):
     parser.add_argument("--max-cost-usd", type=float, default=0.0)
     parser.add_argument("--work-name", default="")
     parser.add_argument("--model", default="", help="균일 모델 오버라이드(역할별 미지정 시 폴백)")
+    parser.add_argument("--design-model", default="",
+                        help="설계·검증·최종판단 모델 = design 티어(§9). 경량 모델 금지")
     parser.add_argument("--implement-model", default="",
                         help="구현 반복 모델 = implement 티어(§9). 기동 세션이 라인업에서 해석해 전달")
+    parser.add_argument("--explore-model", default="",
+                        help="탐색·수집 모델 = explore 티어(§9). 기동 세션이 라인업에서 해석해 전달")
     parser.add_argument("--verify-model", default="",
-                        help="검증 세션 모델 = design 티어(§9, reviewer). 경량 모델 금지")
+                        help="이전 호환 별칭: --design-model 미지정 때 design 티어에 사용")
     parser.add_argument("--allow-extra", action="append", default=[],
                         help="추가 허용 도구 패턴(반복 가능) — 사용자 명시 그랜트(R3, Claude 전용)")
     parser.add_argument("--engine", default="auto", choices=["auto", "claude", "codex"],
@@ -2145,7 +2221,8 @@ def main(argv=None):
                  test_cmd=args.test_cmd, max_iterations=args.max_iterations,
                  stall_limit=args.stall_limit, max_cost_usd=args.max_cost_usd,
                  work_name=args.work_name, cwd=os.getcwd(), model=args.model,
-                 implement_model=args.implement_model, verify_model=args.verify_model,
+                 design_model=args.design_model, implement_model=args.implement_model,
+                 explore_model=args.explore_model, verify_model=args.verify_model,
                  engine=engine, implement_engine=args.implement_engine,
                  verify_engine=args.verify_engine, allow_extra=args.allow_extra,
                  max_agents=args.max_agents)

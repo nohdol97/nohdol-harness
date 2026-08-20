@@ -37,6 +37,7 @@
 - **R10 (dashboard projection)**: API summary는 task·agent 상태 집계를, detail은 task graph·agents·dispatch/fallback·integration·worktree cleanup 이력을 반환한다. 화면은 task ID, criterion IDs, dependency, owner/agent, status, blocker, 시작·종료 시각, worktree label, evidence pointer를 `textContent`로 표시한다.
 - **R11 (resume)**: 같은 work-name 재기동은 기존 `orchestration.json`을 검증해 completed task와 dispatch 이력을 이어받는다. complete task에 evidence·dispatch·agent·writer integration이 빠지면 의존 task를 풀지 않는다. 새 wave ID는 worktree 생성보다 먼저 원자 예약하고, reservation·dispatch·integration·worktree에 저장된 최댓값 다음으로 단조 증가한다. 중단된 writer worktree는 cleanup 이력에 보존한 채 새 attempt path를 쓴다. integration commit은 target fast-forward 전에 저장하며, 재기동은 이 commit·base와 clean target HEAD를 대조해 이미 승격된 task를 complete로 복구하고, 미승격 attempt는 보존한 채 새 wave로 넘기며, 분기한 target은 fail-closed한다. 손상·schema 불일치는 zero-state로 낮추지 않고 기동을 거부한다.
 - **R12 (표준 라이브러리·안전)**: 구현은 Python 3 표준 라이브러리만 사용한다. child worktree 자동 삭제, force, deploy, push, DB migration을 실행하지 않는다.
+- **R13 (agent tier 모델 기록)**: driver는 표준 roster의 owner→tier 매핑을 단일 상수로 유지하고 planner/final reviewer=`design`, task agent=`owner의 tier`로 실행한다. 기동 세션이 현재 CLI 라인업에서 선택해 전달한 `design`·`implement`·`explore` 모델명을 각 task와 agent record의 `model_tier`·`requested_model`·`effective_model`·`model_source`에 저장하고 `task_dispatch` event에도 싣는다. 명시 모델이 없으면 실제 CLI 기본 모델명을 추정하지 않고 빈 `effective_model`과 `cli_default_unreported` source를 기록한다. 손상되거나 알려지지 않은 owner/tier는 임의 모델로 낮추지 않고 orchestration 검증에서 거부한다.
 
 ## 인터페이스 / 설계 개요
 
@@ -94,6 +95,7 @@ flowchart LR
 - [x] **C8 (R9)**: 테스트가 green이어도 reviewer prompt와 판정 입력에 DAG coverage, dispatch overlap, worktree mapping, fan-in, evidence pointer가 없으면 PASS가 거부된다.
 - [x] **C9 (R10)**: dashboard detail API와 화면 데이터에 task ID·criterion·dependency·owner/agent·status·blocker·timestamps·worktree·evidence와 dispatch/fallback·integration/cleanup 이력이 포함되고, 동적 문자열은 `innerHTML` 없이 표시된다.
 - [x] **C10 (전체 회귀)**: `driver_test.py`, `dashboard_test.py`, diagram checker, integrity check가 모두 통과한다.
+- [x] **C11 (R13)**: planner·final reviewer는 design 모델, architect/troubleshooter/reviewer/integrator task는 design 모델, implementer/infra-specialist는 implement 모델, explorer는 explore 모델 인자로 실행된다. 각 task·agent·dispatch event에는 tier와 전달한 실제 모델명이 보존된다. tier별 값이 없고 균일 모델만 있으면 그 값으로, 둘 다 없으면 `cli_default_unreported`로 기록되며 모델명을 추정하지 않는다. unknown owner/tier는 mutation 전에 거부된다.
 
 ## 미해결 질문
 
@@ -103,6 +105,7 @@ flowchart LR
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-08-20 | R13·C11에 agent tier별 모델 라우팅과 관측 계약 추가 | driver·dashboard projection·React UI·tests·autoloop skill | agent마다 §9 tier에 맞는 모델을 사용하고 사용자가 대시보드에서 실제 전달 모델을 확인하게 해 달라는 요청 |
 | 2026-08-20 | R7·C6을 launcher CLI 자동 상속과 격리된 Codex writer 계약으로 개정 | autoloop driver·tests·skill·ADR 025·048 | Codex에서 시작한 무인 작업이 Claude로 전환되지 않고 같은 CLI로 완주하되, network 차단·일회성 worktree·fan-in 전 파괴 diff 차단으로 안전 경계를 유지하라는 사용자 요구 |
 | 2026-08-19 | 최초 확정 | autoloop orchestration runtime | 독립 통합 검토의 must-fix 5건을 하나의 실행 계약으로 고정 |
 | 2026-08-19 | 구현·회귀 검증 완료 | autoloop driver·dashboard·test·skill·연관 문서 | runtime gate, DAG scheduler, 병렬 dispatch, writer 격리·검증 commit 승격·중단 경계 복구, engine fallback, task/agent 관측을 구현하고 driver 132건·dashboard 20건·diagram 2블록·integrity 55건을 통과 |

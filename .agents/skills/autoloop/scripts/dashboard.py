@@ -455,6 +455,11 @@ def orchestration_projection(task_path, diagnostics, details=False):
     def bounded_text(value, limit=1000):
         return str(value or "")[:limit]
 
+    def model_field(item, agent, name, limit):
+        """Project recorded model metadata without deriving it from role or engine."""
+        value = item.get(name) if name in item else agent.get(name)
+        return bounded_text(value, limit)
+
     dispatch_wave = {}
     for dispatch in raw_dispatches:
         if isinstance(dispatch, dict):
@@ -483,6 +488,10 @@ def orchestration_projection(task_path, diagnostics, details=False):
             "requested_engine": str(item.get("requested_engine") or ""),
             "effective_engine": str(item.get("effective_engine") or ""),
             "engine_fallback": bounded_text(item.get("engine_fallback")),
+            "model_tier": model_field(item, agent, "model_tier", 100),
+            "requested_model": model_field(item, agent, "requested_model", 200),
+            "effective_model": model_field(item, agent, "effective_model", 200),
+            "model_source": model_field(item, agent, "model_source", 100),
             "started_at": str(agent.get("started_at") or ""),
             "finished_at": str(agent.get("finished_at") or ""),
             "observed_evidence": string_list(item.get("observed_evidence", [])),
@@ -505,6 +514,14 @@ def orchestration_projection(task_path, diagnostics, details=False):
                 "requested_engine": task["requested_engine"],
                 "effective_engine": task["effective_engine"],
                 "engine_fallback": task["engine_fallback"],
+                "model_tier": bounded_text(
+                    agent.get("model_tier") if "model_tier" in agent else task["model_tier"], 100),
+                "requested_model": bounded_text(
+                    agent.get("requested_model") if "requested_model" in agent else task["requested_model"], 200),
+                "effective_model": bounded_text(
+                    agent.get("effective_model") if "effective_model" in agent else task["effective_model"], 200),
+                "model_source": bounded_text(
+                    agent.get("model_source") if "model_source" in agent else task["model_source"], 100),
             })
     dag = dag_projection(tasks)
     result = {
