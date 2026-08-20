@@ -13,7 +13,7 @@
 4. writer 수와 wave 크기에 관계없이 모든 writer마다 detached child worktree를 만든다. 한 writer가 대상 checkout이나 다른 writer의 index·working tree·build artifact를 공유하지 않는다.
 5. writer patch는 별도 integration worktree에서 먼저 합성하고 그곳에서 commit hook까지 통과시킨다. 대상 worktree는 사전 clean·HEAD 일치 확인 뒤 그 검증된 commit으로만 fast-forward한다. 합성·hook·승격 실패는 대상 index와 working tree를 건드리지 않고 `blocked`다.
 6. child·integration worktree는 무인 삭제하지 않는다. fan-in과 cleanup 상태를 artifact에 남기고 대화형 verified cleanup에 넘긴다.
-7. Codex의 `-C`는 대상 task worktree에 유지한다. 루트 하네스 자동 로드 대신 versioned bounded orchestrate contract를 prompt에 주입하고, user config를 무시하며 workspace-write network를 false로 고정한다. 다만 workspace-write가 로컬 파괴 명령을 기계적으로 막지 못하므로 Codex는 planner·read-only task·reviewer에만 쓰고, Codex로 지정된 writer는 Claude의 denylist 경계로 fallback한다.
+7. 엔진을 생략하면 launcher 환경을 감지해 Codex→Codex, Claude→Claude로 유지하고 명시 override를 우선한다. Codex의 `-C`는 대상 task worktree에 유지한다. 루트 하네스 자동 로드 대신 versioned bounded orchestrate contract를 prompt에 주입하고, user config를 무시하며 network를 false, approval을 noninteractive, 환경 상속을 core로 고정한다. read 역할은 `read-only`, writer는 detached task worktree 안의 `workspace-write`를 사용한다. writer patch의 삭제·rename·파일 타입 변경·symlink·submodule은 fan-in 전에 거부하며, 정상 편집·추가는 기존 integration gate로만 승격한다.
 8. Claude에도 같은 bounded contract를 주입한다. 엔진별 자동 로딩 차이는 추가 규칙의 존재가 아니라 동일 계약을 얻는 경로 차이로만 남긴다.
 9. 각 agent 결과는 같은 wave의 다른 agent를 기다리지 않고 완료 즉시 `orchestration.json`과 `team-log.jsonl`에 저장한다. wave ID는 worktree 생성 전에 예약하고 모든 attempt artifact의 최댓값 다음으로 단조 증가한다. integration commit도 target fast-forward 전에 저장하며, 재기동은 commit·base·clean target HEAD를 대조해 이미 승격된 task를 복구하고 중단된 worktree는 cleanup audit에 보존한다.
 10. `team-log.jsonl`은 append-only event audit, `orchestration.json`은 현재 graph projection, `run-status.json`은 현재 loop phase, `state.json`은 재기동 gate라는 네 역할을 분리한다.
@@ -25,7 +25,7 @@
 - autoloop이 `orchestrate`를 사용했다는 사실이 verdict·budget·event로 관찰된다.
 - 독립 task의 병렬 실행과 dependent task의 지연이 graph 상태로 재현된다.
 - concurrent writer 충돌이 shared working tree 오염 대신 fan-in 경계의 명시적 `blocked`로 바뀐다.
-- Codex는 대상 worktree 밖 쓰기 범위를 얻지 않으면서도 필수 오케스트레이션 계약을 받는다.
+- Codex는 대상 task worktree 밖 쓰기 범위를 얻지 않으면서도 필수 오케스트레이션 계약을 받고 native writer로 완주한다.
 - 사용자는 dashboard에서 어떤 agent가 어느 task를 어느 worktree에서 수행 중인지 확인한다.
 
 ## 영향

@@ -31,7 +31,7 @@
 - **R4 (ready-set scheduling)**: dependency가 모두 `complete`인 `pending` task만 ready다. 같은 wave의 독립 task는 agent budget 범위에서 동시에 dispatch한다. budget·비-Git writer·기타 격리 불가 때문에 직렬화하면 구조화된 fallback reason을 남긴다. dependency가 남은 task는 dispatch하지 않는다.
 - **R5 (writer worktree isolation)**: writer 수와 무관하게 모든 mutating task를 대상 HEAD에서 만든 task별 detached child worktree에 bind한다. task ID·agent ID·path·base commit을 기록한다. mapping이 없거나 같은 path가 두 writer에 배정되면 dispatch를 거부한다.
 - **R6 (fan-in)**: 각 writer 결과는 base commit 대비 binary patch로 수집한다. 별도 integration worktree에서 task ID 순으로 patch를 적용해 충돌을 검사하고 combined result를 그 worktree에서 먼저 commit한다. commit hook까지 성공한 뒤 대상 worktree가 여전히 clean이고 base HEAD인 경우에만 검증된 commit으로 fast-forward한다. 충돌·빈 writer patch·hook·승격 실패는 `blocked`이며 대상 HEAD·index·working tree에 부분 fan-in을 남기지 않는다.
-- **R7 (engine symmetry)**: Claude와 Codex의 planner·worker·reviewer prompt에는 versioned bounded orchestrate contract를 주입한다. Codex read-only 세션은 `-C <task worktree>`, `--sandbox read-only`, `--ignore-user-config`, `sandbox_workspace_write.network_access=false`를 사용하며 루트 하네스 자동 로드나 `--add-dir`에 기대지 않는다. Codex mutating 인자 생성 자체를 거부하고 writer 요청은 Claude denylist 경계로 fallback한다.
+- **R7 (engine symmetry + launcher inheritance)**: Claude와 Codex의 planner·worker·reviewer prompt에는 versioned bounded orchestrate contract를 주입한다. `--engine`을 생략하면 driver는 launcher 환경을 감지해 Codex 세션에서는 Codex, Claude 세션에서는 Claude를 선택하며, 명시한 `--engine`·역할별 override가 우선한다. 판별 표지가 없으면 기존 호환성을 위해 Claude를 택한다. Codex read-only 세션은 `-C <task worktree>`, `--sandbox read-only`, writer는 격리된 task worktree를 `-C`로 고정한 `--sandbox workspace-write`를 사용한다. 둘 다 `--ignore-user-config`, `approval_policy="never"`, core 환경변수만 상속, `sandbox_workspace_write.network_access=false`를 고정하고 루트 하네스 자동 로드·`--add-dir`·bypass에 기대지 않는다. Codex writer patch는 fan-in 전에 삭제·rename·파일 타입 변경·symlink·submodule을 기계적으로 거부한다. 정상 파일 편집·추가는 R6의 integration worktree와 commit hook을 통과해야만 대상 worktree로 승격된다.
 - **R8 (event audit)**: driver는 `team-log.jsonl`에 `team_create`, `task_dispatch`, `task_complete|task_failed`, `integration_complete`, `shutdown_request`, `team_delete`를 발생 즉시 append한다. 같은 wave의 느린 agent를 기다리지 않고 future 완료 순서대로 task state·event를 원자 저장한다. task event에는 criterion IDs, agent ID, dependency, worktree, started/finished time, evidence pointer를 포함한다.
 - **R9 (completion review)**: 테스트 green 뒤 read-only reviewer는 spec criteria뿐 아니라 orchestration verdict·coverage·DAG validity·ready-set dispatch record·writer isolation·fan-in·evidence를 감사한다. 구조화 기록이 하나라도 빠지면 PASS할 수 없다.
 - **R10 (dashboard projection)**: API summary는 task·agent 상태 집계를, detail은 task graph·agents·dispatch/fallback·integration·worktree cleanup 이력을 반환한다. 화면은 task ID, criterion IDs, dependency, owner/agent, status, blocker, 시작·종료 시각, worktree label, evidence pointer를 `textContent`로 표시한다.
@@ -53,7 +53,7 @@ flowchart LR
   BUDGET -->|"예"| DISPATCH["같은 wave 병렬 dispatch"]
   SPLIT --> DISPATCH
   DISPATCH --> WRITERS["writer별 detached worktree"]
-  WRITERS --> FANIN{"integration worktree commit·hook 성공?"}
+  WRITERS --> FANIN{"파괴 diff 없음 + integration commit·hook 성공?"}
   FANIN -->|"아니오"| BLOCK
   FANIN -->|"예"| PROMOTE{"clean target을 fast-forward?"}
   PROMOTE -->|"아니오"| BLOCK
@@ -89,7 +89,7 @@ flowchart LR
 - [x] **C3 (R4)**: 독립 task A·B가 같은 wave에서 실행 interval이 겹치고, A·B에 의존하는 C는 둘이 complete된 다음 wave에서만 dispatch된다.
 - [x] **C4 (R5)**: 동시 writer A·B는 서로 다른 worktree path와 agent ID를 받으며, 같은 sentinel 경로를 각자 다르게 바꿔도 상대 writer의 working tree에서는 보이지 않는다.
 - [x] **C5 (R6)**: non-overlap patch 두 개는 deterministic order로 integration worktree에서 한 wave commit이 된 뒤 clean target을 fast-forward한다. collision patch 또는 target을 수정·stage하고 실패하는 commit hook은 target HEAD·index·working tree를 바꾸지 않고 `blocked`가 된다.
-- [x] **C6 (R7)**: Codex 인자에는 target `-C`, ignored user config, network false, 역할별 sandbox가 있고 `--add-dir`·bypass variant가 없다. read-only 역할은 Codex로 실행할 수 있지만 Codex로 요청된 writer는 기계적 destructive-command gate가 있는 Claude로 fallback한다.
+- [x] **C6 (R7)**: launcher 표지가 Codex면 생략된 `--engine`이 Codex로, Claude 표지 또는 표지 없음이면 Claude로 해석되고 명시 override가 우선한다. Codex 인자에는 target `-C`, ignored user config, network false, `approval_policy="never"`, core 환경 상속, 역할별 sandbox가 있고 `--add-dir`·bypass variant가 없다. Codex writer는 Claude fallback 없이 task worktree에서 실행되며 정상 편집·추가는 fan-in할 수 있지만 삭제·rename·파일 타입 변경·symlink·submodule patch는 대상 HEAD를 바꾸기 전에 `blocked`가 된다.
 - [x] **C7 (R8·R11)**: 같은 wave의 A가 끝나고 B가 대기 중일 때 A의 complete event와 evidence가 즉시 남는다. 첫 writer worktree만 저장되고 dispatch 전에 중단되어도 재기동은 더 큰 wave/path로 실행한다. target fast-forward 뒤 task-complete 저장 전에 중단되어도 commit·HEAD를 대조해 이미 승격된 writer를 재실행하지 않는다. 유효한 completed task도 다시 dispatch하지 않으며, 허위 complete·손상 artifact는 기동을 거부한다.
 - [x] **C8 (R9)**: 테스트가 green이어도 reviewer prompt와 판정 입력에 DAG coverage, dispatch overlap, worktree mapping, fan-in, evidence pointer가 없으면 PASS가 거부된다.
 - [x] **C9 (R10)**: dashboard detail API와 화면 데이터에 task ID·criterion·dependency·owner/agent·status·blocker·timestamps·worktree·evidence와 dispatch/fallback·integration/cleanup 이력이 포함되고, 동적 문자열은 `innerHTML` 없이 표시된다.
@@ -103,5 +103,6 @@ flowchart LR
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-08-20 | R7·C6을 launcher CLI 자동 상속과 격리된 Codex writer 계약으로 개정 | autoloop driver·tests·skill·ADR 025·048 | Codex에서 시작한 무인 작업이 Claude로 전환되지 않고 같은 CLI로 완주하되, network 차단·일회성 worktree·fan-in 전 파괴 diff 차단으로 안전 경계를 유지하라는 사용자 요구 |
 | 2026-08-19 | 최초 확정 | autoloop orchestration runtime | 독립 통합 검토의 must-fix 5건을 하나의 실행 계약으로 고정 |
 | 2026-08-19 | 구현·회귀 검증 완료 | autoloop driver·dashboard·test·skill·연관 문서 | runtime gate, DAG scheduler, 병렬 dispatch, writer 격리·검증 commit 승격·중단 경계 복구, engine fallback, task/agent 관측을 구현하고 driver 132건·dashboard 20건·diagram 2블록·integrity 55건을 통과 |

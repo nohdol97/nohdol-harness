@@ -9,7 +9,7 @@
 - **역할**: 하나의 확정된 스펙을 대상으로 Claude 또는 Codex 세션을 반복 실행한다.
 - **사용**: “밤새 돌려줘”, “무인 실행”, “자율 루프”처럼 한 세션을 넘는 무인 작업에 쓴다.
 - **시작 조건**: 하위 프로젝트는 전용 worktree와 실행 가능한 테스트 명령이 있어야 한다. `사내` 설치처에서는 하위 프로젝트 루프를 시작하지 않는다.
-- **작업 분해·실행**: read-only planner의 `orchestrate` 판정과 완료 기준 전체를 덮는 task DAG가 먼저 유효해야 한다. 독립 ready task는 같은 wave에서 병렬 실행하고, 모든 writer는 별도 child worktree에서 작업한다. patch는 integration worktree에서 commit hook까지 통과한 뒤 clean target에만 fast-forward한다. wave를 worktree보다 먼저 예약하고 integration commit과 target HEAD를 재개 시 대조해 중단 경계의 재실행을 막는다. Codex writer 요청은 로컬 파괴 명령을 막는 기계적 경계가 없어 Claude writer로 전환하고 그 사유를 기록한다.
+- **작업 분해·실행**: read-only planner의 `orchestrate` 판정과 완료 기준 전체를 덮는 task DAG가 먼저 유효해야 한다. 독립 ready task는 같은 wave에서 병렬 실행하고, 모든 writer는 별도 child worktree에서 작업한다. patch는 integration worktree에서 commit hook까지 통과한 뒤 clean target에만 fast-forward한다. wave를 worktree보다 먼저 예약하고 integration commit과 target HEAD를 재개 시 대조해 중단 경계의 재실행을 막는다. 엔진을 생략하면 Codex에서 시작한 루프는 Codex로, Claude에서 시작한 루프는 Claude로 수행한다. Codex writer는 격리된 workspace-write worktree만 사용하고 삭제·rename·파일 타입 변경·symlink·submodule 결과는 fan-in 전에 차단한다.
 - **대시보드**: autoloop 시작 시 `http://127.0.0.1:8765`의 읽기 전용 화면을 자동으로 시작하거나 재사용한다. task·dependency·agent뿐 아니라 dispatch/fallback·integration·worktree cleanup·evidence를 추적하며, 수동 복구는 `python3 .agents/skills/autoloop/scripts/dashboard.py --root _workspace/autoloop --port 8765`로 한다.
 - **경계**: 예약 작업, 같은 세션 반복, 수동 이월, 배포 작업에는 쓰지 않는다. `status`는 누적 비용·반복·중단 사유를 보고하고, `stop`은 반복 경계에서 멈춘다.
 

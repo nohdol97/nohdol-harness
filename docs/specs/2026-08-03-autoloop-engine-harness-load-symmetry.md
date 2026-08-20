@@ -3,7 +3,7 @@
 - 날짜: 2026-08-03 / 상태: 구현됨(ADR 048·구조화 오케스트레이션 스펙으로 해결)
 - 관련: `docs/specs/2026-07-19-autoloop-driver.md`(선행 스펙), `.agents/skills/autoloop/scripts/driver.py`, 루트 AGENTS.md §12·§3
 
-> **해결됨(2026-08-19)**: 현재 Codex는 task worktree를 `-C` 경계로 유지하고, 루트 자동 로드를 전제로 삼지 않은 versioned bounded orchestrate contract를 모든 역할 prompt에 주입한다. `--ignore-user-config`와 network false override도 driver가 고정한다. Codex workspace-write는 로컬 파괴 명령 확인을 강제하지 못하므로 writer에서 제외하고 Claude로 fallback한다. 아래 목표·요구사항·미해결 질문은 2026-08-03의 문제 기록이며 현재 구현·회귀 기준은 `2026-08-19-autoloop-orchestration-runtime.md` R7·C2·C6과 ADR 048이다.
+> **해결됨(2026-08-19; 2026-08-20 개정)**: 현재 Codex는 task worktree를 `-C` 경계로 유지하고, 루트 자동 로드를 전제로 삼지 않은 versioned bounded orchestrate contract를 모든 역할 prompt에 주입한다. `--ignore-user-config`, network false, noninteractive approval, core 환경 상속도 driver가 고정한다. Codex writer는 격리된 `workspace-write` worktree에서 native로 실행하며 파괴·경계 변경 diff는 fan-in 전에 차단한다. 아래 목표·요구사항·미해결 질문은 2026-08-03의 문제 기록이며 현재 구현·회귀 기준은 `2026-08-19-autoloop-orchestration-runtime.md` R7·C2·C6과 ADR 048이다.
 
 ## 배경
 

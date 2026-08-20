@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """autoloop driver — 자율 멀티세션 루프 (스펙: docs/specs/2026-07-19-autoloop-driver.md).
 
-세션 바깥에서 `claude -p`(headless)를 반복 기동한다. 새 프로세스 = 새 컨텍스트이므로
+세션 바깥에서 launcher-native `claude -p` 또는 `codex exec`를 반복 기동한다. 새 프로세스 = 새 컨텍스트이므로
 /clear 없이 컨텍스트가 매 반복 리셋되고, 반복 간 상태는 carryover 노트로 넘긴다.
 
 게이트 3종이 이 스크립트의 존재 이유다:
@@ -532,15 +532,49 @@ def prepare_writer_worktrees(cfg, tasks, wave, on_created=None):
 
 
 def _patch_from_worktree(path, base):
+    safe, safety_error = _validate_writer_diff(path, base)
+    if not safe:
+        return "", safety_error
     add = _git_command(path, ["add", "-N", "--", "."])
     if isinstance(add, tuple) or add.returncode != 0:
         detail = add[1] if isinstance(add, tuple) else add.stderr
         return "", "cannot index new files for patch capture: %s" % detail[-500:]
+    safe, safety_error = _validate_writer_diff(path, base)
+    if not safe:
+        return "", safety_error
     diff = _git_command(path, ["diff", "--binary", base, "--", "."])
     if isinstance(diff, tuple) or diff.returncode != 0:
         detail = diff[1] if isinstance(diff, tuple) else diff.stderr
         return "", "cannot capture writer patch: %s" % detail[-500:]
     return diff.stdout, ""
+
+
+def _validate_writer_diff(path, base):
+    """Reject destructive or boundary-changing writer output before it reaches fan-in."""
+    for cached in (False, True):
+        command = ["diff"] + (["--cached"] if cached else []) + ["--raw", "-M", base, "--", "."]
+        raw = _git_command(path, command)
+        if isinstance(raw, tuple) or raw.returncode != 0:
+            detail = raw[1] if isinstance(raw, tuple) else raw.stderr
+            return False, "cannot inspect writer diff safety: %s" % detail[-500:]
+        for line in raw.stdout.splitlines():
+            match = re.match(
+                r"^:(\d{6}) (\d{6}) [0-9a-f]+ [0-9a-f]+ ([A-Z][0-9]*)\t(.*)$", line)
+            if not match:
+                return False, "cannot parse writer diff safety record: %s" % line[:300]
+            old_mode, new_mode, status, paths = match.groups()
+            kind = status[:1]
+            if kind == "D":
+                return False, "destructive writer diff blocked: deletion %s" % paths
+            if kind == "R":
+                return False, "destructive writer diff blocked: rename %s" % paths
+            if kind == "T":
+                return False, "destructive writer diff blocked: file type change %s" % paths
+            if "160000" in (old_mode, new_mode):
+                return False, "destructive writer diff blocked: submodule %s" % paths
+            if "120000" in (old_mode, new_mode):
+                return False, "destructive writer diff blocked: symlink %s" % paths
+    return True, ""
 
 
 def _git_apply(path, patch_text, *args):
@@ -850,6 +884,21 @@ def resolve_engine(cfg, readonly=False):
     return (cfg.verify_engine if readonly else cfg.implement_engine) or cfg.engine
 
 
+def detect_launch_engine(environ=None):
+    """Choose the native launcher engine; unknown shells retain the Claude compatibility default."""
+    env = os.environ if environ is None else environ
+    if env.get("CODEX_THREAD_ID") or env.get("CODEX_CI"):
+        return "codex"
+    if env.get("CLAUDECODE") or env.get("CLAUDE_CODE_ENTRYPOINT"):
+        return "claude"
+    return "claude"
+
+
+def resolve_cli_engine(value, environ=None):
+    """Honor an explicit CLI engine before consulting launcher markers."""
+    return detect_launch_engine(environ) if value == "auto" else value
+
+
 def build_claude_args(cfg, prompt, readonly=False):
     """Claude 헤드리스 인자(R14). bypassPermissions·--dangerously-skip-permissions 금지(§3)."""
     # --setting-sources project: 설치처 사용자 설정을 상속하지 않는다(위 목록 주석의 ①②).
@@ -867,12 +916,12 @@ def build_claude_args(cfg, prompt, readonly=False):
 
 
 def build_codex_args(cfg, prompt, readonly, out_file):
-    """Build a bounded read-only Codex invocation; writers require Claude's denylist gate."""
-    if not readonly:
-        raise ValueError("Codex autoloop sessions are read-only; mutating tasks use Claude")
-    sandbox = "read-only"
+    """Build a Codex invocation bounded to read-only review or an isolated writer worktree."""
+    sandbox = "read-only" if readonly else "workspace-write"
     args = ["exec", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config",
             "-c", "sandbox_workspace_write.network_access=false",
+            "-c", 'approval_policy="never"',
+            "-c", 'shell_environment_policy.inherit="core"',
             "--sandbox", sandbox, "-C", cfg.project, "-o", out_file]
     model = resolve_model(cfg, readonly=readonly)
     if model:
@@ -1601,12 +1650,9 @@ class OrchestratedDriver(Driver):
                      and item["id"] in task.get("depends_on", [])}
         prompt = build_task_prompt(self.cfg, task, completed, target_path)
         requested_engine = resolve_engine(self.cfg, readonly=task.get("mutability") == "read")
-        implement_engine = self.cfg.implement_engine
-        if task.get("mutability") == "write" and requested_engine == "codex":
-            implement_engine = "claude"
         task_cfg = dataclasses.replace(
             self.cfg, project=target_path, cwd=target_path, workspace=self.workdir,
-            implement_engine=implement_engine)
+            implement_engine=self.cfg.implement_engine)
         runner = Driver(task_cfg)
         ok, text, cost = runner._run_session(
             prompt, readonly=task.get("mutability") == "read",
@@ -1866,12 +1912,8 @@ class OrchestratedDriver(Driver):
                 requested_engine = resolve_engine(
                     cfg, readonly=task.get("mutability") == "read")
                 task["requested_engine"] = requested_engine
-                task["effective_engine"] = (
-                    "claude" if task.get("mutability") == "write"
-                    and requested_engine == "codex" else requested_engine)
-                task["engine_fallback"] = (
-                    "Codex writers are disabled because workspace-write cannot enforce destructive-command confirmation"
-                    if task["effective_engine"] != requested_engine else "")
+                task["effective_engine"] = requested_engine
+                task["engine_fallback"] = ""
                 task["agent"] = {"id": "wave-%d-%s" % (wave, task["id"]),
                                  "status": "running", "started_at": now,
                                  "finished_at": "", "worktree": target}
@@ -2082,8 +2124,8 @@ def main(argv=None):
                         help="검증 세션 모델 = design 티어(§9, reviewer). 경량 모델 금지")
     parser.add_argument("--allow-extra", action="append", default=[],
                         help="추가 허용 도구 패턴(반복 가능) — 사용자 명시 그랜트(R3, Claude 전용)")
-    parser.add_argument("--engine", default="claude", choices=["claude", "codex"],
-                        help="균일 기본 엔진(R13)")
+    parser.add_argument("--engine", default="auto", choices=["auto", "claude", "codex"],
+                        help="균일 기본 엔진(R13, 기본 auto=기동 CLI 상속)")
     parser.add_argument("--implement-engine", default="", choices=["", "claude", "codex"],
                         help="구현 반복 엔진 오버라이드(R13)")
     parser.add_argument("--verify-engine", default="", choices=["", "claude", "codex"],
@@ -2098,12 +2140,13 @@ def main(argv=None):
     if args.max_agents < 1:
         parser.error("--max-agents must be at least 1")
 
+    engine = resolve_cli_engine(args.engine)
     cfg = Config(spec=os.path.abspath(args.spec), project=os.path.abspath(args.project),
                  test_cmd=args.test_cmd, max_iterations=args.max_iterations,
                  stall_limit=args.stall_limit, max_cost_usd=args.max_cost_usd,
                  work_name=args.work_name, cwd=os.getcwd(), model=args.model,
                  implement_model=args.implement_model, verify_model=args.verify_model,
-                 engine=args.engine, implement_engine=args.implement_engine,
+                 engine=engine, implement_engine=args.implement_engine,
                  verify_engine=args.verify_engine, allow_extra=args.allow_extra,
                  max_agents=args.max_agents)
     ok, reason = startup_guard(cfg)

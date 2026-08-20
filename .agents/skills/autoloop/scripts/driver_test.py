@@ -448,6 +448,71 @@ class TestWriterWorktreeIsolation(DriverTestBase):
         self.assertTrue(os.path.exists(os.path.join(self.repo, "a.txt")))
         self.assertTrue(os.path.exists(os.path.join(self.repo, "b.txt")))
 
+    def _one_writer(self, wave):
+        cfg = self.make_config(project=self.repo)
+        task = TestStructuredOrchestration.task("A", ["C1"])
+        assignments, error = driver.prepare_writer_worktrees(cfg, [task], wave=wave)
+        self.assertEqual(error, "")
+        return cfg, task, assignments
+
+    def test_writer_deletion_is_blocked_before_parent_fan_in(self):
+        cfg, task, assignments = self._one_writer(20)
+        os.remove(os.path.join(assignments["A"]["path"], "base.txt"))
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=20)
+        self.assertFalse(result["ok"])
+        self.assertIn("destructive writer diff", result["error"])
+        self.assertTrue(os.path.exists(os.path.join(self.repo, "base.txt")))
+
+    def test_writer_rename_is_blocked_before_parent_fan_in(self):
+        cfg, task, assignments = self._one_writer(21)
+        subprocess.run(["git", "-C", assignments["A"]["path"], "mv",
+                        "base.txt", "renamed.txt"], check=True)
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=21)
+        self.assertFalse(result["ok"])
+        self.assertIn("rename", result["error"])
+        self.assertTrue(os.path.exists(os.path.join(self.repo, "base.txt")))
+
+    def test_writer_symlink_is_blocked_before_parent_fan_in(self):
+        cfg, task, assignments = self._one_writer(22)
+        os.symlink("base.txt", os.path.join(assignments["A"]["path"], "link.txt"))
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=22)
+        self.assertFalse(result["ok"])
+        self.assertIn("symlink", result["error"])
+        self.assertFalse(os.path.lexists(os.path.join(self.repo, "link.txt")))
+
+    def test_writer_file_type_change_is_blocked_before_parent_fan_in(self):
+        cfg, task, assignments = self._one_writer(24)
+        writer_file = os.path.join(assignments["A"]["path"], "base.txt")
+        os.remove(writer_file)
+        os.symlink("replacement.txt", writer_file)
+        before_head = subprocess.run(
+            ["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True,
+            text=True, check=True).stdout.strip()
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=24)
+        self.assertFalse(result["ok"])
+        self.assertIn("file type change", result["error"])
+        after_head = subprocess.run(
+            ["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True,
+            text=True, check=True).stdout.strip()
+        self.assertEqual(after_head, before_head)
+        self.assertEqual(subprocess.run(
+            ["git", "-C", self.repo, "status", "--porcelain"], capture_output=True,
+            text=True, check=True).stdout, "")
+        self.assertFalse(os.path.islink(os.path.join(self.repo, "base.txt")))
+        with open(os.path.join(self.repo, "base.txt")) as f:
+            self.assertEqual(f.read(), "base\n")
+
+    def test_writer_submodule_entry_is_blocked_before_parent_fan_in(self):
+        cfg, task, assignments = self._one_writer(23)
+        head = subprocess.run(["git", "-C", self.repo, "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+        subprocess.run(["git", "-C", assignments["A"]["path"], "update-index",
+                        "--add", "--cacheinfo", "160000,%s,nested" % head], check=True)
+        result = driver.integrate_writer_worktrees(cfg, [task], assignments, wave=23)
+        self.assertFalse(result["ok"])
+        self.assertIn("submodule", result["error"])
+        self.assertFalse(os.path.lexists(os.path.join(self.repo, "nested")))
+
     def test_fan_in_conflict_leaves_parent_checkout_unchanged(self):
         cfg = self.make_config(project=self.repo)
         tasks = [
@@ -783,7 +848,7 @@ class TestOrchestratedDriver(DriverTestBase):
             "starting", "planning", "dispatching", "integrating", "testing",
             "verifying", "finished"])
 
-    def test_codex_writer_falls_back_to_mechanically_gated_claude(self):
+    def test_codex_writer_keeps_the_requested_native_engine(self):
         cfg = self.make_config(engine="codex")
         loop = driver.OrchestratedDriver(cfg)
         task = TestStructuredOrchestration.task("A", ["C1"])
@@ -796,7 +861,7 @@ class TestOrchestratedDriver(DriverTestBase):
             result = loop._execute_task(task, target, wave=1)
         self.assertTrue(result["ok"])
         child_driver = session.call_args.args[0]
-        self.assertEqual(driver.resolve_engine(child_driver.cfg, readonly=False), "claude")
+        self.assertEqual(driver.resolve_engine(child_driver.cfg, readonly=False), "codex")
 
     def test_resume_skips_completed_tasks_and_reviews_persisted_evidence(self):
         task = TestStructuredOrchestration.task("A", ["C1"], mutability="read")
@@ -1136,12 +1201,26 @@ class TestC16EngineRouting(DriverTestBase):
         self.assertEqual(driver.resolve_engine(cfg), "codex")
         self.assertEqual(driver.resolve_engine(cfg, readonly=True), "codex")
 
+    def test_launcher_environment_selects_native_engine(self):
+        self.assertEqual(driver.detect_launch_engine({"CODEX_THREAD_ID": "thread"}), "codex")
+        self.assertEqual(driver.detect_launch_engine({"CODEX_CI": "1"}), "codex")
+        self.assertEqual(driver.detect_launch_engine({"CLAUDECODE": "1"}), "claude")
+        self.assertEqual(driver.detect_launch_engine({"CLAUDE_CODE_ENTRYPOINT": "cli"}), "claude")
+        self.assertEqual(driver.detect_launch_engine({}), "claude")
+        self.assertEqual(driver.resolve_cli_engine("claude", {"CODEX_THREAD_ID": "thread"}),
+                         "claude")
+        self.assertEqual(driver.resolve_cli_engine("codex", {"CLAUDECODE": "1"}), "codex")
+
 
 class TestC17CodexSafety(DriverTestBase):
-    def test_codex_mutating_session_is_rejected_at_argument_boundary(self):
+    def test_codex_writer_is_workspace_write_with_fixed_noninteractive_boundary(self):
         cfg = self.make_config(project="/proj")
-        with self.assertRaisesRegex(ValueError, "read-only"):
-            driver.build_codex_args(cfg, "PROMPT", False, "/wd/.codex-out.txt")
+        args = driver.build_codex_args(cfg, "PROMPT", False, "/wd/.codex-out.txt")
+        self.assertEqual(args[args.index("--sandbox") + 1], "workspace-write")
+        self.assertIn('approval_policy="never"', args)
+        self.assertIn('shell_environment_policy.inherit="core"', args)
+        self.assertIn("sandbox_workspace_write.network_access=false", args)
+        self.assertNotIn("--add-dir", args)
 
     def test_codex_verify_session_is_read_only(self):
         cfg = self.make_config()
