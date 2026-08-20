@@ -5,8 +5,11 @@
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다. 실제 claude CLI를 호출하지 않는다
 (fake claude 실행파일로 CLI 경계를 모킹 — R7⑦ 프로세스 실패까지 재현).
 """
+import ast
 import json
 import io
+import pathlib
+import re
 import os
 import shutil
 import subprocess
@@ -1353,6 +1356,61 @@ class TestC6Blocked(DriverTestBase):
         self.assertIn("need kubectl apply approval", note)
 
 
+class TestR20OperatorNotes(DriverTestBase):
+    """정지 노트는 사람이 읽는 유일한 사유다 — 한국어이고, 어느 작업이 왜 막혔는지 적는다."""
+
+    def _note_for(self, tasks, headline, only=None):
+        cfg = self.make_config()
+        loop = driver.Driver(cfg)
+        loop.plan = {"tasks": tasks}
+        return loop._stuck_tasks_note(headline, only=only)
+
+    def test_stuck_note_names_each_unfinished_task_and_its_reason(self):
+        note = self._note_for([
+            {"id": "T1", "status": "complete", "criterion_ids": ["C1"]},
+            {"id": "T2", "status": "blocked", "criterion_ids": ["C2"],
+             "blocker": "npm install requires approval"},
+            {"id": "T3", "status": "pending", "criterion_ids": ["C3"], "depends_on": ["T2"]},
+            {"id": "T4", "status": "failed", "criterion_ids": []},
+        ], "머리말:")
+        self.assertIn("머리말:", note)
+        self.assertNotIn("T1", note)                                  # 완료는 열거하지 않는다
+        self.assertIn("T2(C2) — 막힌 사유: npm install requires approval", note)
+        self.assertIn("T3(C3) — 선행 작업 T2 가 끝나지 않았습니다", note)
+        self.assertIn("T4(기준 미지정) — 상태가 `failed` 여서 발행 대상이 아닙니다", note)
+        self.assertNotIn("DAG", note)
+
+    def test_stuck_note_can_be_scoped_to_one_wave(self):
+        tasks = [{"id": "T2", "status": "blocked", "criterion_ids": ["C2"], "blocker": "x"},
+                 {"id": "T3", "status": "pending", "criterion_ids": ["C3"]}]
+        note = self._note_for(tasks, "머리말:", only={"T2"})
+        self.assertIn("T2(C2)", note)
+        self.assertNotIn("T3", note)
+
+    def test_stuck_note_survives_a_plan_with_no_unfinished_task(self):
+        self.assertEqual(self._note_for([{"id": "T1", "status": "complete"}], "머리말:"), "머리말:")
+
+    def test_operator_notes_carry_no_english_scheduler_jargon(self):
+        """`_append_note` 호출부의 리터럴만 본다 — 산문에 인용된 폐기 문구는 출처 기록이다."""
+        tree = ast.parse(pathlib.Path(driver.__file__).read_text(encoding="utf-8"))
+        labels, bodies = [], []
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "_append_note"):
+                continue
+            for position, arg in enumerate(node.args):
+                for literal in [piece for piece in ast.walk(arg)
+                                if isinstance(piece, ast.Constant) and isinstance(piece.value, str)]:
+                    (labels if position == 0 else bodies).append(literal.value)
+        # 실측 14곳(AST 열거). 새 노트 지점이 늘면 여기서 걸려 라벨 언어를 다시 보게 된다.
+        self.assertEqual(len(labels), 14)
+        for label in labels:
+            self.assertRegex(label, r"[가-힣]", "노트 라벨이 한국어가 아니다: %s" % label)
+        for body in bodies:
+            self.assertNotRegex(body, r"[A-Za-z]{4,}\s+[A-Za-z]{4,}",
+                                "노트 본문에 영어 문장이 남아 있다: %s" % body)
+
+
 class TestC7IndependentTest(DriverTestBase):
     def test_red_test_beats_done_claim(self):
         self.write_scenario([{"text": status_text("done", 0)}] * 2)
@@ -1804,7 +1862,7 @@ class TestC24TestRunnerError(DriverTestBase):
         with open(os.path.join(self.workdir, "carryover.md")) as f:
             note = f.read()
         self.assertIn("사용자 확인 필요", note)
-        self.assertIn("test-runner-error", note)
+        self.assertIn("테스트 러너 오류", note)                    # R20: 라벨도 사용자가 읽는다
         self.assertIn(BROKEN_RUNNER, note)                       # 어떤 명령이 문제인지
 
     def test_error_outcome_never_confirms_done(self):

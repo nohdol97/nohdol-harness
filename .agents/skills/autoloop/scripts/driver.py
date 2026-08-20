@@ -1390,7 +1390,8 @@ def startup_guard(cfg):
         return False, "스펙에 '완료 기준' 절이 없습니다 — 완료 판정 오라클 없이는 기동하지 않습니다(R9)"
     criterion_ids = extract_criterion_ids(cfg.spec)
     if not criterion_ids:
-        return False, "스펙 완료 기준에 C1 같은 안정적인 criterion ID가 없습니다 — 구조화 DAG를 만들 수 없습니다"
+        return False, ("스펙 완료 기준에 C1 같은 안정적인 criterion ID가 없습니다 — "
+                       "기준에 묶인 작업 계획을 만들 수 없습니다")
     if os.path.exists(os.path.join(cfg.workdir(), "STOP")):
         return False, "STOP 파일이 있습니다(%s) — 명시적으로 삭제한 뒤 재기동하세요(R10)" % os.path.join(cfg.workdir(), "STOP")
     _, state_error = load_state(cfg)
@@ -1635,7 +1636,7 @@ class Driver:
                          self._short_test(last_test), cost))
 
             if status["status"] == "blocked":           # R3·R7②
-                self._append_note("blocked", status["note"])
+                self._append_note("세션 정지", status["note"])
                 exit_reason = "blocked"
                 break
 
@@ -1650,7 +1651,7 @@ class Driver:
                 self._log("iter %d | test runner error (%d consecutive): %s"
                           % (n, test_fail, last_test["tail"][:200]))
                 if test_fail >= 2:
-                    self._append_note("test-runner-error",
+                    self._append_note("테스트 러너 오류",
                                       "테스트 러너를 실행할 수 없습니다 — 명령: %s / 사유: %s"
                                       % (cfg.test_cmd, last_test["tail"][:500]))
                     exit_reason = "error"
@@ -1738,11 +1739,40 @@ class Driver:
                       f, ensure_ascii=False)
 
     def _append_note(self, label, text):
-        """루프가 사용자에게 이월하는 결정을 노트에 남긴다(blocked·테스트 러너 고장 등)."""
+        """루프가 사용자에게 이월하는 결정을 노트에 남긴다(blocked·테스트 러너 고장 등).
+
+        이 노트는 사람이 읽는 유일한 정지 사유다(§15 사용자 읽기 → 한국어). 라벨과 본문
+        모두 한국어이며, 인용한 명령·로그·오류 원문은 그대로 보존한다."""
         stamp = datetime.datetime.now().isoformat(timespec="seconds")
         with open(self.note_path, "a", encoding="utf-8") as f:
             f.write("\n## 사용자 확인 필요 (driver — %s %s)\n- %s\n"
                     % (label, stamp, text or "(사유 미보고)"))
+
+    def _stuck_tasks_note(self, headline, only=None):
+        """정지 사유에 '어느 작업이 왜 막혔는지'를 함께 싣는다(R20).
+
+        이전 문구는 `no ready task remains while DAG is incomplete` 였다. 사용자가 답을
+        얻으려면 `orchestration.json` 을 직접 열어 작업별 status·blocker·depends_on 을
+        맞춰 봐야 했고, 그 사이 대시보드에서 폐기한 `DAG` 용어(ADR 049)가 노트에만 남아
+        쓰지 않는 개념을 계속 노출했다. 노트가 그 대조를 대신한다."""
+        tasks = self.plan.get("tasks", []) if isinstance(self.plan, dict) else []
+        done = {task.get("id") for task in tasks if task.get("status") == "complete"}
+        rows = []
+        for task in tasks:
+            if task.get("status") == "complete":
+                continue
+            if only is not None and task.get("id") not in only:
+                continue
+            waiting = [dep for dep in task.get("depends_on", []) if dep not in done]
+            if task.get("blocker"):
+                why = "막힌 사유: %s" % str(task["blocker"])[:300]
+            elif waiting:
+                why = "선행 작업 %s 가 끝나지 않았습니다" % ", ".join(waiting)
+            else:
+                why = "상태가 `%s` 여서 발행 대상이 아닙니다" % task.get("status")
+            rows.append("  - %s(%s) — %s" % (
+                task.get("id"), ", ".join(task.get("criterion_ids", [])) or "기준 미지정", why))
+        return headline + "\n" + "\n".join(rows) if rows else headline
 
 
 def build_planner_prompt(cfg, criterion_ids):
@@ -1949,7 +1979,7 @@ class OrchestratedDriver(Driver):
         self.criteria = extract_criterion_ids(cfg.spec)
         self.plan, plan_error = load_orchestration(cfg, self.criteria)
         if plan_error:
-            self._append_note("orchestration", plan_error)
+            self._append_note("작업 계획", plan_error)
             return "blocked"
 
         state["cost_measurement"] = (cost_measurement(cfg) if state["runs"] == 0 else
@@ -1973,7 +2003,8 @@ class OrchestratedDriver(Driver):
                 if not ok:
                     self._log("planner attempt %d session failed: %s" % (
                         attempt + 1, text[:500]))
-                    self._append_note("orchestration", "planner session failed: %s" % text[:500])
+                    self._append_note("작업 계획",
+                                      "작업 계획 세션이 실패했습니다 — %s" % text[:500])
                     return self._finish(state, "blocked")
                 self.plan, plan_error = parse_orchestration_block(text, self.criteria)
                 planner_attempts.append({
@@ -1989,14 +2020,16 @@ class OrchestratedDriver(Driver):
                     break
                 if cfg.max_cost_usd and state["total_cost_usd"] > cfg.max_cost_usd:
                     self._append_note(
-                        "orchestration",
-                        "planner repair skipped because cumulative cost exceeded the cap")
+                        "작업 계획",
+                        "누적 비용이 상한을 넘어 작업 계획 재시도를 건너뛰었습니다")
                     return self._finish(state, "cost")
                 if attempt == 0:
                     planner_prompt = build_planner_repair_prompt(
                         cfg, self.criteria, plan_error)
             if plan_error:
-                self._append_note("orchestration", "planner DAG rejected twice: %s" % plan_error)
+                self._append_note("작업 계획",
+                                  "작업 계획이 두 번 연속 검증을 통과하지 못했습니다 — %s"
+                                  % plan_error)
                 return self._finish(state, "blocked")
             self.plan["planner_attempts"] = planner_attempts
             save_orchestration(cfg, self.plan)
@@ -2005,7 +2038,7 @@ class OrchestratedDriver(Driver):
             self.plan.setdefault("wave_reservations", [])
             reconcile_error = self._reconcile_interrupted_integrations()
             if reconcile_error:
-                self._append_note("integration-resume", reconcile_error)
+                self._append_note("통합 재개", reconcile_error)
                 return self._finish(state, "blocked")
             for task in self.plan["tasks"]:
                 if task.get("status") == "running":
@@ -2048,7 +2081,9 @@ class OrchestratedDriver(Driver):
                     self._publish_status(state, "testing")
                     last_test = self._run_test()
                 if last_test is not None and last_test["outcome"] != "green":
-                    self._append_note("test", "all DAG tasks complete but driver test is not green")
+                    self._append_note("테스트",
+                                      "모든 작업이 완료로 기록됐지만 드라이버가 직접 돌린 "
+                                      "테스트가 green이 아닙니다 — 완료 판정을 보류했습니다")
                     exit_reason = "blocked"
                     break
                 verdict, reason = self._complete_review(state, last_test)
@@ -2058,7 +2093,7 @@ class OrchestratedDriver(Driver):
                     break
                 completed = [task for task in self.plan["tasks"] if task["status"] == "complete"]
                 if not completed:
-                    self._append_note("review", reason)
+                    self._append_note("검증", reason)
                     exit_reason = "blocked"
                     break
                 completed[-1]["status"] = "pending"
@@ -2069,7 +2104,9 @@ class OrchestratedDriver(Driver):
 
             ready = ready_tasks(self.plan)
             if not ready:
-                self._append_note("orchestration", "no ready task remains while DAG is incomplete")
+                self._append_note("작업 계획", self._stuck_tasks_note(
+                    "발행할 수 있는 작업이 없는데 끝나지 않은 작업이 남아 있습니다. "
+                    "아래 막힘을 풀어야 루프가 다음 반복으로 넘어갑니다:"))
                 exit_reason = "blocked"
                 break
             budget = self.plan["orchestrate"]["effective_agent_budget"]
@@ -2101,7 +2138,7 @@ class OrchestratedDriver(Driver):
                         if (isinstance(record, dict) and record.get("kind") == "writer"
                                 and record.get("wave") == wave and record.get("status") == "created"):
                             record["status"] = "retained_failed"
-                    self._append_note("worktree", error)
+                    self._append_note("작업 공간", error)
                     save_orchestration(cfg, self.plan)
                     exit_reason = "blocked"
                     break
@@ -2257,7 +2294,7 @@ class OrchestratedDriver(Driver):
                             started_at=task["agent"]["started_at"],
                             finished_at=finished_at, evidence=task["observed_evidence"],
                             reason=integration["error"])
-                    self._append_note("integration", integration["error"])
+                    self._append_note("통합", integration["error"])
                     save_orchestration(cfg, self.plan)
                     exit_reason = "blocked"
                     break
@@ -2278,7 +2315,9 @@ class OrchestratedDriver(Driver):
             reservation["status"] = "finished" if not wave_failed else "failed"
             save_orchestration(cfg, self.plan)
             if wave_failed:
-                self._append_note("task", "one or more task agents failed or blocked")
+                self._append_note("작업 실행", self._stuck_tasks_note(
+                    "작업 에이전트 하나 이상이 실패하거나 막혔습니다:",
+                    only={task["id"] for task in writers}))
                 exit_reason = "blocked"
                 break
 
@@ -2296,7 +2335,7 @@ class OrchestratedDriver(Driver):
             state["stall"] = 0 if completed_count else state["stall"] + 1
             save_state(cfg, state)
             if last_test is not None and last_test["outcome"] == "error":
-                self._append_note("test-runner-error", last_test["tail"][:500])
+                self._append_note("테스트 러너 오류", last_test["tail"][:500])
                 exit_reason = "error"
                 break
             if remaining == 0 and (last_test is None or last_test["outcome"] == "green"):
