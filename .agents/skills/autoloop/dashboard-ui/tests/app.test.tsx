@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
@@ -34,7 +34,7 @@ describe("simplified operator workspace", () => {
     render(<><Coordination task={{ ...task, events: [{ ts: "now", event: "task_complete", task_id: "T1" }], dispatches: [{ wave: 1, task_ids: ["T1"] }], tasks: [{ id: "T2", ready: false, blocked_reason: "dependency 대기: T1" }] }} /><TechnicalDetails task={{ ...task, total_cost_usd: 2.5, cost_measurement: "partial", integrations: [{ wave: 1, ok: false, failure_stage: "apply" }] }} /></>);
     expect(screen.getByText(/dispatch wave 1/)).toBeVisible();
     expect(screen.getByText("실행 세부 정보").parentElement).not.toHaveAttribute("open");
-    expect(screen.getByText("Coordination 세부 정보").parentElement).not.toHaveAttribute("open");
+    expect(screen.getByText("협업 세부 정보").parentElement).not.toHaveAttribute("open");
   });
   it("keeps the first detail viewport limited to operator facts", () => {
     render(<App initialTasks={[task]} />);
@@ -55,11 +55,22 @@ describe("simplified operator workspace", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(screen.getAllByText("System").length).toBeGreaterThan(0);
   });
-  it("keeps unavailable cost honest and dependency semantics explicit in technical details", () => {
-    const view = render(<TechnicalDetails task={{ ...task, cost_measurement: "unavailable", tasks: [{ id: "T2", ready: false, blocked_reason: "dependency 대기: T1" }], integrations: [{ wave: 1, ok: false, error: "conflict" }] }} />);
+  it("presents expanded execution details as labelled human-readable sections", () => {
+    const view = render(<TechnicalDetails task={{ ...task, cost_measurement: "unavailable", agents: [{ id: "agent-1", task_id: "T2", role: "implementer", status: "running", requested_engine: "codex", effective_engine: "claude", engine_fallback: "writer safety" }], tasks: [{ id: "T2", ready: false, blocked_reason: "dependency 대기: T1" }], integrations: [{ wave: 1, task_ids: ["T1", "T2"], ok: false, error: "conflict", target_fast_forward: false }], worktrees: [{ task_id: "T2", path: "/tmp/task-t2", base_commit: "abc123", commit: "def456", cleanup: "pending" }], diagnostics: ["event 일부를 읽지 못했습니다"] }} />);
     fireEvent.click(view.container.querySelector("summary")!);
-    expect(screen.getByText(/측정 안 됨 · unavailable/)).toBeVisible();
-    expect(screen.getByText(/conflict/)).toBeVisible();
+    const detail = within(view.container);
+    expect(detail.getByText("측정되지 않음")).toBeVisible();
+    expect(detail.getByRole("heading", { name: "에이전트" })).toBeVisible();
+    expect(detail.getAllByText("T2").length).toBeGreaterThan(0);
+    expect(detail.getByText("Codex 요청 → Claude 실행")).toBeVisible();
+    expect(detail.getByText("안전 규칙에 따라 실행 환경 변경: writer safety")).toBeVisible();
+    expect(detail.getByRole("heading", { name: "통합 결과" })).toBeVisible();
+    expect(detail.getByText("충돌로 통합하지 못함")).toBeVisible();
+    expect(detail.getByRole("heading", { name: "작업 공간" })).toBeVisible();
+    expect(detail.getAllByText("정리 대기").length).toBeGreaterThan(0);
+    expect(detail.getByRole("heading", { name: "확인할 문제" })).toBeVisible();
+    expect(detail.queryByText("Integrations")).not.toBeInTheDocument();
+    expect(detail.queryByText("Worktrees")).not.toBeInTheDocument();
   });
   it("uses mobile master-detail state and contains no unsafe sink wording", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => task }));

@@ -41,8 +41,8 @@
 - **R5 (최소 개요)**: 선택 작업의 phase·주의 이유·최신 test·남은 항목·freshness만 첫 상세 화면에 둔다. task 수·활성 agent·비용·엔진·commit은 기본 화면에서 제외하고 기록에 없는 완료율도 표시하지 않는다.
 - **R6 (T 핸드오프 흐름)**: 허용된 `team-log.jsonl` task event를 시간순으로 정렬해 `T1 완료 → T2 시작 → T2 완료`처럼 한눈에 읽히는 연속 strip으로 표시한다. task ID·event·상태는 기록값만 사용하고 dependency·대화·결과 전달을 추정하지 않는다. event가 없으면 빈 상태를 표시하며 DAG fallback을 만들지 않는다.
 - **R7 (단일 실행 시간축)**: 모든 agent를 하나의 공통 수평 시간 좌표계에 표시한다. 유효한 양 끝 timestamp가 모두 있으면 각 segment의 실제 시작 위치와 길이를 보존하고, 시간이 겹치는 segment는 X 위치를 밀지 않은 채 같은 축 안에서 위아래 층으로 쌓아 병렬 실행을 드러낸다. 축 높이는 최대 동시 실행 수만큼만 확장한다. timestamp가 불완전하면 wave·기록 순서의 단일 축으로 전환해 지속 시간이나 겹침을 추정하지 않는다. 기본 segment에는 task/agent ID와 상태만 두고 role·engine·fallback·endpoint는 접근 가능한 접힌 세부 정보에 둔다.
-- **R8 (압축 Coordination)**: 기본 화면은 dispatch wave 수·기록 event 수·dependency 대기 수·fallback/실패 유무와 최신 event 한 줄만 보여 준다. wave·event·dependency wait 상세는 하나의 초기 접힘 disclosure에 시간순으로 제공하며 chat·추론·direct message·기록되지 않은 결과 전달로 표현하지 않는다.
-- **R9 (접힌 실행 세부)**: integration·worktree·engine/fallback·path·base/task/integration commit·fast-forward·cleanup·실패 단계는 하나의 초기 접힘 “실행 세부 정보” 안에서 정확히 표시한다. worktree 경로는 복사만 허용하고 integration은 worktree row 유무와 독립적으로 표시한다.
+- **R8 (압축 Coordination)**: 기본 화면은 dispatch wave 수·기록 event 수·dependency 대기 수·fallback/실패 유무와 최신 event 한 줄만 보여 준다. 접힌 상세를 열면 wave·대기·event를 각각 제목·상태·시간이 있는 짧은 카드나 시간순 기록으로 제공한다. chat·추론·direct message·기록되지 않은 결과 전달로 표현하지 않는다.
+- **R9 (사람이 읽는 실행 세부)**: integration·worktree·engine/fallback·path·base/task/integration commit·fast-forward·cleanup·실패 단계는 하나의 초기 접힘 “실행 세부 정보” 안에서 정확히 표시한다. 펼친 내용은 내부 필드명과 구분점 나열 대신 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`의 의미 단위, 한국어 라벨, 상태 요약, 빈 상태로 구성한다. 원문이 필요한 경로·commit·log만 고정폭으로 보존한다. worktree 경로는 복사만 허용하고 integration은 worktree row 유무와 독립적으로 표시한다.
 - **R10 (접힌 비용 정보)**: 비용은 초기 접힘 “실행 세부 정보” 안에 누적 숫자와 `full`·`partial`·`unavailable`·`unknown` 의미만 표시한다. 반복별 비용 그래프는 제거하고 미측정 값을 `$0.00`으로 표시하지 않는다.
 - **R11 (bounded artifact 수집)**: `team-log.jsonl`과 `dashboard-meta.json`에 작업 경계·심볼릭 링크 방어를 적용한다. 제한 바이트·event 수만 읽고 손상은 해당 작업 diagnostics로 격리하며 allowlist 밖 필드는 view model로 승격하지 않는다.
 - **R12 (tracking·legacy·demo 진실성)**: 기존 `source` 의미를 보존하고 `tracking`은 `orchestration.json`, `provenance=demo`는 정확한 bounded metadata schema만 정본으로 삼는다. unstructured 실행은 aggregate 정보를 유지하고 누락된 agent·edge를 복원하지 않는다.
@@ -89,8 +89,8 @@ flowchart LR
 - [x] **C5 (R6)**: out-of-order task event fixture를 렌더링하면 timestamp 순서의 `T ID + event` chip과 chip 사이 방향 cue가 하나의 handoff strip에 있고, source 어디에도 React Flow·Dagre import나 `Task DAG` UI가 없다. event 없는 fixture는 빈 상태만 보인다.
 - [x] **C6 (R6·R15)**: T 핸드오프 strip은 시각 순서와 같은 accessible ordered text를 제공하며 기록에 없는 dependency·대화·결과 전달 문구가 없다.
 - [x] **C7 (R7)**: 겹치는 valid timestamp fixture를 렌더링하면 segment의 left·width가 실제 endpoint 비율을 유지하고, 겹친 segment는 서로 다른 layer에 있으며, 겹치지 않은 segment는 가능한 낮은 layer를 재사용한다. 모두 하나의 공통 시간축 안에 있고 축 높이는 최대 동시 실행 layer 수와 일치한다. invalid timestamp fixture는 wave·기록 순서축을 사용하며 지속 시간이나 겹침을 추정하지 않는다. role·engine·fallback·endpoint는 초기 접힘 상세에서 API와 같은 값으로 읽힌다.
-- [x] **C8 (R8)**: dispatch·dependency wait·fallback·event fixture를 렌더링하면 기본 Coordination은 count와 최신 event 한 줄뿐이고 하나의 초기 접힘 상세을 열었을 때만 wave·wait·event 순서를 읽는다. 비dependency blocker를 wait로 재해석하지 않고 chat·reasoning·direct message·미기록 결과 전달 문구가 없다.
-- [x] **C9 (R9)**: 초기 화면에 Worktrees·Integrations·engine·commit 목록이 없고 “실행 세부 정보”를 열면 정확한 path·engine/fallback·commit·fast-forward·cleanup·failure stage가 나타난다. integration은 worktree row 유무와 무관하며 path 동작은 copy뿐이다.
+- [x] **C8 (R8)**: dispatch·dependency wait·fallback·event fixture를 렌더링하면 기본 Coordination은 count와 최신 event 한 줄뿐이고 하나의 초기 접힘 상세을 열었을 때만 wave·대기·event가 구분된 제목과 시간순 기록으로 읽힌다. 비dependency blocker를 wait로 재해석하지 않고 chat·reasoning·direct message·미기록 결과 전달 문구가 없다.
+- [x] **C9 (R9)**: 초기 화면에 worktree·integration·engine·commit 목록이 없고 “실행 세부 정보”를 열면 `에이전트`·`통합 결과`·`작업 공간`·`실행 기록`·`확인할 문제`별 카드에서 정확한 path·engine/fallback·commit·fast-forward·cleanup·failure stage를 한국어 라벨과 상태 요약으로 읽는다. 빈 묶음은 빈 상태를 표시하고 내부 영문 복수형 제목이나 구분점 한 줄 나열을 사용하지 않는다. integration은 worktree row 유무와 무관하며 path 동작은 copy뿐이다.
 - [x] **C10 (R10)**: 초기 화면에 비용 그래프가 없고 “실행 세부 정보”를 열면 full·partial·unavailable·unknown 누적 비용 텍스트만 정확히 나타난다. unavailable·unknown은 `$0.00`이 아니며 percent·budget line이 없다.
 - [x] **C11 (R11)**: event·metadata가 oversized·malformed·unsupported·symlink이면 나머지 task API는 성공하고 byte·event limit, diagnostics·truncation이 남으며 allowlist 밖 필드가 노출되지 않는다.
 - [x] **C12 (R12)**: exact·missing·malformed·oversized·symlink·misleading-name fixture를 읽으면 기존 `source`가 유지되고 tracking·provenance는 명시 artifact만 따른다. unstructured 실행은 aggregate를 유지하고 node·agent를 만들지 않는다.
@@ -117,3 +117,4 @@ flowchart LR
 | 2026-08-19 | 2회 BLOCK 뒤 남은 의미 경계 고정 | C8·C9 | 일반 dependency·blocker를 현재 대기로 오인하지 않고, integration을 worktree 존재 여부에 종속시키지 않도록 재작업 범위를 명시함 |
 | 2026-08-19 | 핵심 흐름 중심으로 상세 화면 재축소 | R5~R10·R13·R15·R18, C4~C10·C13·C16·C18 | 사용자가 DAG와 과도한 기술 정보를 제거하고 T 간 핸드오프·한 줄 시간축·간결한 Coordination만 기본 노출하도록 확정함 |
 | 2026-08-19 | 병렬 구간을 보존하는 시간축으로 정정 | R7·C7 | 겹치는 실행 구간을 오른쪽으로 밀면 실제 병렬 관계가 직렬처럼 보이므로, 공통 X 좌표를 유지하고 같은 축 안에서 layer로 분리하도록 고정함 |
+| 2026-08-20 | 펼친 세부 정보를 사람 중심 구조로 재정의 | R8·R9·C8·C9 | 내부 필드와 구분점 나열은 펼친 뒤에도 해석 비용이 높으므로 의미별 카드·한국어 라벨·상태 요약·빈 상태로 읽도록 고정함 |
