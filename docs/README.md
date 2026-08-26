@@ -60,6 +60,7 @@
 | [048](adr/048-autoloop-structured-orchestration.md) | 2026-08-19 | 활성 | autoloop 구조화 task DAG·ready-set 병렬 dispatch·writer별 worktree 격리·agent/task dashboard 투영 |
 | [049](adr/049-autoloop-dashboard-operator-experience.md) | 2026-08-19 | 활성·부분 대체 | autoloop 대시보드의 최소 개요·T 핸드오프·압축 Coordination을 고정 |
 | [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | 활성 | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
+| [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -88,6 +89,7 @@
 | [2026-08-19-autoloop-dashboard](specs/2026-08-19-autoloop-dashboard.md) | 구현됨 | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047 |
 | [2026-08-19-autoloop-orchestration-runtime](specs/2026-08-19-autoloop-orchestration-runtime.md) | 구현됨 | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047·048 |
 | [2026-08-19-autoloop-dashboard-operator-ux](specs/2026-08-19-autoloop-dashboard-operator-ux.md) | 확정·구현 완료, 독립 검증 미완료 | `.agents/skills/autoloop/{dashboard-ui/,scripts/dashboard.py,scripts/dashboard_test.py}` | 047·048·049 |
+| [2026-08-26-evaluation-independence-review](specs/2026-08-26-evaluation-independence-review.md) | 구현됨 | `.agents/skills/team-review/SKILL.md`, `.agents/hooks/eval-independence-contract_test.py` | 051 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 
@@ -118,3 +120,4 @@
 | [2026-07-31-gitignored-record-confirmation](proposals/2026-07-31-gitignored-record-confirmation.md) | 보류(선정리 — 규칙 변경 없음) | 대상 컬럼이 적은 gitignore 경로(ops-log 등)의 줄이 끝내 안 쓰이는 실패 3회(신호 ②)에 대한 공통 규칙 11 조항. 1안 순서·2안 마감 검사 모두 독립 검증 BLOCK — 근본 미결은 "gitignore 기록의 due가 언제인가"이고 규칙 11 단독 범위로는 못 푼다. 후보 3안과 근거 기록 |
 | [2026-08-01-harness-semantic-search-pilot](proposals/2026-08-01-harness-semantic-search-pilot.md) | 기각(파일럿 미달) | 로컬 임베딩(ollama)으로 하네스 문서 104건·1.19MB를 의미 검색하는 안. `vault-search`의 `semantic.py`를 경로 파라미터화해 포팅하고 **사전 고정한 3축 바**로 실측 — `bge-m3`가 재현율 5/8(62.5%)·퇴행 4/4(100%)로 ①②를 통과했으나 **초기 빌드 644.47초가 300초 바의 2.15배**라 기각(사후 바 조정 없음, graphify 선례). 증분 catch-up은 3.0초로 통과. **모델 가설은 방향이 맞고 이유가 달랐다** — 코퍼스 언어 가설은 반증(`nomic`은 한국어·영어 코퍼스 양쪽 0점)이고 진짜 축은 **질의 언어**였다(`nomic` 한국어 질의 0/12 대 영어 2/3, rank-1 문서 3종·점수 폭 0.063의 순위 붕괴). 바보다 큰 제약은 **반환 단위** — `bge-m3` 히트 9건 중 실제 답 구절은 4~5건이라 235KB changelog에서는 파일 지목만으로 부족. 재검토는 ①빌드 실측 통과 ②구절 수준 반환을 함께 요구하며 질의 30건 이상으로 표본 보강. `nomic-embed-text`는 재검토 대상 아님 |
 | [2026-08-07-mattpocock-skills-review](proposals/2026-08-07-mattpocock-skills-review.md) | 부분 채택(→044) | aihero.dev/skills(25스킬, MIT) 대조 — 워크플로 척추는 orchestrate·team-review·troubleshooter·doc-writer·§13+tdd-gate가 이미 상회하거나 겹쳐 통설치 기각(ADR 022와 동일 범주, 다른 점 미발견). `grep` 실측으로 확인한 잔여 공백 4건만 이식하고, `wayfinder`(결정 티켓·fog of war)와 `CONTEXT.md` 용어집은 실사용 관찰 시 재검토로 남김 | 022·041·044 |
+| [2026-08-26-paperthin-review](proposals/2026-08-26-paperthin-review.md) | 부분 채택(→051) | Paperthin 통설치는 고정 context 17,862B·라우팅 중복·hook/config 충돌로 기각. `mandela`의 평가 독립성만 기존 `team-review` Tests 관점에 조건부 이식해 model·scorer·designer·dataset과 외부 정답을 확인하며 새 스킬·agent·호출은 만들지 않음 |
