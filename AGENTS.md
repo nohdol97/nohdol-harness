@@ -162,11 +162,11 @@ Persist cross-session work with `work-tracker`: GitHub Issue when remote exists,
 
 ## 15. Language Policy (token efficiency — ADR 016, revised by ADR 030)
 
-Criterion: **model-read → English; user-facing documents → Korean; chat → the user's language.** English saves repeated input tokens; user comprehension has priority (ADR 016·030).
+Criterion: **model-read and chat → English; user-facing documents → Korean.** English saves repeated input tokens; user comprehension has priority (ADR 016·030).
 
-**Chat**: match the language of the user's latest message unless they explicitly request another language. This applies to questions, progress updates, explanations, and summaries delivered in chat.
+**Chat**: use English regardless of the user's input language, including Korean. Questions, progress updates, explanations, and summaries delivered in chat are all in English.
 
-**Input correction**: when the user's prose contains clear grammar, spelling, word-choice, or contextual-usage errors, briefly give a corrected version in the original language before answering or acting on the request. Preserve the intended meaning and tone; do not guess unclear intent or present stylistic preferences as errors. Skip correction when none is needed or the user asks to skip it, and keep the main task moving.
+**Input correction**: before answering or acting on Korean prose, briefly suggest a natural English version, even when the Korean is correct. For English prose, briefly correct clear grammar, spelling, word-choice, or contextual-usage errors; skip correction when none is needed. Preserve the intended meaning and tone; do not guess unclear intent or present stylistic preferences as errors. Explain any changes in English. Skip this assistance if the user asks to skip it, and keep the main task moving.
 
 **English**: AGENTS/CLAUDE, agent definitions, skills/references, dispatch prompts, model-only `_workspace/` phase reports, team P2P/log events, and subagent returns to the orchestrator. A return that is itself the user-facing artifact stays Korean.
 
