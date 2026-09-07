@@ -17,11 +17,11 @@ Without it the default failure is a louder repeat: the model restates the same a
 
 2. **Go back to the artifact, not to your own words.** Re-open the diff, file, command output, or document the explanation was about, and re-derive the point from it. Re-reading your previous message reproduces the same framing that already failed; the source has details the summary dropped, and those details are usually what makes it concrete.
 
-3. **Re-pitch, in Korean (§15), by these levers:**
+3. **Re-pitch, in the chat language required by root §15, by these levers:**
    - **One idea per sentence, short sentences.** Split anything with a subordinate clause carrying a second claim.
    - **Concrete before abstract.** Lead with a specific instance — this file, this line, this input producing this output — and let the general statement follow it. The first version almost certainly did the reverse.
    - **Name the thing the same way every time.** Pick one term per concept and keep it; synonyms read as new concepts.
-   - **Gloss every term that is not plain Korean or a literal identifier** the first time it appears, in the sentence itself.
+   - **Gloss every term that is not plain language in the chosen chat language or a literal identifier** the first time it appears, in the sentence itself.
    - **Say what it is *not*** when a near neighbour is the likely confusion (`fetch` vs reading the remote-tracking ref, a gate vs a report line). Contrast fixes more misreads than definition.
    - **Keep code, commands, paths, and error text verbatim** — those are the anchor, and rewording them breaks the link to what the user will actually run or read.
 

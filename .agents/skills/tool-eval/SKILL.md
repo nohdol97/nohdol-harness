@@ -45,7 +45,7 @@ Regardless of outcome, write a `docs/proposals/YYYY-MM-DD-<tool>-<review|adoptio
 
 ### 6. Korean views + completion
 
-Update `.agents/skills/README.ko.md` and any affected `AGENTS.ko.md` in the same commit (ADR 030), then report to the user in Korean and append an `[개선]` line to `_workspace/harness-ops-log.md`.
+Update `.agents/skills/README.ko.md` and any affected `AGENTS.ko.md` in the same commit (ADR 030), then report to the user in the chat language required by root §15 and append an `[개선]` line to `_workspace/harness-ops-log.md`.
 
 ## with / without
 

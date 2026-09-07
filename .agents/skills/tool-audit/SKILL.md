@@ -28,7 +28,7 @@ External tools (plugins, MCP servers, skill packs, frameworks) are installed onc
 
 ## Deliverables
 
-- If findings are numerous, write to `_workspace/tool-audit-<tool>/report.md` (English — root §15, two-tier progressive disclosure) and deliver the user report digested into Korean. A short audit is fine as a chat report (forcing a report file is noise).
+- If findings are numerous, write to `_workspace/tool-audit-<tool>/report.md` (English — root §15, two-tier progressive disclosure) and summarize the findings naturally in the chat language required by root §15. A short audit is fine as a chat report (forcing a report file is noise).
 
 ## with / without
 

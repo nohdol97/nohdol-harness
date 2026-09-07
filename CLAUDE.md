@@ -6,7 +6,7 @@
 
 ## Always-on anchors
 
-- **Output language (§15)**: every user-facing chat, question, summary, report, PR body, and document is in **Korean**. Model-only dispatches, P2P, and interim `_workspace/` reports are English. Digest English agent results into Korean; never expose them verbatim to the user.
+- **Output language (§15)**: chat, including questions and summaries, matches the user's latest message unless they explicitly request another language. User-facing documents remain Korean; model-only dispatches, P2P, and interim `_workspace/` reports remain English. Summarize agent results naturally in the destination's language.
 
 - **Routing (§7)**:
   - implementation, fixes, refactors, continuations, parallel/cross-project work → `orchestrate`

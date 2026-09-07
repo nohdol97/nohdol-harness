@@ -162,13 +162,15 @@ Persist cross-session work with `work-tracker`: GitHub Issue when remote exists,
 
 ## 15. Language Policy (token efficiency — ADR 016, revised by ADR 030)
 
-Criterion: **model-read → English; user-read → Korean.** English saves repeated input tokens; user comprehension has priority (ADR 016·030).
+Criterion: **model-read → English; user-facing documents → Korean; chat → the user's language.** English saves repeated input tokens; user comprehension has priority (ADR 016·030).
+
+**Chat**: match the language of the user's latest message unless they explicitly request another language. This applies to questions, progress updates, explanations, and summaries delivered in chat.
 
 **English**: AGENTS/CLAUDE, agent definitions, skills/references, dispatch prompts, model-only `_workspace/` phase reports, team P2P/log events, and subagent returns to the orchestrator. A return that is itself the user-facing artifact stays Korean.
 
-**Korean**: user chat/questions, PR/commit/issue/comment, ADR/spec/changelog/root README, integrator finals, runbooks/plans, harness-review proposals, ops/update logs, and Korean trigger keywords. Regenerate `AGENTS.ko.md` and agent/skill `README.ko.md` whenever their English sources change; integrity-check guards drift.
+**Korean**: PR/commit/issue/comment, ADR/spec/changelog/root README, integrator final documents, runbooks/plans, harness-review proposals, ops/update logs, and Korean trigger keywords. Regenerate `AGENTS.ko.md` and agent/skill `README.ko.md` whenever their English sources change; integrity-check guards drift.
 
-**Guards**: digest English artifacts into natural Korean rather than literal translation; keep code/command/log/error quotes original; ambiguous-readership artifacts default Korean.
+**Guards**: summarize artifacts naturally in the language required for the destination; keep code/command/log/error quotes original; ambiguous-readership documents default Korean.
 
 ## 16. Code Minimalism — Product Code (ponytail port, ADR 017)
 

@@ -238,7 +238,7 @@ Refresh it to what study `AGENTS.md` §2-§3 specify, size included.
    `index-policy.md` documents what `garden.py` measures and how to read the
    number it prints; take the interpretation from there.
 
-Report to the user in Korean (§15): the note path, the index line and log row
+Report to the user in the chat language required by root §15: the note path, the index line and log row
 added, the verification status assigned and why, and anything left unverified.
 
 ## Quality gates
