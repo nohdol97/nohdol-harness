@@ -166,6 +166,8 @@ Criterion: **model-read → English; user-facing documents → Korean; chat → 
 
 **Chat**: match the language of the user's latest message unless they explicitly request another language. This applies to questions, progress updates, explanations, and summaries delivered in chat.
 
+**Input correction**: when the user's prose contains clear grammar, spelling, word-choice, or contextual-usage errors, briefly give a corrected version in the original language before answering or acting on the request. Preserve the intended meaning and tone; do not guess unclear intent or present stylistic preferences as errors. Skip correction when none is needed or the user asks to skip it, and keep the main task moving.
+
 **English**: AGENTS/CLAUDE, agent definitions, skills/references, dispatch prompts, model-only `_workspace/` phase reports, team P2P/log events, and subagent returns to the orchestrator. A return that is itself the user-facing artifact stays Korean.
 
 **Korean**: PR/commit/issue/comment, ADR/spec/changelog/root README, integrator final documents, runbooks/plans, harness-review proposals, ops/update logs, and Korean trigger keywords. Regenerate `AGENTS.ko.md` and agent/skill `README.ko.md` whenever their English sources change; integrity-check guards drift.

@@ -8,6 +8,8 @@
 
 - **Output language (§15)**: chat, including questions and summaries, matches the user's latest message unless they explicitly request another language. User-facing documents remain Korean; model-only dispatches, P2P, and interim `_workspace/` reports remain English. Summarize agent results naturally in the destination's language.
 
+- **Input correction (§15)**: briefly correct clear language errors in the user's prose before responding, preserving their meaning and original language. Skip when unnecessary or declined; continue the main task.
+
 - **Routing (§7)**:
   - implementation, fixes, refactors, continuations, parallel/cross-project work → `orchestrate`
   - QA/test-and-fix → `orchestrate` (`troubleshooter`→`implementer`); design → `architect` after that gate
