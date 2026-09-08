@@ -11,35 +11,7 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
 
 **Scope**: independent subproject repositories only. **The root harness repository is an exception** — it is document-centric and keeps direct commits to main (root AGENTS.md section 5).
 
-## Install-site fork — `사내` branches inside the single checkout
-
-Where REGISTRY.md's 「설치처 프로필」 records `사내`, **the worktree procedures in this skill do not run.** Reported from that site: commit, push, and PR from a worktree fail there while the same operations succeed in the primary checkout. Work happens on a branch inside `project/<name>/` — the method this skill used before ADR 035. Everything else in this skill is unchanged: the branch naming, the finish order, and the merge measurement are the same. **One thing this branch gains**: the checkout keeps its dependency directory, so the bootstrap step in the start procedure never runs here.
-
-**ADR 035 adopted worktrees to close two failures. Both come back here, as procedure instead of structure** — say that plainly rather than presenting this branch as equivalent:
-
-1. **Uncommitted changes stop the start.** `git -C project/<name> status --porcelain`; report anything present and let the user decide. `worktree add` never touched that checkout, but `checkout` moves the working tree — so this is a §3 data-loss confirmation the worktree path did not need.
-2. **Branch from a freshly fetched `origin/main`**, never from whatever is currently checked out. The stale starting point is precisely what a worktree made structural, and here it is a step someone can skip:
-   ```bash
-   git -C project/<name> fetch origin
-   git -C project/<name> checkout -b <type>/<description> --no-track origin/main
-   ```
-   The start procedure's three variants map over unchanged in meaning: **resuming an existing branch** is `checkout <branch>` with no `-b` (creating it again fails, and `-b` is what a session reaching for the line above will type); **no remote** branches off local `main`; **`origin/main` unfetchable** stops and reports, for the same reason as there.
-3. **On resume, read the branch before working** — `git -C project/<name> symbolic-ref --short HEAD`. A shared checkout can be sitting on `main`, which is the silent failure ADR 035 recorded; a worktree holds exactly one branch and could not. That re-check was deleted when worktrees arrived (ADR 035) and is restored here.
-4. **The session still stays at the harness root.** Every command names the checkout with `-C`, exactly as the worktree procedures do — nothing about cwd changes.
-
-**Finish runs unchanged** (verify → rebase → push → PR), with `-C project/<name>` in place of the worktree path.
-
-**Cleanup loses its data-loss guard, so the check becomes explicit.** Measure the merge exactly as the cleanup section prescribes — that part does not change. Then, **before switching away**:
-
-```bash
-git -C project/<name> status --porcelain   # anything here stops the cleanup
-git -C project/<name> checkout main
-git -C project/<name> branch -d <branch>
-```
-
-Measured (git 2.39.5, isolated repository): `git checkout main` with an unrelated file dirty **succeeds and carries that file across**, where `git worktree remove` exits 128 and refuses. **The refusal was the check** (cleanup section, condition 2) — without this explicit status read, cleanup silently relocates unsaved work onto `main`. A squash-merged branch still reads unmerged to `branch -d` and is refused; leave it and report it, exactly as the cleanup section already says. Never `-D`.
-
-> **This fork is about the feature-branch worktrees only.** `orchestrate`'s `isolation: worktree` and agent-rules ⑨'s bisect isolation neither commit nor push, so the reported failure does not reach them and they stay as they are.
+**Install-site scope**: personal and corporate profiles use the same worktree procedures below (ADR 052).
 
 ## Start procedure (first step of every subproject task)
 

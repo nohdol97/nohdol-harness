@@ -44,7 +44,7 @@
 | [032](adr/032-token-efficient-orchestration.md) | 2026-07-25 | 활성 | 토큰 효율형 오케스트레이션 (호출 예산·델타 재사용·세션 경계·상시 노출 예산) |
 | [033](adr/033-knowledge-source-routing.md) | 2026-07-26 | 활성 | 지식 소스를 설계 단계 라우팅에 편입 (§7 8항, REGISTRY 기록 시에만 발동·임의 경로·요약은 증거 아님·fail-open) |
 | [034](adr/034-vault-write-delegation.md) | 2026-07-28 | 활성 | vault 쓰기 경로 신설(`vault-write`)과 노트 계약 정본의 참조 위임 — 사본 없이 `nohdol-study` references를 런타임 참조, 부재 시 정지, index/log/hot 기록 필수 |
-| [035](adr/035-subproject-worktree-workflow.md) | 2026-07-29 | **부분 대체(→043)** | 하위 프로젝트 쓰기 작업의 worktree 선행 생성(`project/.worktrees/`, `origin/main` 직접 분기, 세션 cwd는 루트 유지)과 머지 실측 기반 정리 — 정본은 `branch-workflow`, `wrapup`이 위임 |
+| [035](adr/035-subproject-worktree-workflow.md) | 2026-07-29 | 활성(→052) | 개인·사내 하위 프로젝트 worktree 워크플로. ADR 043의 사내 예외는 052가 철회 |
 | [036](adr/036-ownership-boundary-placement-and-vocabulary.md) | 2026-08-02 | 활성 | 소유권 경계를 둘로 분할 — 규칙(영역 표·중단 게이트)은 프로젝트 저장소에 중립 어휘(`공용`/`배포처`)로, 역할 배정만 하위 하네스에. `carry-in.md` → `site-setup.md` |
 | [037](adr/037-tier-gate-dispatch-enforcement.md) | 2026-08-03 | **대체됨 → 040** | 티어 매핑의 실행 계층 승격 — 발행 시 `model` 미지정 차단(`tier-gate`), 값 판정 없음·`inherit`는 미지정 동치·fail-open. **판정 방향이 뒤집혔다**(발행 지점 강제라는 결정은 040이 유지) |
 | [038](adr/038-corporate-profile-verification-exemption.md) | 2026-08-03 | **부분 대체(→042)** (045가 폐기했다가 046이 되살림) | 사내 프로필의 검증 목적 발행 면제 — reviewer·관점 팬아웃·리뷰 fan-in integrator·infra-specialist 리뷰 모드를 끄고 메인 루프 자체 검증+면제 기록으로 대체, 명시 요청은 실행. 훅(`review-gate`)이 막는 것은 `reviewer` 타입 하나 |
@@ -52,7 +52,7 @@
 | [040](adr/040-tier-gate-inversion-lightweight-ban.md) | 2026-08-04 | 활성 | `tier-gate` 판정 반전(037 대체) — 미지정(=세션 모델 상속)은 통과, REGISTRY.md 「경량 모델」 절이 나열한 등급 지정만 차단. 우회는 `[light-ok]`. 모델명은 코드가 아니라 그 미추적 절에 두어 ADR 005 유지 |
 | [041](adr/041-comprehension-quiz-removal.md) | 2026-08-04 | 활성 | **PR 전 이해도 퀴즈 게이트 제거** — `branch-workflow` 마무리 4단계(퀴즈 스펙 단일 원본)를 삭제하고 그것을 실행시키던 `orchestrate`·`team-review`의 리뷰 창 퀴즈 문단, 5절 루트 원격 PR 사이클의 면제 괄호, 13-0의 퀴즈 회수 문구를 함께 걷어냈다. 이후 단계는 4(PR 생성)·5(머지)로 당겨진다. 13절 서두의 「사용자 이해는 완료의 요건」과 그 리포트 의무(결정 갈림길 교습 + diff 읽기 가이드)는 유지하되, **이제 무엇도 그것을 붙잡지 않는다는 사실을 조항 안에 명시**해 점검이 이를 결함으로 재개봉하지 않게 했다. 사용자 판정(2026-08-04) + 실측: 9일 사이 퀴즈 장치 자체를 주제로 한 이력 행 7건, 그중 4건이 사용자 지적·결정발 수리다 |
 | [042](adr/042-corporate-profile-dispatch-block.md) | 2026-08-04 | 활성 (045가 폐기했다가 046이 되살림) | **사내 프로필에서 서브에이전트 발행 전면 차단**(038 범위 확장) — 검증 축만 끄던 것을 **역할 무관 발행 축 전체**로 넓혔다: 빌드 측·모든 `integrator` 용도·로스터 밖 타입·`subagent_type` 미지정까지 포함하고, `infra-specialist` 하나만 통과(비용이 아니라 블라스트 반경으로 판정하는 축 — 7절 5항 admission 선확인). **우회 표식 폐기**(`[review-ok]`). `orchestrate` 판정은 항상 「직접 수행」으로 수렴하고, 팬아웃이 절차인 스킬(`project-status`·`team-review`·`harness-review`)은 정지가 아니라 **메인 루프 순차 수행으로 저하**한다. 훅 개명 `review-gate.py` → `dispatch-gate.py` |
-| [043](adr/043-corporate-branch-in-checkout-and-worktree-bootstrap.md) | 2026-08-05 | 활성 | **사내 프로필의 worktree 폐기**(035 부분 대체) — 그 사이트에서 worktree로부터의 커밋·푸시·PR이 실패해 `project/<이름>/` 체크아웃 하나에서 브랜치를 전환한다. 035가 **구조로** 막던 두 실패(낡은 시작점·재개 시 `main` 복귀)가 **절차로** 되돌아오고, 정리에서 `worktree remove`의 거부가 하던 데이터 손실 검사가 사라지므로 `status --porcelain` 선검사로 보상한다(실측: 더티 상태에서 `checkout main`은 성공하며 파일을 데려가고, `worktree remove`는 exit 128로 거부). 개인 프로필은 worktree 유지 + **의존성 부트스트랩을 시작 절차에 명시**(6개 프로젝트 전부 `.venv` 7~27MB, 재생성 8~12초 2회 측정) — editable 설치라 심볼릭 링크 공유는 금지(어느 트리를 import하는지가 호출 방식에 달렸고 위험한 형태가 더 짧다) |
+| [043](adr/043-corporate-branch-in-checkout-and-worktree-bootstrap.md) | 2026-08-05 | 부분 대체(→052) | 사내 worktree 금지는 052가 철회. worktree별 의존성 부트스트랩 결정은 유지 |
 | [044](adr/044-mattpocock-skills-partial-adoption.md) | 2026-08-07 | 활성 | **mattpocock/skills 부분 채택** — 통설치 기각(ADR 022와 동일 범주: 25개 description 고정 로드·트리거 전면 충돌·§11 심링크 제약), 착안 4건만 이식: ① `harness-review` 신호 ④에 죽은 규칙 판정 방법(무동작·환경-캐시 테스트, 새 의무 아님) ② §13-0을 「1회 일괄」에서 **프론티어 라운드**로 정련(독립 질문은 종전대로 한 라운드) ③ `wait-what` 스킬 신설(슬래시 전용 — ADR 041이 남긴 이해도 요건의 당기는 쪽) ④ `orchestrate/references/product-design.md` 신설(deep module 어휘·폐기 전제 프로토타입, 참고·허용). ①④를 의무로 안 적은 이유는 공통규칙 15 ②의 실측 실패 부재 |
 | [045](adr/045-corporate-profile-dispatch-restored.md) | 2026-08-07 | **폐기(→046)** | **사내 프로필의 발행 차단 폐기**(042·038 대체) — 설치처 프로필을 발행의 판정 입력에서 빼고 `dispatch-gate`를 삭제했다. 같은 날 046이 철회해 커밋이 revert됐으므로 **현재 규칙이 아니다**. 남겨 둔 이유는 §6 규약과, 「프로필 분기를 넣고 빼는 데 무엇이 드는가」의 실측치(35개 파일)를 046이 이 파일에서 인용하기 때문 |
 | [046](adr/046-corporate-profile-dispatch-block-restored.md) | 2026-08-07 | 활성 | **ADR 045 철회 — 사내 발행 차단 복원**(042·038 다시 활성) — 사용자 판정 「비용 때문에 안 되겠다」로 `1b1779f`를 revert. **되돌리지 않은 것 3건**: 045를 검증하다 발견된 테스트 결함(C4b 대상 선택을 파일명 → `read_profile` 보유 여부, R18 어서션을 게이트 이름 → 고유 문구, R21 `gate-reminder` 어서션을 개수로) — 전부 042 시절부터 있던 것이라 차단 여부와 무관하다. 독립 검증 발행 없음(비용이 롤백 사유 — 사용자 결정) |
@@ -61,6 +61,7 @@
 | [049](adr/049-autoloop-dashboard-operator-experience.md) | 2026-08-19 | 활성·부분 대체 | autoloop 대시보드의 최소 개요·T 핸드오프·압축 Coordination을 고정 |
 | [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | 활성 | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
 | [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
+| [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성 | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -90,6 +91,7 @@
 | [2026-08-19-autoloop-orchestration-runtime](specs/2026-08-19-autoloop-orchestration-runtime.md) | 구현됨 | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047·048 |
 | [2026-08-19-autoloop-dashboard-operator-ux](specs/2026-08-19-autoloop-dashboard-operator-ux.md) | 확정·구현 완료, 독립 검증 미완료 | `.agents/skills/autoloop/{dashboard-ui/,scripts/dashboard.py,scripts/dashboard_test.py}` | 047·048·049 |
 | [2026-08-26-evaluation-independence-review](specs/2026-08-26-evaluation-independence-review.md) | 구현됨 | `.agents/skills/team-review/SKILL.md`, `.agents/hooks/eval-independence-contract_test.py` | 051 |
+| [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨 | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052 |
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

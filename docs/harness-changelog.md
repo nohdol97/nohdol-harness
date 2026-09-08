@@ -6,6 +6,7 @@
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-09-08 | 사내 worktree 복원 — 사이트 예외 제거, autoloop 공통 안내와 R18 격리 유지 | `.agents/skills/README.ko.md`, `.agents/skills/autoloop/SKILL.md`, `.agents/skills/autoloop/scripts/driver.py`, `.agents/skills/autoloop/scripts/driver_test.py`, `.agents/skills/branch-workflow/SKILL.md`, `.agents/skills/carryover/SKILL.md`, `.agents/skills/orchestrate/SKILL.md`, `.agents/skills/orchestrate/references/product-design.md`, `.agents/skills/wrapup/SKILL.md`, `AGENTS.ko.md`, `AGENTS.md`, `docs/README.md`, `docs/adr/035-subproject-worktree-workflow.md`, `docs/adr/043-corporate-branch-in-checkout-and-worktree-bootstrap.md`, `docs/adr/045-corporate-profile-dispatch-restored.md`, `docs/specs/2026-07-19-autoloop-driver.md`, `docs/specs/2026-09-08-corporate-worktrees.md`, `docs/adr/052-corporate-worktrees-restored.md` | 사용자 요청. ADR 052에 범위·기존 조항 충돌 확인·사내 서버 미검증 명시. 사내 안내 회귀의 실패 후 수정, driver 스위트 통과 |
 | 2026-07-12 | 루트 하네스 초기 구성 (AGENTS.md, CLAUDE.md, orchestrate, metaskill, ADR 001) | 루트 전체 | harness-bootstrap-prompt.md 기반 초기 구축. 상세 결정은 docs/adr/001-initial-harness.md |
 | 2026-07-12 | `project/`·`dev/` 분리 구조 반영 — 경로 규약·저장소 분리 규칙 추가, README 신설 | 1절, 5절, .gitignore, README.md | 하위 프로젝트를 독립 저장소로 운영하기로 사용자 확정. docs/adr/002-project-dir-separation.md |
 | 2026-07-12 | `.claude/` 직접 생성 금지 규칙 명시. explorer·reviewer 에이전트, harness-review 스킬 신설 | 11절(구 12절), .agents/agents/, .agents/skills/harness-review/ | 심링크 원본 규칙이 암시에 그침(사용자 지적). orchestrate 반복 역할 2종과 주 1회 진화 관찰 절차의 실행 수단 부재 |

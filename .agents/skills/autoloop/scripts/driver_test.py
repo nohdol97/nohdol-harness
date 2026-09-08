@@ -2152,7 +2152,7 @@ class TestC27WorktreeGuard(DriverTestBase):
         return repo
 
     def test_shared_checkout_is_refused_with_worktree_guidance(self):
-        self._force_profile("개인")  # 실제 REGISTRY.md를 읽으면 설치처마다 문구가 달라진다
+        self._force_profile("개인")
         repo = self.make_repo()
         ok, reason = driver.startup_guard(self.make_config(project=repo))
         self.assertFalse(ok, "공유 체크아웃 대상인데 기동이 허용됐다")
@@ -2160,20 +2160,29 @@ class TestC27WorktreeGuard(DriverTestBase):
         self.assertIn("R18", reason)
 
     def _force_profile(self, value):
-        """`install_profile` 을 고정한다 — REGISTRY.md 는 미추적이라 기계마다 다르고,
-        이 검사가 그 파일의 실제 내용에 걸리면 다른 설치처에서 임의로 빨개진다."""
-        original = driver.install_profile
-        driver.install_profile = lambda: value
-        self.addCleanup(lambda: setattr(driver, "install_profile", original))
+        """실제 형식의 프로필 파일을 갖춘 임시 하네스 루트를 사용한다."""
+        root = tempfile.mkdtemp(dir=self.tmp)
+        # Retaining the shared reader makes restoring the old profile branch fail this test.
+        hooks = os.path.join(root, ".agents", "hooks")
+        os.makedirs(hooks)
+        source_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+        shutil.copyfile(os.path.join(source_root, ".agents", "hooks", "_common.py"),
+                        os.path.join(hooks, "_common.py"))
+        if value is not None:
+            with open(os.path.join(root, "REGISTRY.md"), "w", encoding="utf-8") as f:
+                f.write("## 설치처 프로필\n\n- **%s**\n" % value)
+        original = driver.__file__
+        driver.__file__ = os.path.join(root, ".agents", "skills", "autoloop", "scripts", "driver.py")
+        self.addCleanup(lambda: setattr(driver, "__file__", original))
 
-    def test_corporate_profile_refuses_without_telling_you_to_make_a_worktree(self):
-        """사내에서는 기존 안내가 ADR 043 이 금지한 것을 시키는 말이 된다."""
+    def test_corporate_profile_refuses_with_worktree_guidance(self):
+        """C2: 사내에서도 공유 체크아웃은 거부하고 전용 worktree 생성을 안내한다."""
         self._force_profile("사내")
         repo = self.make_repo()
         ok, reason = driver.startup_guard(self.make_config(project=repo))
         self.assertFalse(ok, "사내라고 공유 체크아웃이 허용되면 안 된다 — 거부는 프로필과 무관하다")
-        self.assertIn("ADR 043", reason)
-        self.assertNotIn("worktree add", reason)
+        self.assertNotIn("ADR 043", reason)
+        self.assertIn("worktree add", reason)
 
     def test_non_corporate_profile_keeps_the_worktree_guidance(self):
         self._force_profile("개인")
@@ -2184,37 +2193,23 @@ class TestC27WorktreeGuard(DriverTestBase):
         self.assertNotIn("ADR 043", reason)
 
     def test_unreadable_profile_still_refuses(self):
-        """프로필은 안내 문구만 고른다 — 판독 실패가 통과로 바뀌면 게이트가 프로필에 인질이 된다."""
+        """프로필 파일이 없어도 공유 체크아웃 거부와 생성 안내는 유지된다."""
         self._force_profile(None)
         repo = self.make_repo()
         ok, reason = driver.startup_guard(self.make_config(project=repo))
         self.assertFalse(ok, "프로필 미상인데 공유 체크아웃이 통과했다")
         self.assertIn("R18", reason)
-
-    def test_install_profile_returns_none_when_the_load_fails(self):
-        """판독 실패는 예외가 아니라 None 이어야 한다 — 무인 드라이버 안에서 돌기 때문이다.
-
-        빈 디렉터리를 루트로 물리면 `_common.py` 도 `REGISTRY.md` 도 없다. 이 단언이
-        `install_profile` 의 try/except 를 붙잡는다(그것을 지우면 여기서 FileNotFoundError 가 샌다(`spec_from_file_location` 이 `.py` 경로에 `SourceFileLoader` 를 주므로 import 해석이 아니라 `get_data` 에서 터진다 — 실측))."""
-        empty = tempfile.mkdtemp(dir=self.tmp)
-        original = driver.harness_root
-        driver.harness_root = lambda: empty
-        self.addCleanup(lambda: setattr(driver, "harness_root", original))
-        self.assertIsNone(driver.install_profile())
-
-    def test_install_profile_reads_the_hooks_common_module(self):
-        """경로가 하드코딩이라, `_common.py` 가 옮겨지면 문구가 조용히 금지된 안내로 되돌아간다.
-
-        거부 자체는 살아남으므로 이것은 가시성 검사다 — 게이트가 조용히 잠드는 쪽을 붙잡는다."""
-        path = os.path.join(driver.harness_root(), ".agents", "hooks", "_common.py")
-        self.assertTrue(os.path.isfile(path), "프로필 판정 원본이 그 자리에 없다: %s" % path)
+        self.assertIn("worktree add", reason)
 
     def test_linked_worktree_passes(self):
         repo = self.make_repo()
         wt = os.path.join(self.tmp, "wt")
         self.git("-C", repo, "worktree", "add", "-q", wt, "-b", "feat/x")
-        ok, reason = driver.startup_guard(self.make_config(project=wt))
-        self.assertTrue(ok, "전용 worktree인데 거부됐다: %s" % reason)
+        for profile in ("사내", "개인", None):
+            with self.subTest(profile=profile):
+                self._force_profile(profile)
+                ok, reason = driver.startup_guard(self.make_config(project=wt))
+                self.assertTrue(ok, "전용 worktree인데 거부됐다: %s" % reason)
 
     def test_subdirectory_of_shared_checkout_is_refused(self):
         """rev-parse가 상대·절대를 섞어 내놓는 지점 — 정규화 없이 비교하면 여기서 통과해버린다."""
