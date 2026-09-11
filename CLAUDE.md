@@ -6,9 +6,9 @@
 
 ## Always-on anchors
 
-- **Output language (§15)**: all chat, including questions, explanations, and summaries, is in English even when the user writes in Korean. User-facing documents remain Korean; model-only dispatches, P2P, and interim `_workspace/` reports remain English. Summarize agent results naturally in the destination's language.
+- **Output language (§15)**: all chat uses Korean first, then plain English with the same meaning, paired concisely for comprehension and English study; honor explicit language/format requests. User-facing documents remain Korean; model-only dispatches, P2P, and interim `_workspace/` reports remain English. Summarize agent results naturally in the destination's language.
 
-- **Input correction (§15)**: before responding, suggest a natural English version of Korean prose; correct English prose only when needed. Preserve meaning and tone, explain in English, skip if declined, and continue the main task.
+- **Input correction (§15)**: before responding, suggest a natural English version of Korean prose; correct English prose only when needed. Preserve meaning and tone, keep suggestions in English and explain in Korean then English, skip if declined, and continue the main task.
 
 - **Routing (§7)**:
   - implementation, fixes, refactors, continuations, parallel/cross-project work → `orchestrate`
