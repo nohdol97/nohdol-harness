@@ -5,6 +5,9 @@ description: "Review diffs, PRs, specs, or harness changes against spec criteria
 
 # team-review — Size-Scaled Team Review
 
+
+**Pi runtime exception — root AGENTS.md §11 (ADR 053)**: corporate dispatch blocks and the related independent-review exemptions below apply only outside Pi. In an identified Pi session, use the ordinary dispatch/independent-review path; keep corporate root-edit/commit/push and data-egress restrictions unchanged.
+
 ## Why this skill
 
 A single reviewer sees only the defects of their own perspective — the eye watching correctness misses secret leaks, and the eye watching style misses test gaps. This skill **decomposes review into independent perspectives run in parallel, then filters them through an integration gate** so that no one person's blind spot survives into the final verdict. But a team is not free — **spinning up a team for a small diff is waste**, so the mode is chosen by size.

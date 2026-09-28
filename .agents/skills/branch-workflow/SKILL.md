@@ -11,7 +11,22 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
 
 **Scope**: independent subproject repositories only. **The root harness repository is an exception** — it is document-centric and keeps direct commits to main (root AGENTS.md section 5).
 
-**Install-site scope**: personal and corporate profiles use the same worktree procedures below (ADR 052).
+**Install-site scope**: personal and corporate profiles use the same procedures (ADR 052), with the **Pi runtime exception** in root AGENTS.md §11 (ADR 053). Pi may choose the checkout option below. Corporate dispatch/review exemptions in the finish procedure apply only outside Pi.
+
+### Pi checkout option
+
+Only an identified Pi session may replace the dedicated-feature-worktree start with this option. The orchestrate gate still comes first. Choose one execution directory and report its absolute path and feature branch; keep the session cwd at the harness root. The worktree-only statements in the standard start procedure below describe the default path, not a requirement to migrate this option into a worktree.
+
+Before switching a shared checkout, inspect `git -C <checkout> status --porcelain`, `git -C <checkout> branch --show-current`, and `git -C <checkout> worktree list`. A dirty checkout or another session using it is not permission to move their work: use an isolated worktree, serialize the work, or obtain a data-loss decision under §3 before switching. Do not stash, reset, or force a switch. For a clean checkout exclusively available to this task, create a new branch with:
+
+```bash
+git -C <checkout> fetch origin &&
+git -C <checkout> switch --no-track -c <type>/<description> origin/main
+```
+
+Continue only if both commands succeed and `git -C <checkout> branch --show-current` reports the intended feature branch; never fall back to writing on main. For a local-only repository, skip fetch and use local `main`, as in Edge cases. For an existing task, preserve its branch and path instead of recreating it: inspect status first, reuse an existing worktree if that branch is held there, and switch a clean unoccupied checkout with `git switch <branch>` only when needed. If branch identity or ownership is unclear, preserve the tree and resolve it before writing. Recheck the selected branch before edits, commits, and after any interruption, since this option lacks worktree isolation.
+
+Use the chosen absolute checkout path wherever Finish procedure says `<worktree>`; pass that same path to each subagent and verify its branch. Tests, rebase, push, PR evidence, and user merge remain mandatory. Parallel writers must be isolated or serialized. On wrapup, the shared `project/<name>/` directory is never removed with `git worktree remove`; retain its branch and report it. Apply worktree cleanup only to actual linked worktrees.
 
 ## Start procedure (first step of every subproject task)
 

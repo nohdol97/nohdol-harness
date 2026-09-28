@@ -5,6 +5,9 @@ description: "Evaluate a candidate external tool/plugin/MCP/skill for adoption: 
 
 # tool-eval — External Tool Adoption Evaluation
 
+
+**Pi runtime exception — root AGENTS.md §11 (ADR 053)**: corporate dispatch blocks and the related independent-review exemptions below apply only outside Pi. In an identified Pi session, use the ordinary dispatch/independent-review path; keep corporate root-edit/commit/push and data-egress restrictions unchanged.
+
 ## Why this skill
 
 Evaluating "should this external tool join the harness?" ad hoc re-derives the same assessment axes every time and risks forgetting hard-won lessons. Observed 3× in one session, each re-inventing the flow. This skill standardizes it so **every evaluation applies the same dimensions and the accumulated lessons**, and lands the decision in the harness's proposal-record machinery (§6). Reason: a consistent, recorded evaluation prevents both re-litigating already-decided tools and shipping adoptions with gaps (missing §3 caveat, unclear routing).

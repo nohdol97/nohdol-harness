@@ -1,5 +1,8 @@
 # ADR 042 — 사내 프로필에서 서브에이전트 발행 전면 차단
 
+> 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
+
+
 - **날짜**: 2026-08-04
 - **상태**: 활성 — **2026-08-07에 [ADR 045](045-corporate-profile-dispatch-restored.md)가 이 차단을 폐기했다가 같은 날 [ADR 046](046-corporate-profile-dispatch-block-restored.md)이 철회해 되살렸다**(커밋 `1b1779f` → revert). 아래 결정은 그 왕복 이후에도 그대로 유효하며, 뒤집힌 것은 규칙이 아니라 그 시점의 비용 감당 여부였다(046 「사유」).
 - **관련**: [ADR 038](038-corporate-profile-verification-exemption.md)(이 ADR이 차단 범위를 확장 — 검증 축 → 발행 축), ADR 037·040(같은 발행 지점의 tier-gate), ADR 012(설치처 프로필), AGENTS.md 7절 5·6항·13절 3항, 스펙 `2026-08-04-dispatch-gate-hook`(전신 `2026-08-03-review-gate-hook`을 대체)

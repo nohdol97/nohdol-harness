@@ -5,6 +5,9 @@ description: "Gate every implementation or multi-step request, then choose direc
 
 # orchestrate — Agent Team Orchestration
 
+
+**Pi runtime exception — root AGENTS.md §11 (ADR 053)**: corporate dispatch blocks and the related independent-review exemptions below apply only outside Pi. In an identified Pi session, use the ordinary dispatch/independent-review path; keep corporate root-edit/commit/push and data-egress restrictions unchanged.
+
 ## Why this skill
 
 Handling work that spans multiple projects and multiple perspectives in a single context explodes the context and drops verification. This skill decomposes work into a team, but **never defines the team permanently in files**. A team is a **session object** — created in memory at start and released at the end. Reason: team composition must change every time to fit the shape of the work, and a persisted team forces a structure that does not fit the next task.
@@ -69,6 +72,10 @@ Only when a domain-specific member is needed (e.g., payments domain expert, DB m
 | **SendMessage** | P2P without going through the leader. Fields: `to`, `summary`, `message`. |
 
 > **Environment fallback**: if TeamCreate/TeamDelete are unavailable in the current environment, substitute mode B (subagent mode) and record that fact in team-log.jsonl.
+
+### Pi execution mapping
+
+Apply root §11 before the corporate-profile fork. Prefer an installed Pi delegation tool when it can load the shared role and preserve its tool/scope limits. Otherwise a separate Pi CLI process can supply the independent context: run from the harness root with `pi --mode json --no-session --append-system-prompt <dispatch-system-file> --model <tier-model> --thinking <effort> -- <task>`. Build that temporary system file from `.pi/APPEND_SYSTEM.md` followed by the shared role file: an explicit append flag replaces automatic append-file discovery in Pi 0.73.1, so passing the role alone loses the Pi identity. Preserve the Pi identity the same way when an installed delegation tool constructs child system prompts. Check the installed `pi --help` for supported flags first; use the session effort for design/implement and lower only explore per §9. Pass absolute target paths and the seven dispatch elements below. Use a structured process argument list for task text, not shell interpolation. Keep raw JSONL output in the task workspace and inspect the exit code and role report before marking completion. Use the process runner's wait/terminate controls and the same team-log events; do not invent Claude/Codex tool names in Pi. These subprocesses are separate sessions, not a built-in agent registry. If neither tool nor CLI is available, report the missing independent execution capability; do not use the corporate exemption to claim verification. Feature worktree selection follows `branch-workflow`'s Pi option; simultaneous writers still require isolated paths or serialization.
 
 ### CLI execution mapping
 

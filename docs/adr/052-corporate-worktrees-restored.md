@@ -1,5 +1,8 @@
 # ADR 052 — 사내 프로필 worktree 복원
 
+> 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
+
+
 - 날짜: 2026-09-08
 - 상태: 활성
 - 관련: ADR 035, ADR 043(사내 예외만 대체), [스펙](../specs/2026-09-08-corporate-worktrees.md)

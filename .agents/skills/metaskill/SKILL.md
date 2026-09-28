@@ -5,6 +5,9 @@ description: "Create, scaffold, audit, improve, or retire harness assets includi
 
 # metaskill — the skill that builds harnesses
 
+
+**Pi runtime exception — root AGENTS.md §11 (ADR 053)**: corporate dispatch blocks and the related independent-review exemptions below apply only outside Pi. In an identified Pi session, use the ordinary dispatch/independent-review path; keep corporate root-edit/commit/push and data-egress restrictions unchanged.
+
 ## Why this skill
 
 Building harnesses ad hoc gives every project a different structure, breaking routing, inheritance, and symlinks. This skill enforces that every harness shares the same skeleton (AGENTS.md single source, change history, ADRs — root: CLAUDE.md `@AGENTS.md` import + always-on anchors (ADR 021) + `.agents/` symlinks; sub-projects: centrally managed under `.agents/projects/<name>/`). Reason: a harness's value comes not from individual files but from **consistency** — an agent entering any project must find the same rules in the same place.
