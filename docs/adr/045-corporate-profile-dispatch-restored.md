@@ -1,10 +1,10 @@
 # ADR 045 — 사내 프로필의 서브에이전트 발행 차단 폐기
 
-> **관련 결정 갱신 — ADR 052(2026-09-08)**: 아래에서 유지한다고 기록한 ADR 043의 사내 worktree 금지는 이후 철회되었다. 이 ADR의 폐기 상태(→046)와 현재 사내 발행 차단 정책은 바뀌지 않는다.
+> **작업 위치 안내**: 개인·사내 모두 [ADR 052](052-corporate-worktrees-restored.md)의 worktree 절차를 사용하며 Pi 선택권은 ADR 053을 따른다. 2026-09-29에 낡은 작업 위치 참조를 제거했다. 이 ADR의 폐기 상태(→046)와 발행 정책은 별개다.
 
 - **날짜**: 2026-08-07
 - **상태**: **폐기(→046)** — 같은 날 [ADR 046](046-corporate-profile-dispatch-block-restored.md)이 이 결정을 되돌렸다(사용자 판정: 비용을 감당할 수 없다). 커밋 `1b1779f`가 revert됐고 **ADR 042·038이 다시 활성이다.** 아래 내용은 시점 기록이며 현재 규칙이 아니다. 이 파일을 남겨 두는 이유는 §6 규약(대체된 ADR을 지우지 않는다)이자, **하루 안의 왕복 자체가 다음 판단의 근거**이기 때문이다 — 무엇을 되돌리는 데 얼마가 드는지가 여기 실측으로 적혀 있다.
-- **관련**: [ADR 042](042-corporate-profile-dispatch-block.md)·[ADR 038](038-corporate-profile-verification-exemption.md)(**이 ADR이 둘 다 대체**), ADR 012(설치처 프로필 — 이 ADR이 건드리지 않는 축), ADR 037·040(같은 발행 지점의 `tier-gate`), ADR 043(사내 worktree 폐기 — 별개 축, 유지), 스펙 `2026-08-04-dispatch-gate-hook`(폐기)
+- **관련**: [ADR 042](042-corporate-profile-dispatch-block.md)·[ADR 038](038-corporate-profile-verification-exemption.md)(**이 ADR이 둘 다 대체**), ADR 012(설치처 프로필 — 이 ADR이 건드리지 않는 축), ADR 037·040(같은 발행 지점의 `tier-gate`), ADR 043(worktree 의존성 부트스트랩), 스펙 `2026-08-04-dispatch-gate-hook`(폐기)
 
 ## 변경 내용
 
@@ -18,7 +18,6 @@
 
 - **추적 루트 하네스 파일의 수정·커밋·푸시 금지**(§5·ADR 012) — 편집 권한 축이지 발행 비용 축이 아니다. 대기 큐(`_workspace/harness-updates.md`)도 그대로다.
 - **`harness-review` 일일 자동 실행 off**(§8) — 근거가 발행 비용이 아니라 위 편집 금지다(찾은 신호를 그 사이트가 적용할 수 없다). 주간은 계속 돈다.
-- **worktree 폐기**(ADR 043) — 근거가 그 사이트의 git 동작 실패다. 대신 043 본문에서 이 ADR로 거짓이 된 두 전제에 갱신 표시를 달았다(무인 루프 R18 가드의 보조 논거, 병렬 격리 미발동 주장).
 
 ## 사유
 
