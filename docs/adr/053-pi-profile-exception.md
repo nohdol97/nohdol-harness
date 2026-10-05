@@ -1,5 +1,7 @@
 # ADR 053 — Pi 세션의 사내 발행 제한 해제와 worktree 선택권
 
+> 후속: [ADR 054](054-corporate-pi-workers.md)가 사내 Claude/Codex 호스트의 탐색·구현을 Pi 작업자에게 위임하는 경로를 추가한다. native 호출 차단과 Pi 자체 세션의 기존 정책은 유지한다.
+
 - 날짜: 2026-09-28
 - 상태: 활성
 - 관련: [스펙](../specs/2026-09-28-pi-profile-exception.md), ADR 035·038·042·046·052

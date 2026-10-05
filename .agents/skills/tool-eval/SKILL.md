@@ -6,7 +6,7 @@ description: "Evaluate a candidate external tool/plugin/MCP/skill for adoption: 
 # tool-eval — External Tool Adoption Evaluation
 
 
-**Pi runtime exception — root AGENTS.md §11 (ADR 053)**: corporate dispatch blocks and the related independent-review exemptions below apply only outside Pi. In an identified Pi session, use the ordinary dispatch/independent-review path; keep corporate root-edit/commit/push and data-egress restrictions unchanged.
+**Runtime routing — root AGENTS.md §11 (ADR 053·054)**: the **Pi runtime exception** preserves ordinary dispatch/independent review in Pi-native sessions. Corporate Claude/Codex hosts instead delegate exploration/implementation to internal Pi workers through `orchestrate/references/corporate-pi.md`; design and final review stay in the host, native dispatch remains blocked except infra authoring. This takes precedence over older sequential-work wording below. Personal routing, corporate root-edit and data-egress restrictions stay unchanged.
 
 ## Why this skill
 

@@ -10,7 +10,7 @@
 
 Claude Code와 Codex를 이 디렉터리에서 열면 같은 `AGENTS.md` 규칙과 같은 에이전트·스킬 정의를 사용한다.
 
-Pi Coding Agent도 루트에서 실행할 수 있다. Pi의 발행·worktree 예외와 로딩 조건은 [ADR 053](docs/adr/053-pi-profile-exception.md)을 따른다.
+Pi Coding Agent도 루트에서 실행할 수 있다. Pi 자체 세션은 [ADR 053](docs/adr/053-pi-profile-exception.md), 사내 Claude/Codex에서 Pi로 탐색·구현을 병렬 위임하는 경로는 [사내 Pi 실행 절차](.agents/skills/orchestrate/references/corporate-pi.md)를 따른다.
 
 ## 시작하기
 

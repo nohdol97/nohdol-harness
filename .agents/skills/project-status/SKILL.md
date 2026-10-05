@@ -6,7 +6,7 @@ description: "Summarize all registered projects from REGISTRY.md with explorer f
 # project-status — Full Project Status Report
 
 
-**Pi runtime exception — root AGENTS.md §11 (ADR 053)**: corporate dispatch blocks and the related independent-review exemptions below apply only outside Pi. In an identified Pi session, use the ordinary dispatch/independent-review path; keep corporate root-edit/commit/push and data-egress restrictions unchanged.
+**Runtime routing — root AGENTS.md §11 (ADR 053·054)**: the **Pi runtime exception** preserves ordinary dispatch/independent review in Pi-native sessions. Corporate Claude/Codex hosts instead delegate exploration/implementation to internal Pi workers through `orchestrate/references/corporate-pi.md`; design and final review stay in the host, native dispatch remains blocked except infra authoring. This takes precedence over older sequential-work wording below. Personal routing, corporate root-edit and data-egress restrictions stay unchanged.
 
 ## Why this skill
 
@@ -22,7 +22,7 @@ In a multi-project management harness, "what state is everything in right now" i
 
 ### Phase 1 — Parallel collection (**execution mode:** subagents)
 
-> **`사내` profile — collection runs sequentially in the main loop instead** (ADR 042; contract single source: orchestrate's Install-site exemption). Dispatch is blocked at the call there and no override marker exists, so the fan-out below is unreachable. **The skill still runs and still produces the report**: walk the registry rows one at a time, collect the same four fixed items per row, and write them straight into the Phase 2 sections — the intermediate `phase1_explorer-<project>_status.md` artifacts have no author, so skip them and keep the final report only. Say in the report that collection ran without fan-out; the coverage is the same but the wall-clock and the context cost are not, so a large registry may need the run split across turns.
+> **Corporate Claude/Codex host**: collect registry projects with parallel Pi explorers using `orchestrate/references/corporate-pi.md`; record their reports and actual coverage. The host integrates the result. Missing Pi configuration is reported as unavailable collection, not silently converted to sequential host exploration.
 
 Deploy one explorer per registry row in parallel (orchestrate mode B, cap 10–20 — **dispatch all of them simultaneously in one turn**, the mode-B simultaneous-dispatch rule). Fixed collection items for each explorer:
 
@@ -35,7 +35,7 @@ Output: `phase1_explorer-<project>_status.md`
 
 ### Phase 2 — Integration (**execution mode:** integrator solo)
 
-> **`사내` profile — the main loop merges** (same clause as Phase 1). This fan-in is not a review, so ADR 038 left it alone; ADR 042 blocks it anyway, because it blocks the dispatch rather than the purpose.
+> **Corporate Claude/Codex host**: the host integrates Pi collection reports; do not issue a native integrator.
 
 The integrator merges per the gate principles, but since this skill's final report is a status report, the sections are fixed as follows:
 

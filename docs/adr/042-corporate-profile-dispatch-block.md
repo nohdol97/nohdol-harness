@@ -1,5 +1,7 @@
 # ADR 042 — 사내 프로필에서 서브에이전트 발행 전면 차단
 
+> 후속: [ADR 054](054-corporate-pi-workers.md)가 사내 Claude/Codex 호스트의 탐색·구현을 Pi 작업자에게 위임하는 경로를 추가한다. native 호출 차단과 Pi 자체 세션의 기존 정책은 유지한다.
+
 > 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
 
 

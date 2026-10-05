@@ -104,6 +104,9 @@ class Gate(unittest.TestCase):
         self.assertEqual(rc, hook.BLOCK_EXIT)
         self.assertIn("reviewer", err)
         self.assertIn("042", err)  # 계약 문서를 가리켜야 한다
+        self.assertIn("corporate-pi.md", err)
+        self.assertIn("Pi", err)
+        self.assertNotIn("항상 「직접 수행」", err)
 
     def test_c2_task_tool_name_also_blocks(self):
         # C2 — matcher가 "Task"로도 발화하므로 그 갈래도 판정한다. AGENT_TOOLS를
