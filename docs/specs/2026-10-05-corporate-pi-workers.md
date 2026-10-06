@@ -15,7 +15,7 @@
 ## 요구사항
 1. R1: 새 경로는 REGISTRY.md의 설치처 프로필이 사내일 때만 실행된다. 개인·미상에서는 작업자를 시작하지 않는다.
 2. R2: 호출 LLM은 요구사항·설계·작업 의존성·최종 판단을 소유한다. Pi 작업자 역할은 explorer와 implementer로 한정한다. infra-specialist의 기존 의무는 유지한다.
-3. R3: 사내 provider와 정확한 model ID, 최대 동시 호출 수를 미추적 설치 설정으로 받는다. 유료 모델로의 자동 대체나 모델명 추측은 하지 않는다. 내부 모델 비용 때문에 작업자 수를 줄이지 않는다.
+3. R3: CLI 종류와 최대 동시 호출 수를 미추적 설치 설정으로 받는다. 기존 Pi는 사내 provider와 정확한 model ID가 필요하다. AX는 provider 옵션을 쓰지 않고, 모델을 생략하면 기존 CLI 설정을 사용한다. AX 도구 이름은 역할별 설치 설정으로 받는다. 상세 계약은 [CLI 호환성 스펙](2026-10-06-pi-worker-cli-compatibility.md)을 따른다. 유료 모델로의 자동 대체나 모델명 추측은 하지 않는다. 내부 모델 비용 때문에 작업자 수를 줄이지 않는다.
 4. R4: 호스트가 의존성이 해소된 독립 작업 배치를 만든다. 실행기는 설치처 한도 내에서 병렬 실행한다. 코드 작성 작업은 별도 feature worktree를 사용하고, 배치 내 대상 경로가 겹치면 시작 전에 거부한다.
 5. R5: 루트에서 Pi를 실행하고 Pi 시스템 지침·공용 역할·작업 범위를 전달한다. 작업자는 재위임·commit/push·승인이 필요한 조작을 수행하지 않는다. 도구 선택은 explorer 읽기 전용, implementer 수정·테스트용으로 구분하며 OS 샌드박스로 오인하지 않는다.
 6. R6: 실행기는 원본 stdout/stderr·최종 응답을 작업별 보존한다. 정상 프로세스 종료만으로 성공을 판정하지 않고 JSON 이벤트의 최종 assistant 종료 사유를 확인한다. 시간 초과는 자식 프로세스 그룹을 종료하고 실패로 회수한다. 정상 응답도 검토 전 후보일 뿐 완료가 아니다.
@@ -23,7 +23,7 @@
 8. R8: 루트 수정·외부 반출·SDD/TDD·missing-harness 정지·자동 일일 리뷰 정책은 유지한다. 가용성 실패를 숨기거나 유료 실행으로 대체하지 않는다.
 
 ## 인터페이스 / 설계 개요
-`orchestrate/references/corporate-pi.md`가 호스트 절차와 설치 설정을 정의한다. `orchestrate/scripts/pi_workers.py`는 `--root`, `--config`, `--batch`, `--output`을 받아 독립 작업 배치를 실행한다. `_workspace/`의 설정에는 provider/model/max_parallel을 두며 인증은 기존 Pi 설치에서 관리한다. 실행기는 프로세스 조율만 하며 작업 분할·의존성 해소·검증 판단은 호출 LLM이 수행한다.
+`orchestrate/references/corporate-pi.md`가 호스트 절차와 설치 설정을 정의한다. `orchestrate/scripts/pi_workers.py`는 `--root`, `--config`, `--batch`, `--output`을 받아 독립 작업 배치를 실행한다. `_workspace/`의 설정에는 CLI별 선택값과 max_parallel을 두며 인증은 기존 Pi 설치에서 관리한다. 실행기는 프로세스 조율만 하며 작업 분할·의존성 해소·검증 판단은 호출 LLM이 수행한다.
 
 ```mermaid
 sequenceDiagram
@@ -55,4 +55,5 @@ sequenceDiagram
 ## 변경 이력
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
+| 2026-10-06 | CLI별 설정 계약과 상세 스펙 링크 추가 | R3·설계 개요 | provider 옵션이 없는 설치처 CLI 지원 |
 | 2026-10-05 | 사내 전용 병렬 작업 경로 확정 | 본문 | 사용자 실행 정책 변경 |

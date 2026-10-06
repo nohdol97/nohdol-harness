@@ -96,6 +96,11 @@
 | [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨 | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052 |
 | [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨 | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053 |
 | [2026-10-05-corporate-pi-workers](specs/2026-10-05-corporate-pi-workers.md) | 구현됨 | 사내 전용 Pi 배치 실행·실패 회수·호스트 검토 | 054 |
+| [2026-10-06-pi-worker-cli-compatibility](specs/2026-10-06-pi-worker-cli-compatibility.md) | 구현됨·사내 실측 별도 | 기존 Pi·AX CLI 분리와 정상·오류·빈 응답 판정 | 054 |
+
+## 운영 절차 — `docs/runbooks/`
+
+- [사내 Pi 작업자 CLI 확인과 위임 검증](runbooks/pi-worker-cli-setup.md): 설치 계약 확인, worker 설정 생성, 실제 읽기 전용 위임 smoke. 사내 실측은 배포처에서 수행한다.
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

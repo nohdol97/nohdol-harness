@@ -23,10 +23,14 @@ workers may invoke paid/native agents as an automatic fallback.
 
 ## Installation preflight
 
-1. Check `pi --help` and `pi --list-models` on the corporate machine. Resolve the
-   user's selected internal model to its **exact provider/model ID**; a display
-   name or quantization label is not a CLI identifier. Confirm that this provider
-   reaches the internal service. Never infer that from its name alone.
+1. Check the installed executable's help and package version on the corporate
+   machine. Select `cli: "pi"` (the backward-compatible default) or `cli: "ax"`
+   explicitly; do not infer the dialect from an executable name. Upstream Pi
+   requires exact provider/model IDs; use `--list-models` only if that CLI's help
+   supports it. The reported corporate 0.7.0 dialect has no `--provider` or
+   `--list-models`; it uses `-p` and `--append-system-prompt @file`. Confirm that
+   the existing CLI configuration selects the approved internal service. A
+   display name or quantization label is not evidence of its endpoint or ID.
 2. Keep endpoint/authentication in the site's existing Pi configuration. Never
    copy credentials into this harness or `_workspace/`. Save only this runtime
    selection under `_workspace/pi-workers/config.json` (example placeholders):
@@ -41,6 +45,17 @@ workers may invoke paid/native agents as an automatic fallback.
    }
    ```
 
+   This example is for upstream Pi. For `cli: "ax"`, omit `provider`, optionally
+   omit `model` to use the CLI's configured default, and supply `tools` with an
+   explicit list of exact installed names for each assigned role (`explorer`,
+   `implementer`). Do not copy upstream names or assume their case. Check the
+   help or tool registry; explorers get only read/search and read-only shell
+   access, implementers also get editing tools. There is no automatic tool-name
+   or provider fallback. The AX invocation omits upstream `--no-session` and
+   uses `-p --mode json --tools <comma-separated-names>` with the `@file` system
+   prompt. Existing authentication stays CLI-owned; do not add auth arguments,
+   secret fields, or environment overrides to worker configuration.
+
    `8` is an example, not a default or a policy ceiling. Set capacity from the
    site's supported concurrency; increase it when queue/latency/error evidence
    permits. Reduce it on overload, not to save internal-model tokens. `command`
@@ -49,6 +64,12 @@ workers may invoke paid/native agents as an automatic fallback.
 3. If runtime/model/config is unavailable, report the exact missing capability.
    Continue host design and other independent work; do not silently implement
    everything in the paid host or declare the Pi path verified.
+
+For configuration creation and a real read-only delegation check, follow
+[`docs/runbooks/pi-worker-cli-setup.md`](../../../../docs/runbooks/pi-worker-cli-setup.md).
+The corporate installation was unavailable during adapter development; its
+direct inspection was waived by the user. Tests use synthetic contract events,
+not captured site output. Site verification remains a separate check.
 
 ## Issue an independent batch
 
@@ -124,13 +145,29 @@ destinations unless the site's data-egress policy permits that content.
 
 Exit 0 means all workers produced a **candidate**, not accepted work. The runner
 checks process exit, final assistant `stopReason=stop`, nonempty text and a
-completion event. For one-shot JSON, process EOF is also required; `agent_end`
-alone never ends the wait (newer Pi may also emit `agent_settled`). Model errors,
+completion event. Upstream Pi uses `message_end.message` followed by `agent_end`
+or `agent_settled`. AX uses a matching `turn_start` then `turn_end.message`;
+`session → turn_start → turn_end` can finish without `agent_end`, but event names
+alone are insufficient. The supported message schema is an object with
+`role: "assistant"`, `stopReason: "stop"`, and `content` containing text blocks
+`{"type": "text", "text": "..."}`. Unknown envelopes fail rather than inferring
+text from arbitrary fields. For both dialects process EOF is required: no event
+alone ends the subprocess wait. Starting a new turn clears the old response;
+error events are not erased by later success. Model errors,
 length truncation, malformed output, launch errors and deadlines fail. A failed
 worker preserves successful siblings; no dependent work may consume a failed
 result. Do not automatically repeat writes after an error: inspect the partial
 diff first. Cancel through the process handle/SIGINT; active children are stopped
 and per-worker evidence retained. Force-killing the runner cannot guarantee this.
+
+`failure_kind` distinguishes `model_error`, `truncated`, `aborted`,
+`empty_response` (a terminal assistant message with no non-whitespace text),
+`missing_response` (completion without an assistant message), `incomplete`
+(no final completion), `unsuccessful_stop`, `invalid_stream`, `process_error`,
+`timeout`, `cancelled`, and `io_error`. It is empty for a candidate. A nonzero
+process exit takes precedence over response classification; raw events and
+`exit_code` remain available for diagnosis. Neither `candidate` nor a smoke
+success replaces host review of an implementation.
 
 Review the spec criteria, diff and fresh test evidence in the host. Fixes return
 to Pi as a delta prompt with the prior report, target worktree, remaining criteria

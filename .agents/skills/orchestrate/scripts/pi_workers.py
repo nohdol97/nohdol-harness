@@ -43,8 +43,15 @@ def prepare(root, config_path, batch_path, output):
     require(not output.exists(), 'Use a fresh output directory; prior evidence is preserved.')
     config, tasks = load(config_path), load(batch_path)
     require(isinstance(config, dict), 'Config must be an object.')
-    for key in ('provider', 'model'):
+    cli = config.get('cli', 'pi')
+    require(cli in ('pi', 'ax'), 'cli must be pi or ax; no automatic fallback.')
+    config['cli'] = cli
+    required = ('provider', 'model') if cli == 'pi' else (('model',) if 'model' in config else ())
+    for key in required:
         require(isinstance(config.get(key), str) and bool(config[key].strip()), f'Explicit {key} required.')
+    if cli == 'ax':
+        require('provider' not in config, 'ax does not support --provider; use existing CLI configuration.')
+        require(isinstance(config.get('tools'), dict), 'ax requires verified per-role tool names in tools.')
     require(type(config.get('max_parallel')) is int and config['max_parallel'] > 0,
             'max_parallel must be a positive installation capacity, not a token budget.')
     timeout = config.get('timeout_seconds', 1800)
@@ -63,6 +70,11 @@ def prepare(root, config_path, batch_path, output):
                 'Task IDs must be unique simple names.')
         seen.add(name)
         require(role in TOOLS, 'Only explorer and implementer can use this route.')
+        if cli == 'ax':
+            names = config['tools'].get(role)
+            require(isinstance(names, list) and bool(names) and all(
+                isinstance(name, str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*', name)
+                for name in names), 'ax requires a nonempty verified tool-name list for each assigned role.')
         require(not task.get('depends_on'), 'Resolve dependencies in the host before submitting a batch.')
         target = local_path(task['target'], root)
         require(target.is_dir(), 'Target directory missing.')
@@ -98,27 +110,65 @@ def prepare(root, config_path, batch_path, output):
     return config, tasks, policy + '\n\n' + identity
 
 
-def inspect_events(path):
-    final, ended = None, False
+def inspect_events(path, cli='pi'):
+    if cli not in ('pi', 'ax'):
+        return False, '', 'invalid_stream'
+    final, ended, failure, turn_open = None, False, '', False
     try:
         with path.open(encoding='utf-8') as stream:
             for line in stream:
                 event = json.loads(line)
-                if not isinstance(event, dict):
-                    return False, '', 'Invalid event object'
-                if event.get('type') in ('agent_start', 'turn_start', 'message_start', 'tool_execution_start'):
+                require(isinstance(event, dict) and isinstance(event.get('type'), str), 'Invalid event')
+                kind = event['type']
+                if (kind in ('error', 'agent_error') or event.get('error')
+                        or event.get('status') in ('error', 'failed') or event.get('isError') is True):
+                    failure = 'model_error'
+                if kind in ('session', 'agent_start', 'turn_start', 'message_start', 'tool_execution_start'):
+                    final = None
                     ended = False
-                if event.get('type') == 'message_end' and event.get('message', {}).get('role') == 'assistant':
-                    final = event['message']
+                if kind in ('session', 'agent_start'):
+                    turn_open = False
+                if kind == 'turn_start':
+                    turn_open = True
+                terminal = cli == 'ax' and kind == 'turn_end'
+                if terminal:
+                    require(turn_open, 'turn_end without turn_start')
+                    turn_open = False
+                    final = None
+                if kind == 'message_end' or terminal:
+                    message = event.get('message')
+                    final = None
                     ended = False
-                if event.get('type') in ('agent_end', 'agent_settled'):
+                    require((message is None and terminal) or isinstance(message, dict), 'Invalid message')
+                    if message is not None and message.get('role') == 'assistant':
+                        content = message.get('content')
+                        require(isinstance(content, list), 'Invalid content')
+                        for item in content:
+                            require(isinstance(item, dict), 'Invalid content block')
+                            if item.get('type') == 'text':
+                                require(isinstance(item.get('text'), str), 'Invalid text')
+                        final = message
+                        reason = message.get('stopReason')
+                        if message.get('errorMessage') or message.get('error'):
+                            failure = 'model_error'
+                        elif reason in ('error', 'aborted', 'length') and not failure:
+                            failure = {'error': 'model_error', 'aborted': 'aborted', 'length': 'truncated'}[reason]
+                if terminal or (cli == 'pi' and kind in ('agent_end', 'agent_settled')):
                     ended = True
         text = '\n'.join(item['text'] for item in (final or {}).get('content', [])
-                         if item.get('type') == 'text' and isinstance(item.get('text'), str))
-        success = ended and final is not None and final.get('stopReason') == 'stop' and bool(text.strip())
-        return success, text, '' if success else 'Missing final response/completion event or unsuccessful stopReason'
+                         if item.get('type') == 'text')
+        if not failure:
+            if not ended:
+                failure = 'incomplete'
+            elif final is None:
+                failure = 'missing_response'
+            elif final.get('stopReason') != 'stop':
+                failure = 'unsuccessful_stop'
+            elif not text.strip():
+                failure = 'empty_response'
+        return not failure, text, failure
     except (ValueError, OSError, TypeError, AttributeError):
-        return False, '', 'Invalid JSON event stream'
+        return False, '', 'invalid_stream'
 
 
 async def stop(process):
@@ -159,11 +209,18 @@ report: changes/findings, file paths, exact test commands and observed results,
 criterion evidence, unresolved issues and unverified scope. Do not claim review.
 ''', encoding='utf-8')
         stdout, stderr = folder / 'stdout.jsonl', folder / 'stderr.log'
-        args = config['command'] + ['--mode', 'json', '--no-session', '--provider', config['provider'],
-                '--model', config['model'], '--tools', TOOLS[task['role']],
-                '--append-system-prompt', str(system), '--', task['prompt']]
+        if config['cli'] == 'pi':
+            flags = ['--mode', 'json', '--no-session', '--provider', config['provider'],
+                     '--model', config['model'], '--tools', TOOLS[task['role']],
+                     '--append-system-prompt', str(system)]
+        else:
+            flags = ['-p', '--mode', 'json', '--tools', ','.join(config['tools'][task['role']]),
+                     '--append-system-prompt', '@' + str(system)]
+            if 'model' in config:
+                flags += ['--model', config['model']]
+        args = config['command'] + flags + ['--', task['prompt']]
         result = {'id': task['id'], 'status': 'failed', 'stdout': str(stdout), 'stderr': str(stderr),
-                  'report': str(folder / 'report.md'), 'exit_code': None}
+                  'report': str(folder / 'report.md'), 'exit_code': None, 'failure_kind': ''}
         process = None
         try:
             with stdout.open('wb') as out, stderr.open('wb') as err:
@@ -173,19 +230,21 @@ criterion evidence, unresolved issues and unverified scope. Do not claim review.
                     await asyncio.wait_for(process.wait(), config['timeout_seconds'])
                 except asyncio.TimeoutError:
                     await stop(process)
-                    result.update(status='timeout', reason='Worker deadline exceeded')
+                    result.update(status='timeout', failure_kind='timeout', reason='Worker deadline exceeded')
             result['exit_code'] = process.returncode
-            valid, report, reason = inspect_events(stdout)
+            valid, report, reason = inspect_events(stdout, config['cli'])
             Path(result['report']).write_text(report, encoding='utf-8')
             if result['status'] != 'timeout':
                 result['status'] = 'candidate' if valid and process.returncode == 0 else 'failed'
-                result['reason'] = reason or ('Process exited unsuccessfully' if process.returncode else '')
+                result['failure_kind'] = 'process_error' if process.returncode else reason
+                result['reason'] = ('Worker failed: ' + result['failure_kind']) if result['failure_kind'] else ''
         except asyncio.CancelledError:
             if process is not None:
                 await stop(process)
-            result.update(status='cancelled', reason='Host cancelled batch')
+            result.update(status='cancelled', failure_kind='cancelled', reason='Host cancelled batch')
             raise
         except OSError as exc:
+            result['failure_kind'] = 'io_error'
             result['reason'] = f'Process launch/read failed: {type(exc).__name__}'
         finally:
             (folder / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
