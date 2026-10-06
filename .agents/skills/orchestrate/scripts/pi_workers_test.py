@@ -14,13 +14,23 @@ SCRIPT = Path(__file__).with_name('pi_workers.py')
 SPEC = importlib.util.spec_from_file_location('pi_workers', SCRIPT)
 RUNNER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RUNNER)
-FAKE = '''import json, sys, time
+FAKE = '''import argparse, json, sys, time
 from pathlib import Path
 args = sys.argv[1:]
-prompt = args[-1]
+ax = "-p" in args or "--prompt" in args
+if ax:
+    # Model the user-reported value-taking AX parser, not the runner's argv.
+    parser = argparse.ArgumentParser(allow_abbrev=False)
+    parser.add_argument("-p", "--prompt", required=True)
+    parser.add_argument("--mode", choices=["json"], required=True)
+    parser.add_argument("--tools", required=True)
+    parser.add_argument("--append-system-prompt", required=True)
+    parser.add_argument("--model")
+    prompt = parser.parse_args(args).prompt
+else:
+    prompt = args[-1]
 now = time.monotonic()
 print(json.dumps({"type": "fixture", "start": now, "args": args}), flush=True)
-ax = "-p" in args
 if ax:
     assert "--provider" not in args and "--no-session" not in args
     system = args[args.index("--append-system-prompt") + 1]
@@ -218,10 +228,14 @@ class WorkerTest(unittest.TestCase):
         self.settings.pop('provider')
         self.settings.pop('model')
         self.settings.update(cli='ax', tools={'explorer': ['fixture_read', 'fixture_shell']})
-        result = self.run_batch([self.task()])
-        self.assertEqual(result.returncode, 0, result.stderr)
+        prompt = 'Report "quoted text" and 한국어\nKeep --mode json and $(literal) unchanged.'
+        result = self.run_batch([self.task(prompt=prompt)])
+        self.assertEqual(result.returncode, 0, (self.output / 'a/stderr.log').read_text())
         args = json.loads((self.output / 'a/stdout.jsonl').read_text().splitlines()[0])['args']
         self.assertIn('-p', args)
+        self.assertEqual(args[args.index('-p') + 1], prompt)
+        self.assertEqual(args.count(prompt), 1)
+        self.assertNotIn('--', args)
         self.assertNotIn('--provider', args)
         self.assertNotIn('--list-models', args)
         self.assertNotIn('--model', args)
@@ -229,6 +243,28 @@ class WorkerTest(unittest.TestCase):
         system = args[args.index('--append-system-prompt') + 1]
         self.assertTrue(system.startswith('@'))
         self.assertIn('Role: explorer', Path(system[1:]).read_text())
+
+    def test_ax_parser_rejects_old_boolean_prompt_and_trailing_positionals(self):
+        options = ['--mode', 'json', '--tools', 'fixture_read',
+                   '--append-system-prompt', '@unused-system.md']
+        for args, expected in ((['-p', *options, '--', 'work'],
+                                'argument -p/--prompt: expected one argument'),
+                               (['-p', 'work', *options, '--', 'duplicate'], 'unrecognized arguments')):
+            with self.subTest(args=args):
+                result = subprocess.run([sys.executable, str(self.fake), *args],
+                                        text=True, capture_output=True, timeout=5)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(expected, result.stderr)
+
+    def test_upstream_prompt_remains_positional(self):
+        prompt = 'Explain "upstream"\n한국어 and $(literal).'
+        result = self.run_batch([self.task(prompt=prompt)])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = json.loads((self.output / 'a/stdout.jsonl').read_text().splitlines()[0])['args']
+        system = str((self.output / 'a/system.md').resolve())
+        self.assertEqual(args, ['--mode', 'json', '--no-session', '--provider', 'internal-fixture',
+            '--model', 'fixture-model', '--tools', 'read,bash,grep,find,ls',
+            '--append-system-prompt', system, '--', prompt])
 
     def test_ax_batch_classifies_responses_and_preserves_sibling(self):
         self.settings.pop('provider')

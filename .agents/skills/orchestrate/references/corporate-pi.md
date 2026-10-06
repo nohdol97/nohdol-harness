@@ -28,7 +28,7 @@ workers may invoke paid/native agents as an automatic fallback.
    explicitly; do not infer the dialect from an executable name. Upstream Pi
    requires exact provider/model IDs; use `--list-models` only if that CLI's help
    supports it. The reported corporate 0.7.0 dialect has no `--provider` or
-   `--list-models`; it uses `-p` and `--append-system-prompt @file`. Confirm that
+   `--list-models`; it uses `-p <prompt>` and `--append-system-prompt @file`. Confirm that
    the existing CLI configuration selects the approved internal service. A
    display name or quantization label is not evidence of its endpoint or ID.
 2. Keep endpoint/authentication in the site's existing Pi configuration. Never
@@ -52,8 +52,12 @@ workers may invoke paid/native agents as an automatic fallback.
    help or tool registry; explorers get only read/search and read-only shell
    access, implementers also get editing tools. There is no automatic tool-name
    or provider fallback. The AX invocation omits upstream `--no-session` and
-   uses `-p --mode json --tools <comma-separated-names>` with the `@file` system
-   prompt. Existing authentication stays CLI-owned; do not add auth arguments,
+   uses `-p <prompt> --mode json --tools <comma-separated-names>` with the `@file`
+   system prompt. AX's `-p/--prompt` takes a value: pass the complete prompt as
+   the very next argument, with no trailing `-- <prompt>`. Only upstream Pi uses
+   that positional suffix. A bare `-p` before `--mode` fails with
+   `argument -p/--prompt: expected one argument`; fix the harness argv, not the
+   installed CLI. Existing authentication stays CLI-owned; do not add auth arguments,
    secret fields, or environment overrides to worker configuration.
 
    `8` is an example, not a default or a policy ceiling. Set capacity from the

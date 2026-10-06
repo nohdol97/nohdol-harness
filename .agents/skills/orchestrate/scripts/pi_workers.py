@@ -212,13 +212,13 @@ criterion evidence, unresolved issues and unverified scope. Do not claim review.
         if config['cli'] == 'pi':
             flags = ['--mode', 'json', '--no-session', '--provider', config['provider'],
                      '--model', config['model'], '--tools', TOOLS[task['role']],
-                     '--append-system-prompt', str(system)]
+                     '--append-system-prompt', str(system), '--', task['prompt']]
         else:
-            flags = ['-p', '--mode', 'json', '--tools', ','.join(config['tools'][task['role']]),
+            flags = ['-p', task['prompt'], '--mode', 'json', '--tools', ','.join(config['tools'][task['role']]),
                      '--append-system-prompt', '@' + str(system)]
             if 'model' in config:
                 flags += ['--model', config['model']]
-        args = config['command'] + flags + ['--', task['prompt']]
+        args = config['command'] + flags
         result = {'id': task['id'], 'status': 'failed', 'stdout': str(stdout), 'stderr': str(stderr),
                   'report': str(folder / 'report.md'), 'exit_code': None, 'failure_kind': ''}
         process = None
