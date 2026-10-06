@@ -101,6 +101,17 @@ convey the issue. The host reads summaries first, then selected source/log range
 for design, diagnosis and verification. Do not reread unchanged files for each
 new report. Preserve the seven issuing elements and fresh host verification.
 
+Include a compact **confirmed context** handoff: verified source paths/symbols
+and relevant ranges; revision plus dirty/untracked state at verification; settled
+interfaces; criterion IDs and verification commands; prior evidence paths; and
+only the remaining questions. Check whether that snapshot still applies before
+reusing it (HEAD alone misses uncommitted edits). Workers should inspect changed
+or conflicting ranges and unresolved questions, not restart completed discovery.
+Small corrections sharing files, interfaces and a test/repair loop belong to one
+worker. Split only for independently owned, dependency-ready deliverables with
+separate acceptance criteria, not to fill capacity. This preserves useful
+parallelism and the installation's capacity without fragmenting a bounded task.
+
 Write task prompts and a JSON batch under `_workspace/<task>/`. Example:
 
 ```json
@@ -195,22 +206,28 @@ checks exit code 0, a final assistant with nonempty text and a completion event.
 Upstream Pi uses `message_end.message` followed by `agent_end`
 or `agent_settled`. AX uses a matching `turn_start` then `turn_end.message`;
 `session → turn_start → turn_end` can finish without `agent_end`, but event names
-alone are insufficient. The observed AX 0.7.0 message has `role: "assistant"`
+alone are insufficient. The previously user-supplied AX 0.7.0 message has `role: "assistant"`
 and a nonblank string `content`, without `stopReason`. Only this AX string format
 allows the field to be absent; an explicit null or unknown reason fails.
 Existing array content with text blocks `{"type": "text", "text": "..."}` still
 requires `stopReason: "stop"`, as does upstream Pi. Explicit AX error, abort or final-response
 truncation markers override a valid-looking response. Only clipping metadata on
-`tool_execution_update`, `tool_execution_end`, or a `toolResult` message is exempt:
+`tool_execution_update`, `tool_execution_end`, AX `tool_result`, or a `toolResult` message is exempt:
 these describe displayed tool output, not model completion. Error/abort markers
-on these surfaces still fail. All other truncation markers still fail.
+on these surfaces and explicit `stopReason: length/truncated` still fail. All
+other truncation markers still fail. The `tool_result.truncated=true` meaning
+comes from a user-reported corporate observation, not a local CLI capture; its
+regression events are synthetic. A new AX tool_result clears any prior final
+response, so it cannot reuse an earlier completion to hide unfinished work.
 Unknown envelopes fail rather than inferring text from arbitrary fields.
 For both dialects process EOF is required: no event
 alone ends the subprocess wait. Starting a new turn clears the old response;
 error events are not erased by later success. Model errors,
 length truncation, malformed output, launch errors and deadlines fail. A failed
-worker preserves successful siblings; no dependent work may consume a failed
-result. Do not automatically repeat writes after an error: inspect the partial
+worker preserves successful siblings; no dependent work may consume unreviewed
+artifacts from a failed run. Keep the failed run status; the explicit artifact
+reuse procedure below is a separate host acceptance decision, not stream success.
+Do not automatically repeat writes after an error: inspect the partial
 diff first. Cancel through the process handle/SIGINT; active children are stopped
 and per-worker evidence retained. Force-killing the runner cannot guarantee this.
 
@@ -227,7 +244,64 @@ For `invalid_stream`, inspect the diagnostic line and reason with the preserved
 stdout file; do not rerun the task just to discover the parser error. Malformed
 JSON/UTF-8 and invalid message shapes remain failures even after a valid final
 response. The previously observed AX string response remains supported; arbitrary
-new envelopes do not. Replay corporate failures before widening this boundary.
+new envelopes do not. When original corporate logs are unavailable, replay the
+reported semantics with explicitly synthetic fixtures; exact CLI schemas and
+live behavior remain unverified, never describe these as captured logs.
+
+The JSON mode contract is **one event object per stdout line**. Do not strip
+warning lines, extract only JSON-looking lines, or accept the last valid event
+after malformed text. Plain retry/loop warnings belong on stderr or in a
+documented structured CLI diagnostic event; a zero exit code cannot repair
+contaminated stdout. Keep `invalid_stream` and the original bytes. The reported
+AX mixed-output case needs a separate producer-side investigation/fix, not a
+repeat of the implementation assignment. Its owner, acceptance criteria and
+unverified source/schema are recorded as **CLI-JSONL** in
+[`pi-worker-recovery`](../../../../docs/specs/2026-10-06-pi-worker-recovery.md).
+The local harness cannot claim that CLI fix or infer its precise log sites.
+
+### Reuse artifacts without rewriting a failed run
+
+1. Confirm the old process/group has stopped. Preserve its result and raw logs,
+   and identify the exact target/revision plus pre-assignment dirty/untracked
+   state. If ownership or the baseline is ambiguous, do not overwrite, reset,
+   clean or automatically reapply a patch; resolve it in host review first.
+2. The host directly inspects the changed and newly created files against the
+   assigned criteria, including unrelated changes or incomplete edits. A failed
+   stream proves neither that the code is wrong nor that it is usable.
+3. Re-run the required verification on the exact reviewed tree, preserving
+   commands, exit codes and original outputs. On a corporate host, Pi performs
+   test execution as a bounded verification assignment; the host independently
+   reads the diff and command evidence and owns acceptance. A worker's summary
+   alone is insufficient; no silent host implementation fallback is allowed.
+4. Record a separate host acceptance/rejection note: failed run ID and kind,
+   reviewed revision and dirty/untracked state, files/criteria adopted, fresh
+   verification evidence, remaining failures and host decision. Leave the
+   original `result.json`/stream status unchanged. Dependent work may use only
+   artifacts covered by that decision; revalidate if the reviewed tree changes.
+5. Preserve passing work. Send only failed criteria, relevant diff/evidence
+   pointers and remaining questions back to Pi in the same isolated target, with
+   a fresh output directory. Do not relaunch successful siblings or repeat all
+   discovery. Required regression/integration checks still run even when the
+   repair is narrow. A new task/process ID does not renew the role's retry limit.
+   If only the CLI output contract failed and the code is accepted, continue
+   with the separate CLI-JSONL task rather than rewriting accepted code.
+
+### Stop work that makes no progress
+
+At assignment, name the next observable checkpoint (new criterion evidence,
+reproduction result, scoped diff or resolved interface question) and the site's
+existing timeout. Workers stop with `decision_needed:true` when the same cause
+fails again after the allowed repair, or they repeat already-settled lookups or
+commands without new evidence, artifacts or a changed hypothesis. State the last
+checkpoint, repeated action, remaining criteria and evidence paths. Do not
+escalate to more workers or reset the retry budget to hide this condition.
+
+The host uses that report to diagnose/re-scope; if it independently sees the
+same loop, cancel through SIGINT and use the reuse procedure after shutdown.
+Quiet logs alone do not prove a stall (a long valid test may be silent). The
+runner enforces timeout/cancellation, not semantic progress: it has no automatic
+loop detector or mid-task decision callback. This adds no log-polling obligation;
+keep the existing batch wait/user-update procedure.
 
 Review the spec criteria, diff and fresh test evidence in the host. Fixes return
 to Pi as a delta prompt with the prior report, target worktree, remaining criteria

@@ -118,6 +118,9 @@ def ax_failure_marker(payload, tool_output=False):
         return 'model_error'
     if payload.get('aborted') is True or 'aborted' in markers:
         return 'aborted'
+    # A stop reason describes response loss, even on an otherwise clipped tool event.
+    if payload.get('stopReason') in ('length', 'truncated'):
+        return 'truncated'
     if not tool_output and (payload.get('truncated') is True or
                             any(value in ('length', 'truncated') for value in markers)):
         return 'truncated'
@@ -140,8 +143,11 @@ def inspect_events(path, cli='pi', diagnostic=None):
                         or event.get('status') in ('error', 'failed') or event.get('isError') is True):
                     failure = 'model_error'
                 if cli == 'ax' and not failure:
-                    failure = ax_failure_marker(event, kind in ('tool_execution_update', 'tool_execution_end'))
+                    failure = ax_failure_marker(event, kind in ('tool_execution_update', 'tool_execution_end', 'tool_result'))
                 if kind in ('session', 'agent_start', 'turn_start', 'message_start', 'tool_execution_start'):
+                    final = None
+                    ended = False
+                if cli == 'ax' and kind == 'tool_result':
                     final = None
                     ended = False
                 if kind in ('session', 'agent_start'):
@@ -266,7 +272,15 @@ The host owns design, dependencies and acceptance. Return a concise candidate
 report: changes/findings, file paths, exact test commands and observed results,
 criterion evidence, unresolved issues and unverified scope. Do not claim review.
 Read sources by assigned paths/ranges; do not echo whole sources in reports.
+Use supplied confirmed source/interface findings and their snapshot/evidence
+pointers; reopen only changed, conflicting or unresolved ranges, not discovery
+already completed. Verify freshness before relying on supplied findings.
 Implementers own implementation -> tests -> repair within the role's retry limit.
+Preserve reviewed passing work; retry only failed criteria with the supplied
+delta. A new process/task ID does not reset the retry limit. Stop and report
+decision_needed=true when the same failure recurs after the allowed repair, or
+repeated searches/commands yield no new evidence, artifact or revised hypothesis.
+Quiet output alone is not lack of progress; use the assigned checkpoint/deadline.
 Keep full test logs inside the assigned target and return their paths. The runner
 also preserves stdout.jsonl and stderr.log. Never store credentials in logs.
 Prefer a JSON final report (no fences) with summary (string), changed_files,

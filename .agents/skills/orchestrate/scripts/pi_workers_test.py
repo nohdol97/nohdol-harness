@@ -51,6 +51,14 @@ if "malformed" in prompt:
     sys.exit(0)
 if "long-log" in prompt:
     print(json.dumps({"type": "tool_execution_end", "result": "x" * 200000}))
+# Synthetic models of user-reported semantics, not captured corporate logs.
+if "tool-display" in prompt:
+    print(json.dumps({"type": "tool_result", "truncated": True}))
+if "stderr-warning" in prompt:
+    print("SYNTHETIC CLI retry warning", file=sys.stderr)
+if "artifact-warning" in prompt:
+    Path(prompt.split("artifact-warning ", 1)[1]).write_text("VALUE = 42\\n")
+    print("SYNTHETIC CLI retry warning")
 reason = "error" if "model-error" in prompt else "length" if "truncated" in prompt else "stop"
 text = " " if "empty" in prompt else "Candidate report"
 if "long-report" in prompt:
@@ -263,6 +271,46 @@ class EventTest(unittest.TestCase):
             events = self.ax_string_events()
             events.insert(2, {'type': 'tool_execution_end', 'truncated': True, **marker})
             self.assertEqual(self.inspect(events, 'ax')[::2], (False, expected))
+
+    def test_reported_ax_tool_result_display_clipping_synthetic(self):
+        # The event name/meaning was reported by the user; the full shape is synthetic.
+        events = self.ax_string_events()
+        events.insert(2, {'type': 'tool_result', 'truncated': True})
+        self.assertEqual(self.inspect(events, 'ax'), (True, '응답 문자열', ''))
+        self.assertEqual(self.inspect(events[:-1], 'ax')[::2], (False, 'incomplete'))
+        for marker, expected in (({'isError': True}, 'model_error'),
+                                 ({'aborted': True}, 'aborted'),
+                                 ({'stopReason': 'length'}, 'truncated')):
+            damaged = [*events[:2], {**events[2], **marker}, events[3]]
+            self.assertEqual(self.inspect(damaged, 'ax')[::2], (False, expected))
+        events[-1]['message']['stopReason'] = 'length'
+        self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'truncated'))
+
+    def test_tool_result_after_completion_requires_a_new_final(self):
+        for marker in ({}, {'truncated': True}):
+            events = self.ax_string_events() + [{'type': 'tool_result', **marker}]
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'incomplete'))
+
+    def test_explicit_response_loss_is_not_tool_display_clipping(self):
+        for kind in ('tool_result', 'tool_execution_update', 'tool_execution_end'):
+            events = self.ax_string_events()
+            events.insert(2, {'type': kind, 'truncated': True, 'stopReason': 'length'})
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'truncated'))
+        events = self.ax_string_events()
+        events.insert(2, {'type': 'tool_result_unknown', 'truncated': True})
+        self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'truncated'))
+
+    def test_synthetic_plain_warnings_in_json_stdout_always_fail(self):
+        lines = [json.dumps(event) for event in self.ax_string_events()]
+        for position in range(len(lines) + 1):
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / 'stdout.jsonl'
+                raw = '\n'.join(lines[:position] + ['SYNTHETIC CLI loop warning'] + lines[position:]).encode()
+                path.write_bytes(raw)
+                diagnostic = {}
+                self.assertEqual(RUNNER.inspect_events(path, 'ax', diagnostic)[::2], (False, 'invalid_stream'))
+                self.assertEqual(diagnostic['line'], position + 1)
+                self.assertEqual(path.read_bytes(), raw)
 
     def test_corrupt_stream_diagnostic_and_historical_ax_string(self):
         # Old AX array-only parsing rejected the observed string as invalid_stream.
@@ -524,6 +572,40 @@ class WorkerTest(unittest.TestCase):
         self.settings.update(cli='ax', tools={'explorer': ['fixture_read']}, timeout_seconds=.2)
         self.assertNotEqual(self.run_batch([self.task(prompt='timeout')]).returncode, 0)
         self.assertEqual(self.results()[0]['failure_kind'], 'timeout')
+
+    def test_reported_tool_result_and_stderr_warning_process_contract(self):
+        self.settings.pop('provider')
+        self.settings.update(cli='ax', tools={'explorer': ['fixture_read']})
+        tasks = [self.task('ok', 'tool-display stderr-warning'),
+                 self.task('bad', 'tool-display late-exit-error')]
+        self.assertEqual(self.run_batch(tasks).returncode, 1)
+        results = {item['id']: item for item in self.results()}
+        self.assertEqual(results['ok']['status'], 'candidate')
+        self.assertEqual(results['bad']['failure_kind'], 'process_error')
+        self.assertIn('SYNTHETIC CLI retry warning', Path(results['ok']['stderr']).read_text())
+
+    def test_invalid_stream_preserves_artifact_without_promoting_result(self):
+        # A local fixture writes a file; no corporate code or logs are accessed.
+        repo = self.root / 'project/demo'
+        for args in (['init', '-b', 'main'], ['-c', 'user.name=Test', '-c',
+                'user.email=test@example.invalid', 'commit', '--allow-empty', '-m', 'base'],
+                ['worktree', 'add', '-b', 'feat/retained', str(self.root / 'project/retained')]):
+            subprocess.run(['git', '-C', str(repo), *args], check=True, capture_output=True)
+        target = self.root / 'project/retained'
+        artifact = target / 'reusable.py'
+        self.settings.pop('provider')
+        self.settings.update(cli='ax', tools={'implementer': ['fixture_write']})
+        task = self.task(prompt=f'artifact-warning {artifact}', role='implementer', target=target)
+        self.assertEqual(self.run_batch([task]).returncode, 1)
+        result = self.results()[0]
+        self.assertEqual((result['status'], result['failure_kind']), ('failed', 'invalid_stream'))
+        self.assertIn('SYNTHETIC CLI retry warning', Path(result['stdout']).read_text())
+        saved = (self.output / 'a/result.json').read_bytes()
+        check = subprocess.run([sys.executable, '-c',
+            'import runpy,sys; assert runpy.run_path(sys.argv[1])["VALUE"] == 42', str(artifact)],
+            text=True, capture_output=True)
+        self.assertEqual(check.returncode, 0, check.stderr)
+        self.assertEqual((self.output / 'a/result.json').read_bytes(), saved)
 
     def test_implementation_worktree_and_overlap(self):
         repo = self.root / 'project/demo'
