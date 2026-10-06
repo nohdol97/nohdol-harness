@@ -72,8 +72,9 @@ workers may invoke paid/native agents as an automatic fallback.
 For configuration creation and a real read-only delegation check, follow
 [`docs/runbooks/pi-worker-cli-setup.md`](../../../../docs/runbooks/pi-worker-cli-setup.md).
 The corporate installation was unavailable during adapter development; its
-direct inspection was waived by the user. Tests use synthetic contract events,
-not captured site output. Site verification remains a separate check.
+direct inspection was waived by the user. Tests replay the user's observed AX
+string response and synthetic failure/legacy fixtures. This is local replay,
+not a live corporate call. Site verification remains a separate check.
 
 ## Issue an independent batch
 
@@ -148,14 +149,18 @@ host; preserve raw logs for review. Do not copy internal evidence to external
 destinations unless the site's data-egress policy permits that content.
 
 Exit 0 means all workers produced a **candidate**, not accepted work. The runner
-checks process exit, final assistant `stopReason=stop`, nonempty text and a
-completion event. Upstream Pi uses `message_end.message` followed by `agent_end`
+checks exit code 0, a final assistant with nonempty text and a completion event.
+Upstream Pi uses `message_end.message` followed by `agent_end`
 or `agent_settled`. AX uses a matching `turn_start` then `turn_end.message`;
 `session → turn_start → turn_end` can finish without `agent_end`, but event names
-alone are insufficient. The supported message schema is an object with
-`role: "assistant"`, `stopReason: "stop"`, and `content` containing text blocks
-`{"type": "text", "text": "..."}`. Unknown envelopes fail rather than inferring
-text from arbitrary fields. For both dialects process EOF is required: no event
+alone are insufficient. The observed AX 0.7.0 message has `role: "assistant"`
+and a nonblank string `content`, without `stopReason`. Only this AX string format
+allows the field to be absent; an explicit null or unknown reason fails.
+Existing array content with text blocks `{"type": "text", "text": "..."}` still
+requires `stopReason: "stop"`, as does upstream Pi. Explicit AX error, abort or
+truncation markers in events or messages override a valid-looking response.
+Unknown envelopes fail rather than inferring text from arbitrary fields.
+For both dialects process EOF is required: no event
 alone ends the subprocess wait. Starting a new turn clears the old response;
 error events are not erased by later success. Model errors,
 length truncation, malformed output, launch errors and deadlines fail. A failed

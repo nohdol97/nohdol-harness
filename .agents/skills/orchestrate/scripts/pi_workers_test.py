@@ -14,6 +14,8 @@ SCRIPT = Path(__file__).with_name('pi_workers.py')
 SPEC = importlib.util.spec_from_file_location('pi_workers', SCRIPT)
 RUNNER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(RUNNER)
+# Exact successful payload supplied by the user from AX 0.7.0, not inferred from Pi.
+AX_OBSERVED_TURN_END = '{"type":"turn_end","message":{"role":"assistant","content":"응답 문자열"}}'
 FAKE = '''import argparse, json, sys, time
 from pathlib import Path
 args = sys.argv[1:]
@@ -40,7 +42,7 @@ if ax:
 if "timeout" in prompt:
     time.sleep(30)
 time.sleep(.15)
-if "exit-error" in prompt:
+if "exit-error" in prompt and "late-exit-error" not in prompt:
     sys.exit(7)
 if "malformed" in prompt:
     print("broken-json")
@@ -51,6 +53,10 @@ if prompt.startswith("Read ") and "expected.txt" in prompt:
     text = Path(prompt.split("Read ", 1)[1].split(" using", 1)[0]).read_text()
 message = {"role": "assistant", "stopReason": reason, "content": [{"type": "text", "text": text}]}
 if ax:
+    if "array-format" not in prompt:
+        message = {"role": "assistant", "content": text}
+        if reason != "stop":
+            message["stopReason"] = reason
     if "event-error" in prompt:
         print(json.dumps({"type": "error", "error": "fixture failure"}))
     if "missing-end" not in prompt:
@@ -60,6 +66,8 @@ else:
     if "missing-end" not in prompt:
         print(json.dumps({"type": "agent_end", "messages": [message]}))
 print(json.dumps({"type": "fixture", "end": time.monotonic()}))
+if "late-exit-error" in prompt:
+    sys.exit(7)
 '''
 
 
@@ -155,11 +163,96 @@ class EventTest(unittest.TestCase):
 
     def test_ax_rejects_unknown_payloads_and_malformed_content(self):
         for payload in ({'text': 'Unverified envelope'}, {'message': []},
-                        {'message': {'role': 'assistant', 'content': 'text', 'stopReason': 'stop'}},
+                        {'message': {'role': 'assistant', 'content': 42, 'stopReason': 'stop'}},
                         {'message': {'role': 'assistant', 'content': [{'type': 'text', 'text': 'body'}]}}):
             events = [{'type': 'session'}, {'type': 'turn_start'}, {'type': 'turn_end', **payload}]
             with self.subTest(payload=payload):
                 self.assertFalse(self.inspect(events, 'ax')[0])
+
+    def ax_string_events(self):
+        return [{'type': 'session'}, {'type': 'turn_start'}, json.loads(AX_OBSERVED_TURN_END)]
+
+    def test_ax_observed_string_without_stop_reason(self):
+        self.assertEqual(self.inspect(self.ax_string_events(), 'ax'), (True, '응답 문자열', ''))
+        events = self.ax_string_events()
+        events[-1]['message']['stopReason'] = 'stop'
+        self.assertEqual(self.inspect(events, 'ax'), (True, '응답 문자열', ''))
+
+    def test_ax_empty_string_is_not_a_candidate(self):
+        for content in ('', '  \n\t'):
+            events = self.ax_string_events()
+            events[-1]['message']['content'] = content
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'empty_response'))
+
+    def test_ax_error_event_before_or_after_string_response_is_sticky(self):
+        for position in (2, 3):
+            events = self.ax_string_events()
+            events.insert(position, {'type': 'error', 'error': 'fixture failure'})
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'model_error'))
+
+    def test_ax_string_requires_matching_completion_and_assistant(self):
+        events = self.ax_string_events()
+        for stream in (events[:-1], events[2:], events + [{'type': 'turn_start'}],
+                       events + [{'type': 'turn_start'}, {'type': 'turn_end'}]):
+            self.assertFalse(self.inspect(stream, 'ax')[0])
+        events[-1]['message']['role'] = 'user'
+        self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'missing_response'))
+
+    def test_ax_string_explicit_failure_markers_are_never_success(self):
+        markers = [({'stopReason': 'error'}, 'model_error'),
+                   ({'stopReason': 'aborted'}, 'aborted'),
+                   ({'stopReason': 'length'}, 'truncated'),
+                   ({'status': 'failed'}, 'model_error'),
+                   ({'status': 'aborted'}, 'aborted'),
+                   ({'status': 'truncated'}, 'truncated'),
+                   ({'errorMessage': 'fixture failure'}, 'model_error'),
+                   ({'isError': True}, 'model_error'),
+                   ({'aborted': True}, 'aborted'),
+                   ({'truncated': True}, 'truncated')]
+        for marker, expected in markers:
+            for surface in ('event', 'message'):
+                with self.subTest(marker=marker, surface=surface):
+                    events = self.ax_string_events()
+                    target = events[-1] if surface == 'event' else events[-1]['message']
+                    target.update(marker)
+                    self.assertEqual(self.inspect(events, 'ax')[::2], (False, expected))
+        for kind in ('aborted', 'truncated'):
+            events = self.ax_string_events()
+            events.insert(2, {'type': kind})
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, kind))
+
+    def test_ax_string_unknown_or_null_stop_reason_is_not_omitted(self):
+        for reason in ('toolUse', 'unknown', None):
+            events = self.ax_string_events()
+            events[-1]['message']['stopReason'] = reason
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'unsuccessful_stop'))
+
+    def test_ax_nonassistant_failure_is_not_hidden_by_final_response(self):
+        for role in ('toolResult', 'user'):
+            for marker, expected in (({'isError': True}, 'model_error'),
+                                     ({'aborted': True}, 'aborted'),
+                                     ({'truncated': True}, 'truncated')):
+                with self.subTest(role=role, marker=marker):
+                    events = self.ax_string_events()
+                    events.insert(2, {'type': 'message_end', 'message': {
+                        'role': role, 'content': [{'type': 'text', 'text': 'failed'}], **marker}})
+                    self.assertEqual(self.inspect(events, 'ax')[::2], (False, expected))
+
+    def test_ax_string_exemption_does_not_relax_arrays_or_upstream(self):
+        arrays = self.ax_events()
+        self.assertTrue(self.inspect(arrays, 'ax')[0])
+        del arrays[-1]['message']['stopReason']
+        self.assertEqual(self.inspect(arrays, 'ax')[::2], (False, 'unsuccessful_stop'))
+        message = json.loads(AX_OBSERVED_TURN_END)['message']
+        for reason in (None, 'stop'):
+            if reason is not None:
+                message['stopReason'] = reason
+            self.assertEqual(self.inspect([{'type': 'message_end', 'message': message},
+                                          {'type': 'agent_end'}])[::2], (False, 'invalid_stream'))
+        array_message = self.message()
+        del array_message['message']['stopReason']
+        self.assertEqual(self.inspect([array_message, {'type': 'agent_end'}])[::2],
+                         (False, 'unsuccessful_stop'))
 
 
 class WorkerTest(unittest.TestCase):
@@ -271,6 +364,7 @@ class WorkerTest(unittest.TestCase):
         self.settings.update(cli='ax', tools={'explorer': ['fixture_read']})
         expected = {'ok': '', 'empty': 'empty_response', 'model-error': 'model_error',
                     'event-error': 'model_error', 'exit-error': 'process_error',
+                    'late-exit-error': 'process_error', 'array-format': '',
                     'malformed': 'invalid_stream', 'missing-end': 'incomplete', 'truncated': 'truncated'}
         result = self.run_batch([self.task(name, name) for name in expected])
         self.assertEqual(result.returncode, 1, result.stderr)
@@ -279,6 +373,13 @@ class WorkerTest(unittest.TestCase):
             self.assertEqual(item['status'], 'failed' if expected[item['id']] else 'candidate')
             self.assertTrue(Path(item['report']).is_file())
             self.assertTrue(Path(item['stdout']).is_file())
+            if item['id'] in ('ok', 'late-exit-error'):
+                self.assertEqual(Path(item['report']).read_text(), 'Candidate report')
+                self.assertEqual(item['exit_code'], 7 if item['id'] == 'late-exit-error' else 0)
+                events = [json.loads(line) for line in Path(item['stdout']).read_text().splitlines()]
+                message = next(event['message'] for event in events if event['type'] == 'turn_end')
+                self.assertIsInstance(message['content'], str)
+                self.assertNotIn('stopReason', message)
         args = json.loads((self.output / 'ok/stdout.jsonl').read_text().splitlines()[0])['args']
         self.assertEqual(args[args.index('--model') + 1], 'fixture-model')
 

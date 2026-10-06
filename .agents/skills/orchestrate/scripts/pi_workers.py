@@ -110,6 +110,19 @@ def prepare(root, config_path, batch_path, output):
     return config, tasks, policy + '\n\n' + identity
 
 
+def ax_failure_marker(payload):
+    """Explicit failures override AX's optional stopReason on string responses."""
+    markers = (payload.get('type'), payload.get('status'), payload.get('stopReason'))
+    if (payload.get('error') or payload.get('errorMessage') or payload.get('isError') is True
+            or any(value in ('error', 'agent_error', 'failed') for value in markers)):
+        return 'model_error'
+    if payload.get('aborted') is True or 'aborted' in markers:
+        return 'aborted'
+    if payload.get('truncated') is True or any(value in ('length', 'truncated') for value in markers):
+        return 'truncated'
+    return ''
+
+
 def inspect_events(path, cli='pi'):
     if cli not in ('pi', 'ax'):
         return False, '', 'invalid_stream'
@@ -123,6 +136,8 @@ def inspect_events(path, cli='pi'):
                 if (kind in ('error', 'agent_error') or event.get('error')
                         or event.get('status') in ('error', 'failed') or event.get('isError') is True):
                     failure = 'model_error'
+                if cli == 'ax' and not failure:
+                    failure = ax_failure_marker(event)
                 if kind in ('session', 'agent_start', 'turn_start', 'message_start', 'tool_execution_start'):
                     final = None
                     ended = False
@@ -140,13 +155,16 @@ def inspect_events(path, cli='pi'):
                     final = None
                     ended = False
                     require((message is None and terminal) or isinstance(message, dict), 'Invalid message')
+                    if cli == 'ax' and message is not None and not failure:
+                        failure = ax_failure_marker(message)
                     if message is not None and message.get('role') == 'assistant':
                         content = message.get('content')
-                        require(isinstance(content, list), 'Invalid content')
-                        for item in content:
-                            require(isinstance(item, dict), 'Invalid content block')
-                            if item.get('type') == 'text':
-                                require(isinstance(item.get('text'), str), 'Invalid text')
+                        if not (cli == 'ax' and isinstance(content, str)):
+                            require(isinstance(content, list), 'Invalid content')
+                            for item in content:
+                                require(isinstance(item, dict), 'Invalid content block')
+                                if item.get('type') == 'text':
+                                    require(isinstance(item.get('text'), str), 'Invalid text')
                         final = message
                         reason = message.get('stopReason')
                         if message.get('errorMessage') or message.get('error'):
@@ -155,14 +173,16 @@ def inspect_events(path, cli='pi'):
                             failure = {'error': 'model_error', 'aborted': 'aborted', 'length': 'truncated'}[reason]
                 if terminal or (cli == 'pi' and kind in ('agent_end', 'agent_settled')):
                     ended = True
-        text = '\n'.join(item['text'] for item in (final or {}).get('content', [])
-                         if item.get('type') == 'text')
+        content = (final or {}).get('content', [])
+        text = content if isinstance(content, str) else '\n'.join(
+            item['text'] for item in content if item.get('type') == 'text')
         if not failure:
             if not ended:
                 failure = 'incomplete'
             elif final is None:
                 failure = 'missing_response'
-            elif final.get('stopReason') != 'stop':
+            elif final.get('stopReason') != 'stop' and not (
+                    cli == 'ax' and isinstance(content, str) and 'stopReason' not in final):
                 failure = 'unsuccessful_stop'
             elif not text.strip():
                 failure = 'empty_response'
