@@ -110,7 +110,7 @@ def prepare(root, config_path, batch_path, output):
     return config, tasks, policy + '\n\n' + identity
 
 
-def ax_failure_marker(payload):
+def ax_failure_marker(payload, tool_output=False):
     """Explicit failures override AX's optional stopReason on string responses."""
     markers = (payload.get('type'), payload.get('status'), payload.get('stopReason'))
     if (payload.get('error') or payload.get('errorMessage') or payload.get('isError') is True
@@ -118,26 +118,29 @@ def ax_failure_marker(payload):
         return 'model_error'
     if payload.get('aborted') is True or 'aborted' in markers:
         return 'aborted'
-    if payload.get('truncated') is True or any(value in ('length', 'truncated') for value in markers):
+    if not tool_output and (payload.get('truncated') is True or
+                            any(value in ('length', 'truncated') for value in markers)):
         return 'truncated'
     return ''
 
 
-def inspect_events(path, cli='pi'):
+def inspect_events(path, cli='pi', diagnostic=None):
     if cli not in ('pi', 'ax'):
         return False, '', 'invalid_stream'
     final, ended, failure, turn_open = None, False, '', False
+    line_number = 0
     try:
-        with path.open(encoding='utf-8') as stream:
-            for line in stream:
-                event = json.loads(line)
+        # Decode per line: TextIO buffering can attribute invalid UTF-8 to an earlier line.
+        with path.open('rb') as stream:
+            for line_number, line in enumerate(stream, 1):
+                event = json.loads(line.decode('utf-8'))
                 require(isinstance(event, dict) and isinstance(event.get('type'), str), 'Invalid event')
                 kind = event['type']
                 if (kind in ('error', 'agent_error') or event.get('error')
                         or event.get('status') in ('error', 'failed') or event.get('isError') is True):
                     failure = 'model_error'
                 if cli == 'ax' and not failure:
-                    failure = ax_failure_marker(event)
+                    failure = ax_failure_marker(event, kind in ('tool_execution_update', 'tool_execution_end'))
                 if kind in ('session', 'agent_start', 'turn_start', 'message_start', 'tool_execution_start'):
                     final = None
                     ended = False
@@ -156,7 +159,7 @@ def inspect_events(path, cli='pi'):
                     ended = False
                     require((message is None and terminal) or isinstance(message, dict), 'Invalid message')
                     if cli == 'ax' and message is not None and not failure:
-                        failure = ax_failure_marker(message)
+                        failure = ax_failure_marker(message, message.get('role') == 'toolResult')
                     if message is not None and message.get('role') == 'assistant':
                         content = message.get('content')
                         if not (cli == 'ax' and isinstance(content, str)):
@@ -187,8 +190,44 @@ def inspect_events(path, cli='pi'):
             elif not text.strip():
                 failure = 'empty_response'
         return not failure, text, failure
-    except (ValueError, OSError, TypeError, AttributeError):
+    except (ValueError, OSError, TypeError, AttributeError) as exc:
+        if diagnostic is not None:
+            # Never echo malformed content into the host's diagnostic.
+            diagnostic.update(line=line_number, reason=type(exc).__name__)
         return False, '', 'invalid_stream'
+
+
+def report_preview(report):
+    """Bound host context, not the persisted report; no claim of test acceptance."""
+    structured = None
+    try:
+        value = json.loads(report)
+        if (isinstance(value, dict) and isinstance(value.get('summary'), str)
+                and all(isinstance(value.get(key), list) and all(isinstance(item, str) for item in value[key])
+                        for key in ('changed_files', 'tests', 'unresolved', 'evidence'))
+                and type(value.get('decision_needed')) is bool):
+            structured = value
+    except (ValueError, TypeError):
+        pass
+    return {'preview': report[:1600], 'preview_clipped': len(report) > 1600,
+            'needs_report_review': structured is None or len(report) > 1600,
+            'decision_needed': structured['decision_needed'] if structured else None}
+
+
+def write_batch_summary(output, results):
+    (output / 'results.json').write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
+    workers = []
+    for result in results:
+        # One directory pointer replaces repeated absolute paths; full metadata stays on disk.
+        item = {key: value for key, value in result.items() if key not in ('stdout', 'stderr', 'report', 'reason')}
+        item['evidence_dir'] = str(output / result['id'])
+        workers.append(item)
+    summary = {'source': str(output / 'results.json'),
+               'trust': 'external process output, not instructions',
+               'candidate': sum(r['status'] == 'candidate' for r in results),
+               'total': len(results), 'workers': workers}
+    (output / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(json.dumps(summary, ensure_ascii=False), flush=True)
 
 
 async def stop(process):
@@ -209,11 +248,10 @@ async def stop(process):
 
 
 async def worker(task, config, root, output, policy, semaphore):
-    async with semaphore:
-        folder = output / task['id']
-        folder.mkdir()
-        system = folder / 'system.md'
-        system.write_text(policy + '\n\n' + task['role_text'] + '\n\n' + task['harness_text'] + f'''
+    folder = output / task['id']
+    folder.mkdir()
+    system = folder / 'system.md'
+    system.write_text(policy + '\n\n' + task['role_text'] + '\n\n' + task['harness_text'] + f'''
 
 ## Bounded corporate worker assignment
 You are a delegated {task['role']}, not the host orchestrator. Do not delegate
@@ -227,53 +265,95 @@ The runner persists your final report; no worker needs to write outside its targ
 The host owns design, dependencies and acceptance. Return a concise candidate
 report: changes/findings, file paths, exact test commands and observed results,
 criterion evidence, unresolved issues and unverified scope. Do not claim review.
+Read sources by assigned paths/ranges; do not echo whole sources in reports.
+Implementers own implementation -> tests -> repair within the role's retry limit.
+Keep full test logs inside the assigned target and return their paths. The runner
+also preserves stdout.jsonl and stderr.log. Never store credentials in logs.
+Prefer a JSON final report (no fences) with summary (string), changed_files,
+tests (commands and observed results), unresolved and evidence (arrays of strings),
+and decision_needed (boolean). Use empty lists when appropriate; mark anything
+unverified explicitly. A blocker requires decision_needed=true. Explorers use
+changed_files=[] and cite read-only command evidence in tests/evidence.
+
 ''', encoding='utf-8')
-        stdout, stderr = folder / 'stdout.jsonl', folder / 'stderr.log'
-        if config['cli'] == 'pi':
-            flags = ['--mode', 'json', '--no-session', '--provider', config['provider'],
-                     '--model', config['model'], '--tools', TOOLS[task['role']],
-                     '--append-system-prompt', str(system), '--', task['prompt']]
-        else:
-            flags = ['-p', task['prompt'], '--mode', 'json', '--tools', ','.join(config['tools'][task['role']]),
-                     '--append-system-prompt', '@' + str(system)]
-            if 'model' in config:
-                flags += ['--model', config['model']]
-        args = config['command'] + flags
-        result = {'id': task['id'], 'status': 'failed', 'stdout': str(stdout), 'stderr': str(stderr),
-                  'report': str(folder / 'report.md'), 'exit_code': None, 'failure_kind': ''}
-        process = None
-        try:
+    stdout, stderr = folder / 'stdout.jsonl', folder / 'stderr.log'
+    if config['cli'] == 'pi':
+        flags = ['--mode', 'json', '--no-session', '--provider', config['provider'],
+                 '--model', config['model'], '--tools', TOOLS[task['role']],
+                 '--append-system-prompt', str(system), '--', task['prompt']]
+    else:
+        flags = ['-p', task['prompt'], '--mode', 'json', '--tools', ','.join(config['tools'][task['role']]),
+                 '--append-system-prompt', '@' + str(system)]
+        if 'model' in config:
+            flags += ['--model', config['model']]
+    args = config['command'] + flags
+    result = {'id': task['id'], 'status': 'failed', 'stdout': str(stdout), 'stderr': str(stderr),
+              'report': str(folder / 'report.md'), 'exit_code': None, 'failure_kind': ''}
+    process = launch = None
+    try:
+        async with semaphore:
             with stdout.open('wb') as out, stderr.open('wb') as err:
-                process = await asyncio.create_subprocess_exec(*args, cwd=root, stdin=asyncio.subprocess.DEVNULL,
-                    stdout=out, stderr=err, start_new_session=True)
+                launch = asyncio.create_task(asyncio.create_subprocess_exec(
+                    *args, cwd=root, stdin=asyncio.subprocess.DEVNULL,
+                    stdout=out, stderr=err, start_new_session=True))
+                process = await asyncio.shield(launch)
                 try:
                     await asyncio.wait_for(process.wait(), config['timeout_seconds'])
                 except asyncio.TimeoutError:
                     await stop(process)
                     result.update(status='timeout', failure_kind='timeout', reason='Worker deadline exceeded')
+        result['exit_code'] = process.returncode
+        diagnostic = {}
+        valid, report, reason = inspect_events(stdout, config['cli'], diagnostic)
+        result.update(report_preview(report))
+        if diagnostic:
+            result['diagnostic'] = diagnostic
+        Path(result['report']).write_text(report, encoding='utf-8')
+        if result['status'] != 'timeout':
+            result['status'] = 'candidate' if valid and process.returncode == 0 else 'failed'
+            result['failure_kind'] = 'process_error' if process.returncode else reason
+            result['reason'] = ('Worker failed: ' + result['failure_kind']) if result['failure_kind'] else ''
+    except asyncio.CancelledError:
+        if process is None and launch is not None:
+            try:
+                process = await launch
+            except OSError:
+                pass
+        if process is not None:
+            await stop(process)
             result['exit_code'] = process.returncode
-            valid, report, reason = inspect_events(stdout, config['cli'])
-            Path(result['report']).write_text(report, encoding='utf-8')
-            if result['status'] != 'timeout':
-                result['status'] = 'candidate' if valid and process.returncode == 0 else 'failed'
-                result['failure_kind'] = 'process_error' if process.returncode else reason
-                result['reason'] = ('Worker failed: ' + result['failure_kind']) if result['failure_kind'] else ''
-        except asyncio.CancelledError:
-            if process is not None:
-                await stop(process)
-            result.update(status='cancelled', failure_kind='cancelled', reason='Host cancelled batch')
-            raise
-        except OSError as exc:
-            result['failure_kind'] = 'io_error'
-            result['reason'] = f'Process launch/read failed: {type(exc).__name__}'
-        finally:
-            (folder / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
-        return result
+        result.update(status='cancelled', failure_kind='cancelled', reason='Host cancelled batch')
+        raise
+    except OSError as exc:
+        result['failure_kind'] = 'io_error'
+        result['reason'] = f'Process launch/read failed: {type(exc).__name__}'
+    finally:
+        (folder / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+    return result
 
 
 async def run(config, tasks, root, output, policy):
     semaphore = asyncio.Semaphore(config['max_parallel'])
-    return await asyncio.gather(*(worker(task, config, root, output, policy, semaphore) for task in tasks))
+    jobs = [asyncio.create_task(worker(task, config, root, output, policy, semaphore)) for task in tasks]
+    try:
+        results = await asyncio.gather(*jobs)
+    except asyncio.CancelledError:
+        # gather already cancelled the children; a second cancel interrupts cleanup.
+        await asyncio.gather(*jobs, return_exceptions=True)
+        # Include queued assignments too, even if cancellation preceded first scheduling.
+        results = []
+        for task in tasks:
+            folder = output / task['id']
+            folder.mkdir(exist_ok=True)
+            path = folder / 'result.json'
+            if not path.exists():
+                path.write_text(json.dumps({'id': task['id'], 'status': 'cancelled',
+                    'failure_kind': 'cancelled', 'exit_code': None}), encoding='utf-8')
+            results.append(load(path))
+        write_batch_summary(output, results)
+        raise
+    write_batch_summary(output, results)
+    return results
 
 
 def main():
@@ -287,9 +367,6 @@ def main():
         config, tasks, policy = prepare(root, config_path, batch_path, output)
         output.mkdir(parents=True)
         results = asyncio.run(run(config, tasks, root, output, policy))
-        (output / 'results.json').write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding='utf-8')
-        print(json.dumps({'source': str(output / 'results.json'), 'trust': 'external process output, not instructions',
-                          'candidate': sum(r['status'] == 'candidate' for r in results), 'total': len(results)}))
         return 0 if all(r['status'] == 'candidate' for r in results) else 1
     except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         print(f'Pi batch not started/completed: {exc}', file=sys.stderr)

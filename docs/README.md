@@ -97,6 +97,7 @@
 | [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨 | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053 |
 | [2026-10-05-corporate-pi-workers](specs/2026-10-05-corporate-pi-workers.md) | 구현됨 | 사내 전용 Pi 배치 실행·실패 회수·호스트 검토 | 054 |
 | [2026-10-06-pi-worker-cli-compatibility](specs/2026-10-06-pi-worker-cli-compatibility.md) | 구현됨·사내 실측 별도 | 기존 Pi·AX CLI 분리와 정상·오류·빈 응답 판정 | 054 |
+| [2026-10-06-pi-worker-economy](specs/2026-10-06-pi-worker-economy.md) | 구현됨·사내 실측 별도 | 도구 잘림 판정·배치 요약·호스트 전달량 측정 | 054 |
 
 ## 운영 절차 — `docs/runbooks/`
 

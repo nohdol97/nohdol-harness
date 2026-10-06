@@ -4,10 +4,12 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import signal
 import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 
 SCRIPT = Path(__file__).with_name('pi_workers.py')
@@ -47,8 +49,12 @@ if "exit-error" in prompt and "late-exit-error" not in prompt:
 if "malformed" in prompt:
     print("broken-json")
     sys.exit(0)
+if "long-log" in prompt:
+    print(json.dumps({"type": "tool_execution_end", "result": "x" * 200000}))
 reason = "error" if "model-error" in prompt else "length" if "truncated" in prompt else "stop"
 text = " " if "empty" in prompt else "Candidate report"
+if "long-report" in prompt:
+    text = "z" * 20000
 if prompt.startswith("Read ") and "expected.txt" in prompt:
     text = Path(prompt.split("Read ", 1)[1].split(" using", 1)[0]).read_text()
 message = {"role": "assistant", "stopReason": reason, "content": [{"type": "text", "text": text}]}
@@ -236,7 +242,51 @@ class EventTest(unittest.TestCase):
                     events = self.ax_string_events()
                     events.insert(2, {'type': 'message_end', 'message': {
                         'role': role, 'content': [{'type': 'text', 'text': 'failed'}], **marker}})
-                    self.assertEqual(self.inspect(events, 'ax')[::2], (False, expected))
+                    actual = (True, '') if role == 'toolResult' and marker == {'truncated': True} else (False, expected)
+                    self.assertEqual(self.inspect(events, 'ax')[::2], actual)
+
+    def test_tool_output_clipping_is_not_model_truncation(self):
+        for event in ({'type': 'tool_execution_end', 'truncated': True},
+                      {'type': 'tool_execution_update', 'status': 'truncated'},
+                      {'type': 'message_end', 'message': {'role': 'toolResult',
+                       'content': 'partial output', 'truncated': True}}):
+            events = self.ax_string_events()
+            events.insert(2, event)
+            self.assertEqual(self.inspect(events, 'ax'), (True, '응답 문자열', ''))
+            events[-1]['message']['truncated'] = True
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'truncated'))
+            events.pop()
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, 'incomplete'))
+
+    def test_clipped_tool_error_and_abort_still_fail(self):
+        for marker, expected in (({'isError': True}, 'model_error'), ({'aborted': True}, 'aborted')):
+            events = self.ax_string_events()
+            events.insert(2, {'type': 'tool_execution_end', 'truncated': True, **marker})
+            self.assertEqual(self.inspect(events, 'ax')[::2], (False, expected))
+
+    def test_corrupt_stream_diagnostic_and_historical_ax_string(self):
+        # Old AX array-only parsing rejected the observed string as invalid_stream.
+        self.assertEqual(self.inspect(self.ax_string_events(), 'ax'), (True, '응답 문자열', ''))
+        for tail in (b'{broken', b'\xff', b'[]', b'{"type":"message_end","message":[]}'):
+            with tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / 'stdout.jsonl'
+                path.write_bytes(b'\n'.join(json.dumps(e).encode() for e in self.ax_string_events()) + b'\n' + tail)
+                diagnostic = {}
+                self.assertEqual(RUNNER.inspect_events(path, 'ax', diagnostic)[::2], (False, 'invalid_stream'))
+                self.assertEqual(diagnostic['line'], 4)
+                self.assertTrue(diagnostic['reason'])
+
+    def test_structured_report_and_bounded_legacy_preview(self):
+        report = {'summary': 'Fixed', 'changed_files': ['a.py'], 'tests': ['test: PASS'],
+                  'unresolved': ['needs host choice'], 'evidence': ['test.log'], 'decision_needed': True}
+        preview = RUNNER.report_preview(json.dumps(report))
+        self.assertTrue(preview['decision_needed'])
+        self.assertFalse(preview['needs_report_review'])
+        self.assertIn('test.log', preview['preview'])
+        preview = RUNNER.report_preview('x' * 20000)
+        self.assertTrue(preview['preview_clipped'])
+        self.assertTrue(preview['needs_report_review'])
+        self.assertLessEqual(len(preview['preview']), 1600)
 
     def test_ax_string_exemption_does_not_relax_arrays_or_upstream(self):
         arrays = self.ax_events()
@@ -315,6 +365,14 @@ class WorkerTest(unittest.TestCase):
     def test_unknown_cli_is_rejected_before_launch(self):
         self.settings['cli'] = 'unknown'
         self.assertNotEqual(self.run_batch([self.task()]).returncode, 0)
+        self.assertFalse(self.output.exists())
+
+    def test_unresolved_dependencies_are_rejected_before_launch(self):
+        task = self.task()
+        task['depends_on'] = ['prior']
+        result = self.run_batch([task])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Resolve dependencies in the host', result.stderr)
         self.assertFalse(self.output.exists())
 
     def test_ax_uses_confirmed_flags_and_explicit_tools(self):
@@ -489,6 +547,42 @@ class WorkerTest(unittest.TestCase):
         original = (self.output / 'results.json').read_bytes()
         self.assertNotEqual(self.run_batch([self.task()]).returncode, 0)
         self.assertEqual((self.output / 'results.json').read_bytes(), original)
+
+    def test_grouped_result_keeps_long_logs_off_host_and_all_workers(self):
+        self.settings['max_parallel'] = 7
+        result = self.run_batch([self.task(str(i), 'long-log long-report') for i in range(7)])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+        summary = json.loads(result.stdout)
+        self.assertEqual(summary, json.loads((self.output / 'summary.json').read_text()))
+        self.assertEqual(summary['candidate'], 7)
+        self.assertEqual(len(summary['workers']), 7)
+        self.assertLess(len(result.stdout), 20000)
+        for item in summary['workers']:
+            self.assertTrue(item['preview_clipped'])
+            folder = Path(item['evidence_dir'])
+            self.assertEqual(len((folder / 'report.md').read_text()), 20000)
+            self.assertGreater((folder / 'stdout.jsonl').stat().st_size, 200000)
+
+    def test_sigint_preserves_active_and_queued_workers_and_summary(self):
+        self.settings['max_parallel'] = 1
+        self.config.write_text(json.dumps(self.settings))
+        self.batch.write_text(json.dumps([self.task('active', 'timeout'), self.task('queued')]))
+        process = subprocess.Popen([sys.executable, str(SCRIPT), '--root', str(self.root),
+            '--config', str(self.config), '--batch', str(self.batch), '--output', str(self.output)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        deadline = time.monotonic() + 5
+        while not (self.output / 'active/stdout.jsonl').exists() and time.monotonic() < deadline:
+            time.sleep(.01)
+        process.send_signal(signal.SIGINT)
+        stdout, stderr = process.communicate(timeout=5)
+        self.assertEqual(process.returncode, 130, stderr)
+        summary = json.loads(stdout)
+        self.assertEqual(summary['total'], 2)
+        self.assertTrue(all(item['status'] == 'cancelled' for item in summary['workers']))
+        self.assertEqual(len(self.results()), 2)
+        self.assertFalse((self.output / 'queued/stdout.jsonl').exists())
 
     def test_missing_project_harness_can_be_observed_under_root_policy(self):
         task = self.task()
