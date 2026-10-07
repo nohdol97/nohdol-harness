@@ -11,7 +11,7 @@ Observed recurring problem (evolution trigger "repeated failure"): starting new 
 
 **Scope**: independent subproject repositories only. **The root harness repository is an exception** — it is document-centric and keeps direct commits to main (root AGENTS.md section 5).
 
-**Install-site scope**: both profiles use the same procedures (ADR 052), with the **Pi runtime exception** in root AGENTS.md §11 (ADR 053). Pi-native sessions may choose the checkout option; corporate-host delegated Pi writers use dedicated feature worktrees (ADR 054). Corporate native-review exemptions apply only outside Pi; record Pi workers plus host review, without claiming a separate independent reviewer.
+**Install-site scope**: both profiles use the same dedicated feature-worktree procedures (ADR 052), with the **Pi runtime exception** in root AGENTS.md §11 (ADR 053). Pi-native sessions may choose the checkout option. Corporate Claude/Codex hosts perform work directly and record self-verification without a separate independent reviewer session (ADR 055); worktree isolation is unchanged.
 
 ### Pi checkout option
 

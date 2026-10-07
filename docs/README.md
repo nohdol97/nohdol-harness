@@ -63,7 +63,8 @@
 | [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
 | [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성 | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
 | [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 활성 | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
-| [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 활성 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
+| [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 폐기 → 055 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
+| [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 활성 | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -95,14 +96,15 @@
 | [2026-08-26-evaluation-independence-review](specs/2026-08-26-evaluation-independence-review.md) | 구현됨 | `.agents/skills/team-review/SKILL.md`, `.agents/hooks/eval-independence-contract_test.py` | 051 |
 | [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨 | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052 |
 | [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨 | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053 |
-| [2026-10-05-corporate-pi-workers](specs/2026-10-05-corporate-pi-workers.md) | 구현됨 | 사내 전용 Pi 배치 실행·실패 회수·호스트 검토 | 054 |
-| [2026-10-06-pi-worker-cli-compatibility](specs/2026-10-06-pi-worker-cli-compatibility.md) | 구현됨·사내 실측 별도 | 기존 Pi·AX CLI 분리와 정상·오류·빈 응답 판정 | 054 |
-| [2026-10-06-pi-worker-economy](specs/2026-10-06-pi-worker-economy.md) | 구현됨·사내 실측 별도 | 도구 잘림 판정·배치 요약·호스트 전달량 측정 | 054 |
-| [2026-10-06-pi-worker-recovery](specs/2026-10-06-pi-worker-recovery.md) | 구현됨·사내 CLI 미검증 | 보고된 tool_result·혼합 stdout 판정과 산출물 재사용·부분 재시도·정체 중단; CLI-JSONL 별도 후속 | 054 |
+| [2026-10-05-corporate-pi-workers](specs/2026-10-05-corporate-pi-workers.md) | 폐기 → 055 | 사내 전용 Pi 배치 실행·실패 회수·호스트 검토 | 054 |
+| [2026-10-06-pi-worker-cli-compatibility](specs/2026-10-06-pi-worker-cli-compatibility.md) | 폐기 → 055 | 기존 Pi·AX CLI 분리와 정상·오류·빈 응답 판정 | 054 |
+| [2026-10-06-pi-worker-economy](specs/2026-10-06-pi-worker-economy.md) | 폐기 → 055 | 도구 잘림 판정·배치 요약·호스트 전달량 측정 | 054 |
+| [2026-10-06-pi-worker-recovery](specs/2026-10-06-pi-worker-recovery.md) | 폐기 → 055 | 보고된 tool_result·혼합 stdout 판정과 산출물 재사용·부분 재시도·정체 중단; CLI-JSONL 별도 후속 | 054 |
+| [2026-10-07-retire-corporate-pi](specs/2026-10-07-retire-corporate-pi.md) | 구현·검증 완료 | 사내 직접 수행 복원·전용 실행기 제거·기존 안전 경계 보존 | 055 |
 
 ## 운영 절차 — `docs/runbooks/`
 
-- [사내 Pi 작업자 CLI 확인과 위임 검증](runbooks/pi-worker-cli-setup.md): 설치 계약 확인, worker 설정 생성, 실제 읽기 전용 위임 smoke. 사내 실측은 배포처에서 수행한다.
+- [폐기된 사내 Pi 작업자 경로 안내](runbooks/pi-worker-cli-setup.md): 기존 링크의 폐기 안내만 유지하며 실행 절차는 없다.
 
 ## 제안 (외부 도구 분석·채택 설계) — `docs/proposals/`
 

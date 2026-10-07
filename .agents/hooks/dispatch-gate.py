@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Block native Claude/Codex subagents on corporate profiles (ADR 042).
 
-Infra authoring remains the sole native exception. ADR 054 supplies a separate
-internal Pi process route for exploration/implementation; it does not disable
-this hook, trust runtime environment markers, or add a native override token.
+Infra authoring remains the sole native exception. Corporate hosts perform work
+directly under ADR 055. This hook does not trust runtime environment markers
+or add a native override token.
 Spec: docs/specs/2026-08-04-dispatch-gate-hook.md
 Regression: .agents/hooks/dispatch-gate_test.py
 """
@@ -41,12 +41,11 @@ def message(subagent_type):
     role = subagent_type or "(타입 미지정)"
     return (
         f"[dispatch-gate] 사내 프로필의 native 서브에이전트 발행(`{role}`)은 "
-        "차단됩니다(ADR 042·054). 우회 표식은 없습니다. "
-        "탐색·구현은 orchestrate/references/corporate-pi.md의 사내 Pi 작업자 "
-        "경로를 사용하세요. 호출 LLM은 설계·조율·진단·최종 검토를 맡습니다. "
-        "Pi 연결이 없으면 미검증/차단을 보고하고 유료 모델로 자동 대체하지 마세요. "
-        "실제 Pi 병렬 실행과 호스트 검토를 기록하고 별도 독립 reviewer 세션이 "
-        "없었음을 밝히세요. native 예외는 infra-specialist의 k8s·IaC 작성뿐입니다."
+        "차단됩니다(ADR 042·055). 우회 표식은 없습니다. "
+        "호스트가 수집·설계·구현·테스트·검토를 직접 수행하세요. "
+        "SDD/TDD와 실제 검증 근거를 유지하고 별도 독립 reviewer 세션이 "
+        "없었음을 밝히세요. 사내 추적 하네스 수정·반출 제한은 유지합니다. "
+        "native 예외는 infra-specialist의 k8s·IaC 작성뿐입니다."
     )
 
 

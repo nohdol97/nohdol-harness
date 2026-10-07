@@ -6,7 +6,7 @@ description: "Review diffs, PRs, specs, or harness changes against spec criteria
 # team-review — Size-Scaled Team Review
 
 
-**Runtime routing — root AGENTS.md §11 (ADR 053·054)**: the **Pi runtime exception** preserves ordinary dispatch/independent review in Pi-native sessions. Corporate Claude/Codex hosts instead delegate exploration/implementation to internal Pi workers through `orchestrate/references/corporate-pi.md`; design and final review stay in the host, native dispatch remains blocked except infra authoring. This takes precedence over older sequential-work wording below. Personal routing, corporate root-edit and data-egress restrictions stay unchanged.
+**Runtime routing — root AGENTS.md §11 (ADR 053·055)**: the **Pi runtime exception** preserves ordinary dispatch/independent review in Pi-native sessions. Corporate Claude/Codex hosts perform collection, implementation, tests and review directly; native dispatch remains blocked except infra authoring. Record host verification without a separate independent reviewer session. Personal routing, corporate root-edit and data-egress restrictions stay unchanged.
 
 ## Why this skill
 

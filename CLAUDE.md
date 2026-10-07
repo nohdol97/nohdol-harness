@@ -26,7 +26,7 @@
   - unattended multi-session loop → `autoloop`
   - video → `claude-video` only on explicit `/watch`; sensitive audio uses captions/`--no-whisper`
 
-- **Orchestration invariants (§7·§11, ADR 028·032·054)**: implementation continuations, resumes and diagnosis→first product edit re-enter `orchestrate`. K8s/IaC uses `infra-specialist`. Personal sessions use the normal role tiers and independent review. On corporate hosts, the calling LLM owns design/orchestration/review; Pi workers handle exploration/implementation in parallel via `orchestrate/references/corporate-pi.md`. Native Agent calls remain blocked except infra authoring. Record native calls separately from Pi capacity; do not turn internal-model availability into direct paid-host implementation. Preserve evidence and review attribution.
+- **Orchestration invariants (§7·§11, ADR 028·032·055)**: implementation continuations, resumes and diagnosis→first product edit re-enter `orchestrate`. K8s/IaC uses `infra-specialist`. Personal sessions use normal role tiers and independent review. Corporate hosts perform collection, implementation, tests and review directly; native Agent calls remain blocked except infra authoring. Record scope/risk, fresh test evidence and host review without a separate independent reviewer session. No internal-worker setup is required.
 
 - **Skill priority (§7)**: a matching specialized harness skill precedes `orchestrate`; harness skills precede built-in, plugin, and any other external skill or command pack on the same trigger. External tools are auxiliaries inside harness procedures. The user alone merges; never delegate to auto-merge/main-push skills.
 
