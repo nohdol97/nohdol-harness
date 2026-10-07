@@ -101,6 +101,7 @@
 | [2026-10-06-pi-worker-economy](specs/2026-10-06-pi-worker-economy.md) | 폐기 → 055 | 도구 잘림 판정·배치 요약·호스트 전달량 측정 | 054 |
 | [2026-10-06-pi-worker-recovery](specs/2026-10-06-pi-worker-recovery.md) | 폐기 → 055 | 보고된 tool_result·혼합 stdout 판정과 산출물 재사용·부분 재시도·정체 중단; CLI-JSONL 별도 후속 | 054 |
 | [2026-10-07-retire-corporate-pi](specs/2026-10-07-retire-corporate-pi.md) | 구현·검증 완료 | 사내 직접 수행 복원·전용 실행기 제거·기존 안전 경계 보존 | 055 |
+| [2026-10-07-long-command-logs](specs/2026-10-07-long-command-logs.md) | 구현됨 | 장기 명령 원본 로그·전체 스위트 공유 한도 | — |
 
 ## 운영 절차 — `docs/runbooks/`
 
