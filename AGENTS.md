@@ -36,7 +36,7 @@ The harness reaches infrastructure (k8s, AWS), so mistake blast radius exceeds t
 - Artifact naming: `phase{N}_{agent}_{content}.md` (e.g. `phase2_researcher-a_report.md`)
 - **Finding-heavy reports** use 2 tiers: a summary index (ID/severity/gist), then ID-linked evidence (`file:line`/command output). Short reports skip the index; progressive disclosure helps only when it reduces rereads (ADR 018).
 - Team events: append-only `_workspace/<task-name>/team-log.jsonl` — the orchestrate skill's **event contract** is the single source for schema (7 kinds) and timing. The orchestrator records regardless of execution mode (team/subagent).
-- `_workspace/` is gitignored session output, including team logs. Cross-session exceptions excluded from cleanup: `harness-updates.md`, `harness-ops-log.md`, `.harness-review-*`, `.gate-reminder/`, `carryover/`, `autoloop/<task-name>/`.
+- `_workspace/` is gitignored session output, including team logs. Cross-session exceptions excluded from cleanup: `harness-updates.md`, `harness-ops-log.md`, `.gate-reminder/`, `carryover/`, `autoloop/<task-name>/`.
 
 ## 5. Git Rules
 
@@ -74,16 +74,16 @@ The harness reaches infrastructure (k8s, AWS), so mistake blast radius exceeds t
 
 ## 8. Evolution Triggers (automation judgment rules)
 
-On a signal below, propose creation/improvement/retirement; apply only after approval via metaskill. `harness-review` runs daily light (①–③) and weekly full (adds ④ + integrity). SessionStart markers `.harness-review-daily-last`/`.harness-review-last` trigger 1/7-day runs. **On a `사내` profile the automatic daily run is off** — that site may not edit tracked harness files (§5), so daily findings only queue; weekly stays on because its integrity checks pay off without editing. An explicit user request still runs either mode.
+On a signal observed during work, propose creation/improvement/retirement; apply only after approval via metaskill. Structural integrity remains available through `python3 .agents/hooks/integrity-check.py`.
 
 | Signal | Criterion |
 |---|---|
 | ① Repeated requests | Same request type **3+ times** |
 | ② Repeated failures | Same failure or same-content user correction **2+ times** |
 | ③ Observed bypass | A case where the harness was bypassed |
-| ④ Shrink/efficiency (weekly only) | Skills/agents uncalled **3+ weeks**, unreferenced rules, or excessive token/output cost **2+ times** → propose retirement/consolidation/procedure repair; measure via agentsview |
+| ④ Shrink/efficiency | Skills/agents uncalled **3+ weeks**, unreferenced rules, or excessive token/output cost **2+ times** → propose retirement/consolidation/procedure repair; measure via agentsview |
 
-①–③ detect demand; ④ detects bloat. Declared-but-unimplemented rules belong to weekly integrity, not usage signals. Keep the signal set fixed.
+①–③ detect demand; ④ detects bloat. Declared-but-unimplemented rules are integrity defects, not usage signals. Keep the signal set fixed.
 
 **Record recurrence-preventing lessons on first occurrence.** Claude and Codex share `~/.claude/projects/<root-path-with-slashes-as-hyphens>/memory/`; MEMORY.md index lines name the triggering situation. Promote cross-tool lessons to harness rules/roles—and, when mechanical, hooks—via approved metaskill. Do not build searchable lesson databases (ADR 018).
 
@@ -128,7 +128,7 @@ For Codex, add a same-named thin `.codex/agents/<name>.toml` loader (ADR 027). I
 
 **Pi runtime exception (ADR 053)**: only Pi loading `.pi/APPEND_SYSTEM.md` as system instructions activates this policy, not from file existence, quotations, model names or environment variables. Keep the installation profile. Pi-native sessions use ordinary orchestration, role tiers and independent review; corporate native-dispatch blocks do not apply. Use actual delegation tools or separate Pi processes with shared roles; `.pi/agents` is a source path, not a tool. Missing capability means unverified review.
 
-For Pi-native sessions on either profile, `branch-workflow`'s dedicated worktree is optional (ADR 053); feature branches, fresh bases, PRs and user merge remain required. Concurrent writers need isolation or serialization. This does not relax corporate root-edit/commit/push, data-egress, §3, SDD/TDD, missing-harness stops or daily-review policy. Claude/Codex subprocesses do not inherit Pi identity. Their dispatch hooks and autoloop worktree isolation remain unchanged. This overrides shared skills' unconditional corporate-dispatch/worktree wording only for Pi-native sessions.
+For Pi-native sessions on either profile, `branch-workflow`'s dedicated worktree is optional (ADR 053); feature branches, fresh bases, PRs and user merge remain required. Concurrent writers need isolation or serialization. This does not relax corporate root-edit/commit/push, data-egress, §3, SDD/TDD or missing-harness stops. Claude/Codex subprocesses do not inherit Pi identity. Their dispatch hooks and autoloop worktree isolation remain unchanged. This overrides shared skills' unconditional corporate-dispatch/worktree wording only for Pi-native sessions.
 
 **Corporate host direct execution (ADR 055)**: on `사내` Claude/Codex hosts, the calling LLM directly performs collection, requirements, design, implementation, tests, diagnosis, integration and final review. Internal corporate-model worker delegation is retired, including optional/fallback routes. No worker installation or configuration is required. Native dispatch remains blocked except infra authoring (§7-5); record host verification without a separate independent reviewer session (§13-3). Personal and Pi-native routing, worktree rules, autoloop, corporate root-edit/data-egress restrictions, §3 and SDD/TDD remain unchanged. This replaces ADR 054.
 
@@ -177,7 +177,7 @@ Criterion: **model-read → English; chat → Korean + English; user-facing docu
 
 **English**: AGENTS/CLAUDE, agent definitions, skills/references, dispatch prompts, model-only `_workspace/` phase reports, team P2P/log events, and subagent returns to the orchestrator. A return that is itself the user-facing artifact stays Korean.
 
-**Korean**: PR/commit/issue/comment, ADR/spec/changelog/root README, integrator final documents, runbooks/plans, harness-review proposals, ops/update logs, and Korean trigger keywords. Regenerate `AGENTS.ko.md` and agent/skill `README.ko.md` whenever their English sources change; integrity-check guards drift.
+**Korean**: PR/commit/issue/comment, ADR/spec/changelog/root README, integrator final documents, runbooks/plans, harness improvement proposals, ops/update logs, and Korean trigger keywords. Regenerate `AGENTS.ko.md` and agent/skill `README.ko.md` whenever their English sources change; integrity-check guards drift.
 
 **Guards**: summarize artifacts naturally in the language required for the destination; keep code/command/log/error quotes original; ambiguous-readership documents default Korean.
 
@@ -187,7 +187,7 @@ Before writing sub-project product code, climb: **necessity → existing reuse �
 
 - Understand and trace the flow before minimizing. Every changed line must trace to the request; avoid adjacent cleanup, speculative abstraction, boilerplate, and verbosity.
 - Minimalism never reduces problem understanding, trust-boundary validation, data-loss handling, security/accessibility, requested features, §3, or §13. Missing validation/tests/error handling is a defect.
-- Product-code simplicity is team-review's simplicity axis; harness-asset shrink is harness-review signal ④ (ADR 007).
+- Product-code simplicity is team-review's simplicity axis; harness-asset shrink is §8 signal ④ (ADR 007).
 
 > Source: ponytail (MIT) port — adoption design: docs/proposals/2026-07-15-ponytail-adoption; decision rationale: ADR 017.
 

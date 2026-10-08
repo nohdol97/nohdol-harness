@@ -69,7 +69,7 @@ Keep company-identifying values out of the spec text: hostnames, internal URLs, 
 
 Filename: `_workspace/<작업명>/phase{N}_{에이전트명}_{내용}.md`
 
-> **Written in English** (root AGENTS.md section 15 — model-only internal deliverable; code/log quotes stay in the original language). Section structure as below (Summary / Findings / Judgement·Recommendations / Limits). **Exception**: integrator final reports, deployment runbooks, and harness-review proposals are read directly by the user, so they are in Korean.
+> **Written in English** (root AGENTS.md section 15 — model-only internal deliverable; code/log quotes stay in the original language). Section structure as below (Summary / Findings / Judgement·Recommendations / Limits). **Exception**: integrator final reports, deployment runbooks, and harness improvement proposals are read directly by the user, so they are in Korean.
 
 ```markdown
 # <work-name> — <content> (phase{N}, {agent-name})

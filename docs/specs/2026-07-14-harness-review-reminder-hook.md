@@ -1,5 +1,7 @@
 # 스펙: harness-review-reminder 훅 — 주간 점검 자동 트리거
 
+> 2026-10-08: 일일·주간 harness-review 실행 및 알림 관련 결정은 [ADR 056](../adr/056-retire-harness-review.md)으로 폐기되었다. 나머지 결정과 당시 기록은 보존한다.
+
 - 날짜: 2026-07-14 / 상태: 구현됨
 - 관련: 루트 AGENTS.md 8절(주 1회 관찰), harness-review SKILL.md, docs/specs/2026-07-14-agentsview-daemon-hook.md(훅 규격 선례)
 

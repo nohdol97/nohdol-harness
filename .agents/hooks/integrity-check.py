@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """integrity-check — 하네스 구조 무결성의 결정론적 점검 (리포트 전용, 커밋 게이트 아님).
 
-harness-review 주간 무결성 점검의 기계 판정 항목을 이 스크립트 1개로 결정론화한다
+하네스 무결성 점검의 기계 판정 항목을 이 스크립트 1개로 결정론화한다
 (루트 AGENTS.md 8절 승격 원칙 — tdd-gate·secret-gate 계보). 검사: 심링크(R1)·
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
 첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 32KB
@@ -11,7 +11,7 @@ ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
       (미지정 시 CLAUDE_PROJECT_DIR → 스크립트 위치 기준 루트 순으로 해석)
-종료: 문제 0건 exit 0, 1건 이상 exit 1. 출력 라벨은 영어(소비자=harness-review).
+종료: 문제 0건 exit 0, 1건 이상 exit 1. 출력 라벨은 영어(소비자=점검 실행자).
 
 스펙: docs/specs/2026-07-19-integrity-check-script.md
 회귀 테스트: .agents/hooks/integrity-check_test.py (수정 시 반드시 통과)
@@ -400,7 +400,7 @@ CODEX_HOOK_MATCHERS = {
 # 이벤트·매처 규약이 다르고, 한쪽을 다른 쪽에서 유도하면 어느 한쪽이 바뀔 때
 # 검사가 조용히 헐거워진다.
 CLAUDE_HOOK_COMMANDS = {
-    "SessionStart": ["agentsview-daemon.py", "harness-review-reminder.py",
+    "SessionStart": ["agentsview-daemon.py",
                      "worklog-reminder.py"],
     "PreToolUse": ["gate-reminder.py", "tier-gate.py", "dispatch-gate.py"],
     "PostToolUse": ["gate-reminder.py"],
@@ -409,7 +409,6 @@ CLAUDE_HOOK_COMMANDS = {
 CODEX_HOOK_COMMANDS = {
     "SessionStart": [
         ("agentsview-daemon.py",),
-        ("harness-review-reminder.py",),
         ("worklog-reminder.py",),
     ],
     "PreToolUse": [
@@ -643,7 +642,7 @@ def check_korean_readme_views(root):
 
 
 def check_lightweight_section(root):
-    """R20: REGISTRY.md 「경량 모델」 절의 상태를 주간 점검 출력에 드러낸다(ADR 040).
+    """R20: REGISTRY.md 「경량 모델」 절의 상태를 무결성 점검 출력에 드러낸다(ADR 040).
 
     이 절은 `tier-gate`의 유일한 판정 입력인데 **gitignore 대상**이라, 지워지거나
     비어도 `git status`에 흔적이 없고 게이트는 조용히 잠든다(독립 검증 2026-08-04

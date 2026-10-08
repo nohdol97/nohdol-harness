@@ -46,11 +46,11 @@ agent-eval-gate의 실패 원인을 조사해줘
 
 ### 하네스 자체 점검
 
-```text
-하네스 주간 점검해줘
+```bash
+python3 .agents/hooks/integrity-check.py
 ```
 
-`harness-review`가 무결성 검사와 운영 신호를 확인한다. 실제 개선은 사용자가 승인한 뒤 `metaskill`이 적용한다.
+필요할 때 구조 무결성을 검사한다. 작업 중 관찰된 개선 신호는 사용자 승인 뒤 `metaskill`로 반영한다.
 
 ## 동작 방식
 

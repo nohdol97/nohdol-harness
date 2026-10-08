@@ -145,7 +145,7 @@ Result integration is **owned by the integrator agent**; the single source of th
 
 **Work that includes feature addition or behavior change includes a final independent reviewer verification phase regardless of the verdict grade** — under a generate-verify pair verdict, the pair's reviewer does it; under a team verdict, the verification phase does (spec-based review per §13 item 3 — the spec's completion criteria are the verdict criteria). Reason: an implementer's self-assessment passes its own bias — if verification is optional, it gets skipped first precisely on busy work. If the scale is large (same as the team threshold in the 0-1 verdict table — 6+ changed files) or the risk is high, promote the verification phase to team-review team mode (perspective fan-out).
 
-**Install-site exemption — corporate Claude/Codex hosts (ADR 042·055; root §11)**: native Agent/Task/spawn_agent dispatch remains blocked for every role except `infra-specialist` authoring, without an override marker. Review-mode infra dispatch is not an exception. The host performs collection, implementation, tests and review directly and sequentially. Record §13-2 evidence and “host review without a separate independent reviewer session” in the PR verification line, harness history or completion report. Collection fan-out in project-status/harness-review and review perspectives in team-review become host-owned sequential work. Personal/Pi-native sessions retain independent review. Root editing, data egress, §3, SDD/TDD and worktree rules remain unchanged.
+**Install-site exemption — corporate Claude/Codex hosts (ADR 042·055; root §11)**: native Agent/Task/spawn_agent dispatch remains blocked for every role except `infra-specialist` authoring, without an override marker. Review-mode infra dispatch is not an exception. The host performs collection, implementation, tests and review directly and sequentially. Record §13-2 evidence and “host review without a separate independent reviewer session” in the PR verification line, harness history or completion report. Collection fan-out in project-status and review perspectives in team-review become host-owned sequential work. Personal/Pi-native sessions retain independent review. Root editing, data egress, §3, SDD/TDD and worktree rules remain unchanged.
 
 **Pair-verification issuing follows the lightweight review protocol** (single source: the team-review "Solo mode" section — measured 2026-07-21: even at small scale a review takes minutes). It splits into two layers: ① **inline input (include the full diff, a spec completion-criteria excerpt, and the latest test output in the issuing prompt) and `run_in_background` issuing are the default for all pair verification** (removing re-collection round-trips pays at any scale; the reviewer keeps re-running relevant tests. **For diffs over 10KB, pass the file path instead of the full text** — single source: team-review Solo mode item 1). ② **Report-file omission (verdict via return text) applies only to ≤2 files** (file it when a must-fix is found). This rule trims fixed overhead, not verification — the verification mandate of this section itself is invariant.
 ## Team-run learning notes (3+ phase team runs only — oh-my-openagent adoption, proposal: 2026-07-19)
@@ -192,10 +192,10 @@ Each phase's pattern is **judged independently** by that phase's problem shape �
 
 ## team-log.jsonl event contract (fixed schema)
 
-Append team events to `_workspace/<task>/team-log.jsonl` **immediately as they occur** — batch-writing at shutdown loses the log of interrupted sessions and makes harness-review's failure-signal observation impossible.
+Append team events to `_workspace/<task>/team-log.jsonl` **immediately as they occur** — batch-writing at shutdown loses the log of interrupted sessions.
 
 - Format: one JSON line; required fields `ts` (ISO8601) and `event`; the rest are per-event details.
-- `event` values (fixed): `team_create` / `task_dispatch` / `task_complete` / `task_failed` / `integration_complete` / `shutdown_request` / `team_delete`. harness-review reads `task_failed` and the absence of `team_delete` as signals.
+- `event` values (fixed): `team_create` / `task_dispatch` / `task_complete` / `task_failed` / `integration_complete` / `shutdown_request` / `team_delete`.
 
 ## Shutdown sequence (session clean — fixed order)
 

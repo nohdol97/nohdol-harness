@@ -44,7 +44,6 @@ Look back over this session and **lightly check only whether improvement signals
 - **Record lessons immediately, now** (no waiting for proposal — §8 "record mistakes immediately"): in Claude sessions, record to auto-memory (feedback type), but **the index line carries the triggering situation, not the lesson's gist** (in what kind of work this should be recalled). In Codex sessions, write the lesson file and the MEMORY.md index line in the same repository directly.
 - **For anything requiring harness/project application, only propose** — "이번 세션에서 〈신호〉를 관찰했습니다. metaskill로 반영할까요?" (harness assets), or propose recording in the sub AGENTS.md "스킬 후보" (skill candidates) section (projects). **Only after user approval does it go to metaskill**; before approval, fix nothing.
 
-**Boundary with harness-review (not a duplicate)**: this retrospective is the stage that **captures** signals at the session's **end** while context is alive, whereas `harness-review` is the stage that judges cadence (1-day/7-day) via markers at session **start** and **scans/proposes** from accumulated traces. wrapup's capture does not replace harness-review; it **makes the input to that scan accurate** — the two are complementary.
 
 ### 3. Auto-judge the save target by scope
 
@@ -130,7 +129,7 @@ The prompt is **in Korean** (a sentence the user types — root §15), and the t
 | Metric | Without this skill | With this skill |
 |---|---|---|
 | Pre-clear wrap-up | Regret ("should have registered") only after the context is emptied | The gate right before clear forces the save decision |
-| Improvement signals | Fresh end-of-session signals evaporate; harness-review reconstructs after the fact | Captured while context is alive → recorded/proposed immediately |
+| Improvement signals | Fresh end-of-session signals evaporate | Captured while context is alive → recorded/proposed immediately |
 | Save-target judgment | Confusion between work-tracker and carryover, asked every time | Auto-judged by scope (local saves unconfirmed, only work-tracker confirmed just before), asking back only when ambiguous |
 | Duplicate implementation | Wrap-up/apply logic improvised every time | Reuses existing skills (work-tracker·carryover·metaskill·branch-workflow) |
 | Worktrees | Finished ones accumulate; work inside them is invisible to a root `git status` and gets swept up as "nothing to leave" | Enumerated during the sweep, removed only after a measured merge check |

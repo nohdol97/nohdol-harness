@@ -3,8 +3,7 @@
 같은 수정을 훅마다 반복 적용하는 fix 연쇄(2026-07-14 cp949 장애가 3개 파일
 동시 수정을 요구)를 없애기 위해 공통 로직을 이 파일 한 곳에만 둔다.
 훅이 아니므로 .claude/settings.json에 등록하지 않는다. import 경로는 위치에
-따라 다르다: 같은 디렉토리의 세션 훅 3종(agentsview-daemon·harness-review-
-reminder·worklog-reminder)은 스크립트 직접 실행이라 sys.path[0]만으로
+따라 다르다: 같은 디렉토리의 세션 훅(agentsview-daemon·worklog-reminder)은 스크립트 직접 실행이라 sys.path[0]만으로
 `from _common import ...`가 되지만, 다른 디렉토리의 git 훅
 (.agents/githooks/tdd-gate.py)과 각 테스트 스위트는 이 파일이 있는 hooks/
 경로를 sys.path에 명시 삽입한 뒤 import한다.
@@ -19,8 +18,7 @@ import sys
 
 # 설치처 판정 입력(§5·ADR 012·ADR 040)의 단일 출처는 REGISTRY.md다. 미추적
 # 파일이라 사내 설치처에서도 이 입력만은 그 기계가 쥔다. 판독기가 여기 있는
-# 이유는 소비자가 셋이기 때문이다 — harness-review-reminder(일일 점검 억제)와
-# dispatch-gate(발행 차단)가 프로필을, tier-gate(경량 발행 차단)가 경량
+# 이유는 dispatch-gate(발행 차단)가 프로필을, tier-gate(경량 발행 차단)가 경량
 # 목록을 읽는다. 사본을 두면 아래 주석이 기록한 독립 검증 수정(코드 펜스·제목
 # 레벨)을 그만큼 따로 반영해야 한다(이 파일의 존재 이유).
 REGISTRY = "REGISTRY.md"

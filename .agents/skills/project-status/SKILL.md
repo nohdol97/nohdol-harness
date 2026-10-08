@@ -41,7 +41,7 @@ The integrator merges per the gate principles, but since this skill's final repo
 
 - **Needs attention**: evidence-backed issues such as neglected uncommitted changes, registry mismatches, missing harness
 - **Per-project summary table**: name / git state / recent activity / harness / registry match
-- **Recommendations**: proposals linked to metaskill·harness-review (registry updates, harness creation, etc.)
+- **Recommendations**: proposals linked to metaskill (registry updates, harness creation, etc.)
 
 ### Final response
 

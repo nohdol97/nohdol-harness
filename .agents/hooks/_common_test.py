@@ -9,6 +9,7 @@ import importlib.util
 import io
 import os
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -42,7 +43,6 @@ HOOK_FILES = [
     # tdd-gate는 git 훅 계층(.agents/githooks/ — ADR 015)이라 교차 디렉토리 import다.
     ("tdd_gate_hook", os.path.join(os.pardir, "githooks", "tdd-gate.py")),
     ("agentsview_daemon_hook", "agentsview-daemon.py"),
-    ("harness_review_reminder_hook", "harness-review-reminder.py"),
     ("worklog_reminder_hook", "worklog-reminder.py"),
     # 발행 게이트 2종도 _common 소비자다. tier-gate는 ADR 037 때 이 목록에
     # 들어오지 않아 C3·C4(공통 사용·유실 폴백)가 검사되지 않고 있었고,
@@ -88,8 +88,7 @@ class TestHooksUseCommon(unittest.TestCase):
     def test_c4b_fallback_profile_reader_never_reports_corporate(self):  # C4b (ADR 042·046)
         """`_common` 유실 시의 폴백 `read_profile`은 항상 미상을 돌려준다.
 
-        폴백이 `사내`를 돌려주면 **개인 설치처에서 발행이 막히고**(dispatch-gate)
-        **일일 하네스 점검이 영구히 억제된다**(harness-review-reminder) — 판독
+        폴백이 `사내`를 돌려주면 **개인 설치처에서 발행이 막힌다**(dispatch-gate) — 판독
         실패가 억제로 떨어지면 안 된다는 fail-open 방향을 정면으로 어긴다. C4가
         `utf8_stdio`만 확인해 이 갈래에 커버리지가 0이었고(독립 검증 2026-08-04
         C-02), `CORPORATE`를 돌려주는 변이가 스위트를 통과했다.
@@ -176,6 +175,77 @@ class TestRegistryReaders(unittest.TestCase):
             self.assertEqual(common.read_lightweight_models(d), {"haiku"})
         with self.registry("## 경량 모델링 도구\n\n- **haiku** — 다른 절이다\n") as d:
             self.assertEqual(common.read_lightweight_models(d), set())
+
+
+
+class ReadProfile(unittest.TestCase):
+    def _registry(self, tmpdir, content):
+        with open(os.path.join(tmpdir, common.REGISTRY), "w", encoding="utf-8") as f:
+            f.write(content)
+
+    def test_personal(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "# REGISTRY\n\n## 설치처 프로필\n\n"
+                              "- **개인** — 하네스 파일 수정·커밋·푸시 가능.\n")
+            self.assertEqual(common.read_profile(d), "개인")
+
+    def test_corporate(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "# REGISTRY\n\n## 설치처 프로필\n\n"
+                              "- **사내** — 하네스 수정·푸시 금지, 개선은 대기 큐\n")
+            self.assertEqual(common.read_profile(d), "사내")
+
+    def test_only_reads_the_profile_section(self):
+        # 다른 절의 굵은 라벨을 프로필로 읽지 않는다. **프로필 절을 뒤에 둔다** —
+        # 앞에 두면 파일 전체를 훑어 첫 매치를 잡는 구현도 같은 답을 내므로
+        # 이 테스트가 절 한정을 전혀 고정하지 못한다(독립 검증 2026-08-03 B2:
+        # 절 한정을 제거하는 변이가 36/36 통과로 살아남았다).
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "## 배포처 이관 경계\n\n- **사내** 후속 작업은 …\n\n"
+                              "## 설치처 프로필\n\n- **개인** — 수정 가능.\n")
+            self.assertEqual(common.read_profile(d), "개인")
+
+    def test_section_ends_at_the_next_heading_of_any_level(self):
+        # 프로필 절이 끝난 뒤의 굵은 라벨은 프로필이 아니다. `##`만 절을 닫으면
+        # `#`·`###` 뒤의 라벨을 프로필로 읽는다 — 억제 방향 위양성이라
+        # 그 설치처가 아닌 값으로 일일 점검이 꺼진다(독립 검증 B3).
+        # 프로필 절 자체는 라벨 없이 두어야 이 축이 실제로 발동한다 —
+        # 라벨이 있으면 첫 매치에서 반환해 뒤를 아예 읽지 않는다.
+        for closing in ("# 다른 문서", "### 하위 절"):
+            with tempfile.TemporaryDirectory() as d:
+                self._registry(d, "## 설치처 프로필\n\n아직 기록하지 않았다.\n\n"
+                                  "%s\n\n- **사내** — 여기는 프로필이 아니다\n" % closing)
+                self.assertIsNone(common.read_profile(d), closing)
+
+    def test_missing_file_and_missing_section(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(common.read_profile(d))  # REGISTRY.md 부재
+            self._registry(d, "# REGISTRY\n\n## 프로젝트 레지스트리\n\n표…\n")
+            self.assertIsNone(common.read_profile(d))  # 절 부재
+
+    def test_label_mismatch_is_unknown(self):
+        # C14의 '라벨 불일치' 갈래 — 절은 있으나 굵은 라벨 목록 형식이 아니면
+        # 미상이고, 미상은 억제하지 않는다.
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "## 설치처 프로필\n\n사내 설치처입니다.\n")
+            self.assertIsNone(common.read_profile(d))
+            self._registry(d, "## 설치처 프로필\n\n- 사내 — 굵은 라벨이 아님\n")
+            self.assertIsNone(common.read_profile(d))
+
+    def test_fenced_example_is_not_the_profile(self):
+        # 코드 펜스 안의 예시를 프로필로 읽으면 그 설치처가 아닌 값으로 일일이
+        # 꺼진다(억제 방향 위양성 — 독립 검증 2026-08-03 F4).
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "# REGISTRY\n\n예시 형식:\n\n```markdown\n"
+                              "## 설치처 프로필\n\n- **사내** — 예시일 뿐\n```\n\n"
+                              "## 설치처 프로필\n\n- **개인** — 실제 값\n")
+            self.assertEqual(common.read_profile(d), "개인")
+
+    def test_unreadable_registry(self):
+        with tempfile.TemporaryDirectory() as d:
+            self._registry(d, "## 설치처 프로필\n\n- **사내** — 금지\n")
+            with mock.patch("builtins.open", side_effect=PermissionError):
+                self.assertIsNone(common.read_profile(d))
 
 
 if __name__ == "__main__":

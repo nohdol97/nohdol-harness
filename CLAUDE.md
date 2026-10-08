@@ -14,7 +14,7 @@
   - implementation, fixes, refactors, continuations, parallel/cross-project work → `orchestrate`
   - QA/test-and-fix → `orchestrate` (`troubleshooter`→`implementer`); design → `architect` after that gate
   - review, verification, security audit → `team-review`
-  - harness creation/improvement → `metaskill`; routine review proposal → `harness-review`
+  - harness creation/improvement → `metaskill`
   - specs, reports, READMEs, runbooks, PR bodies → `doc-writer`; the diagram those owe (ordered exchange, state machine, branch, 4+-component structure) → `diagram`
   - knowledge notes authored into the study vault → `vault-write` (reading it as design input stays §7 clause 8)
   - missing `REGISTRY.md`, install, bootstrap → `harness-install`

@@ -1,6 +1,6 @@
 ---
 name: tool-audit
-description: "Audit an installed external plugin/MCP/skill pack/framework using AgentsView usage, fixed token cost, overlap, and rollback evidence. Use for 도구 감사, 사용 실측, 플러그인 정리. Not for harness-native usage or periodic scans (harness-review), candidates (tool-eval), or applying removals (metaskill). Re-run: tool-audit, usage audit, plugin audit, 도구 감사, 사용 실측."
+description: "Audit an installed external plugin/MCP/skill pack/framework using AgentsView usage, fixed token cost, overlap, and rollback evidence. Use for 도구 감사, 사용 실측, 플러그인 정리. Not for harness-native usage/improvement (metaskill), candidates (tool-eval), or applying removals (metaskill). Re-run: tool-audit, usage audit, plugin audit, 도구 감사, 사용 실측."
 ---
 
 # tool-audit — Measured Usage Audit for External Tools

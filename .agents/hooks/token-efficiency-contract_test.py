@@ -91,7 +91,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
         skill_dir = os.path.join(ROOT, ".agents", "skills")
         bounded = {
             "autoloop", "carryover", "context7", "defuddle", "doc-writer",
-            "harness-review", "metaskill", "orchestrate", "release",
+            "metaskill", "orchestrate", "release",
             "team-review", "tool-audit", "tool-eval", "work-tracker", "wrapup",
         }
         for name in sorted(os.listdir(skill_dir)):
@@ -108,7 +108,6 @@ class TokenEfficiencyContractTest(unittest.TestCase):
         samples = {
             "branch-workflow": ("push to main", "PR 생성"),
             "context7": ("library", "라이브러리 문서"),
-            "harness-review": ("진화", "하네스 리뷰"),
             "project-status": ("what changed across projects", "전체 현황"),
             "tool-audit": ("harness-native", "사용 실측"),
             "work-tracker": ("where was I", "하던 작업 뭐였지"),
@@ -123,8 +122,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
         samples = {
             "branch-workflow": ("never auto-merge", "never push directly to main"),
             "context7": ("Anthropic/Claude API", "model-ID", "general programming"),
-            "harness-review": ("harness-native usage", "tool-audit"),
-            "tool-audit": ("harness-native usage", "harness-review"),
+            "tool-audit": ("harness-native usage", "metaskill"),
         }
         for name, boundaries in samples.items():
             desc = description(".agents/skills/%s/SKILL.md" % name)

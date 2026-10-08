@@ -89,8 +89,6 @@ def make_good_fixture(root):
           "[[hooks.SessionStart.hooks]]\n"
           'type = "command"\ncommand = "python3 .agents/hooks/agentsview-daemon.py"\n'
           "[[hooks.SessionStart.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/harness-review-reminder.py"\n'
-          "[[hooks.SessionStart.hooks]]\n"
           'type = "command"\ncommand = "python3 .agents/hooks/worklog-reminder.py"\n\n'
           "[[hooks.PreToolUse]]\n"
           'matcher = "apply_patch"\n'
@@ -120,7 +118,6 @@ def make_good_fixture(root):
         "hooks": {
             "SessionStart": [{"hooks": [
                 {"type": "command", "command": "python3 .agents/hooks/agentsview-daemon.py"},
-                {"type": "command", "command": "python3 .agents/hooks/harness-review-reminder.py"},
                 {"type": "command", "command": "python3 .agents/hooks/worklog-reminder.py"},
             ]}],
             "PreToolUse": [

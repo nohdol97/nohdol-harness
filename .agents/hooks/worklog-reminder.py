@@ -7,7 +7,7 @@ claude-mem은 SessionEnd/Stop 훅으로 세션 전체를 캡처·압축해 로�
 DB에 쌓지만(상시 인프라), 이 하네스가 메우려는 공백은 '전수 기억'이 아니라
 work-tracker 흐름 2(세션 종료 시 진행 로그)의 '실행이 기억에 의존'하는 지점
 하나다(14절). SessionEnd/Stop 훅은 모델을 깨우지 못해 지시를 세션에 주입할 수
-없으므로(harness-review-reminder와 같은 제약), 대신 **다음 세션 SessionStart에
+없으므로, 대신 **다음 세션 SessionStart에
 로컬 git으로 이전 세션이 남긴 미커밋 작업을 감지**해 흐름 2/3을 환기한다 —
 워커·DB·SessionEnd 훅 없이 같은 경계 보호를 얻는다.
 

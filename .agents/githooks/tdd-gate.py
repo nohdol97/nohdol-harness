@@ -4,8 +4,8 @@
 전역 core.hooksPath(`.agents/githooks/`) 경유로 실행되어, Claude Code·Codex·수동
 커밋 등 **도구와 무관하게** 코드 파일이 테스트 변경 없이 커밋되는 것을 차단한다.
 진입: `tdd-gate.py --commit-msg <메시지 파일>` (`.agents/githooks/commit-msg` shim).
-등록은 머신별 설정이라 harness-install 1단계가 수행하고, 미등록은 harness-review
-주간 무결성 점검이 잡는다(ADR 015).
+등록은 머신별 설정이라 harness-install 1단계가 수행하고, 미등록은 수동 integrity-check.py
+무결성 점검으로 확인한다(ADR 015).
 
 규칙의 원본은 문서(13절)이고 이 훅은 보조 게이트다. 따라서 판단이 불가능한
 상황은 전부 통과시킨다(fail-open) — 훅이 정상 커밋까지 막으면 우회를

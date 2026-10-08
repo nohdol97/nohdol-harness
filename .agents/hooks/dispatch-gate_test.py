@@ -216,7 +216,7 @@ class Gate(unittest.TestCase):
 class SharedProfileReader(unittest.TestCase):
     """C10 — 판독기가 `_common`에 있고 이 훅이 그것을 쓴다(위치 고정).
 
-    파서의 의미 축(코드 펜스·제목 레벨·다른 절 산문)은 harness-review-reminder
+    파서의 의미 축(코드 펜스·제목 레벨·다른 절 산문)은 _common_test
     스위트가 같은 함수에 대고 이미 판정한다 — 여기서 다시 세우면 같은 검사가
     두 벌이 된다(§16). 이 클래스가 막는 회귀는 하나다: 판독기를 훅 안으로
     되돌려 복제하는 것.

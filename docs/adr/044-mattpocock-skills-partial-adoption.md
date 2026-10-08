@@ -1,5 +1,7 @@
 # ADR 044 — mattpocock/skills 부분 채택: 착안 4건 이식, 통설치 기각
 
+> 2026-10-08: 일일·주간 harness-review 실행 및 알림 관련 결정은 [ADR 056](../adr/056-retire-harness-review.md)으로 폐기되었다. 나머지 결정과 당시 기록은 보존한다.
+
 - **날짜**: 2026-08-07
 - **상태**: 활성
 - **관련**: ADR 022(superpowers 부분 채택 — 같은 판정 구조의 선례), ADR 041(이해도 퀴즈 제거 — ③이 메우는 공백을 만든 결정), ADR 026(긍정 허용문 선호), ADR 030(영어 우선 + 한글 뷰 동기), 루트 AGENTS.md §5·§8·§13·§16, proposal `docs/proposals/2026-08-07-mattpocock-skills-review.md`
