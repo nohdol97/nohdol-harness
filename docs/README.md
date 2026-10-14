@@ -4,6 +4,12 @@
 
 > **동기화 의무**: ADR·스펙·제안을 새로 만들거나 상태가 바뀌면(대체·구현·기각) 이 인덱스의 해당 행을 **같은 커밋에서 갱신**한다(metaskill 절차·AGENTS.md 6절). 인덱스가 현실과 어긋나면 REGISTRY.md와 같은 이유로 아무도 안 믿게 된다.
 
+## Paperclip 연결
+
+- [운영 안내](../.agents/integrations/paperclip/README.md)
+- [ADR 057](adr/057-paperclip-harness-sync.md) — 활성: 원본 기반 역할·스킬 동기화
+- [도입 스펙](specs/2026-10-14-paperclip-harness-sync.md) — 구현·로컬 설치 검증 완료
+
 ## ADR (구조적 결정 기록) — `docs/adr/`
 
 상태: **활성** = 유효, **부분 대체(→NNN)** = 일부 결정이 후속 ADR로 대체됨(각 ADR 상단 배너에 어느 부분인지 명시). ADR은 불변 기록이라 대체돼도 삭제하지 않는다 — 결정의 역사를 남긴다.

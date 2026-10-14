@@ -1,0 +1,64 @@
+# Paperclip 연결
+
+하네스 원본의 표준 역할과 스킬을 로컬 Paperclip 회사에 등록한다. 원본 `.agents/agents/`와 `.agents/skills/`는 그대로 두며, 생성 지침·설치 ID·모델 선택은 `_workspace/paperclip-sync/`에 둔다.
+
+## 다시 동기화하기
+
+하네스 루트에서 실행한다. 기존 설치의 설정 파일에는 회사·프로젝트·담당자 ID와 실제 모델 선택이 들어 있다. 인증 정보는 넣지 않는다.
+
+```bash
+python3 .agents/integrations/paperclip/sync.py --config _workspace/paperclip-sync/config.json
+python3 .agents/integrations/paperclip/sync.py --config _workspace/paperclip-sync/config.json --apply
+```
+
+첫 명령은 읽기 전용 계획, 두 번째 명령은 적용이다. 서버는 `paperclipai service start`로 시작한다. 계획에서 같은 이름의 비관리 에이전트와 충돌하면 기존 객체를 덮어쓰지 않는다. 실행 중인 역할은 작업이 끝난 다음 동기화한다. 의미상 같은 에이전트 설정은 PATCH를 생략해 Paperclip의 불필요한 계정 재검사를 피한다. 동기화는 제품 업무를 만들거나 에이전트를 호출하지 않는다.
+
+새 설치에서는 `--help`에 표시되는 회사·프로젝트·관리자 ID와 design/implement/explore 모델을 지정한다. 현재 CLI에서 실제 지원하는 모델을 고른다. 모델 이름을 공유 코드에 고정하지 않는다.
+
+## 가져오는 것과 책임
+
+- 표준 역할 7종을 기존 chief-of-staff 아래에 등록한다. 원본 역할 본문과 SHA-256, 설치 경로, `runtime.md` 연결 규칙이 생성 지침에 들어간다.
+- 루트 스킬을 git 추적 파일만으로 준비한 뒤 스킬 디렉터리들을 담은 상위 디렉터리를 회사 라이브러리에 가져온다. Paperclip 2026.1012.0의 개별 디렉터리 가져오기는 참조 inventory를, `SKILL.md` 파일 가져오기는 비표준 하위 디렉터리를 누락할 수 있어, 상위 디렉터리를 지정하고 모든 추적 파일의 inventory를 확인한다. 무관한 미추적 파일·자격 증명·의존성 디렉터리는 복사하지 않는다. 역할별로 필요한 스킬을 배정한다.
+- `autoloop`은 라이브러리에는 있지만 기본 배정에서 제외한다. Paperclip 업무 트리 안에서는 Paperclip이 작업 배정과 재시도를 맡는다. 기존 터미널용 autoloop은 그대로 사용할 수 있다.
+- 기존 관리자의 지침은 구분된 안내 블록만 추가한다. 기존 모델·권한·기타 설정은 유지한다.
+- 신규 역할은 타이머를 끄고, 사용자 업무 배정이나 수동 실행을 기다린다.
+
+## 스펙을 맡기는 방법
+
+Paperclip에서 해당 제품 프로젝트의 업무를 만들고 기존 chief-of-staff에게 배정한다. 스펙 경로와 완료 기준, 제품 저장소를 명시한다. 예:
+
+> 이 스펙을 nohdol-harness 규칙으로 구현해줘. 완료 기준마다 작업과 검증 근거를 연결하고, 구현 작업에는 reviewer 검토 단계를 설정해줘. 제품 수정은 전용 worktree에서 진행하고, 통합 테스트와 최종 기준 검토 후 PR로 전달해줘. 막힌 항목은 이유와 필요한 결정을 보고해줘.
+
+프로젝트별 로컬 규칙과 레지스트리가 준비돼 있어야 한다. 단순 역할 등록만으로 전 업무에 검토 정책이 자동 적용되지는 않는다. 관리자가 각 구현 이슈를 생성할 때 reviewer를 지정한 `executionPolicy`를 넣도록 `runtime.md`가 안내한다. 실제 이슈에 정책이 있는지 확인해야 한다. PR 머지·배포·DB migration은 기존 승인 경계를 따른다.
+
+## 실행 권한과 한계
+
+구현자·인프라 작성자는 Codex workspace-write, 수집·설계·검토·보고 역할은 read-only를 사용한다. 설치된 Codex가 named permission profiles와 `--ignore-user-config`를 지원해야 한다. `codex_readonly.py`와 `codex_workspace.py`는 Paperclip의 legacy sandbox 인자를 역할별 명명된 프로필로 바꾸고 결과 보고용 네트워크를 허용한다. 읽기 역할은 저장소 쓰기를 차단한다. 생성 실행 파일의 이름은 Paperclip 계정 검사와 호환되도록 `codex`이다. 실제 Codex CLI 경로는 생성 실행 파일에 고정하므로 API가 숨기는 환경 변수 값을 다시 쓸 필요가 없다. 이 프로필의 네트워크는 도메인 제한이 아니다. 불필요한 우회 권한은 부여하지 않는다.
+
+읽기 역할의 보고서는 Paperclip 댓글·문서로 전달한다. 파일 생성이 필요한 테스트는 별도로 마련한 검증 환경에서 reviewer 또는 다른 비작성자가 해당 revision으로 독립 재실행해야 PASS할 수 있다. 구현자의 원시 결과만으로 대체할 수 없으며 독립 실행이 불가능하면 BLOCK으로 남긴다. `integrator`는 근거 통합 역할이며 코드 머지 담당이 아니다.
+
+스킬 가져오기는 외부 도구 설치와 다르다. 특히 managed CODEX_HOME의 프로젝트 설정·훅 신뢰는 별도다. 두 래퍼는 전역 설정을 무시하므로 개인 MCP·플러그인 설정을 자동 상속하지 않는다. Paperclip이 표시한 managed MCP 블록의 HTTP gateway만 이어받으며 인증 값은 자식 프로세스 환경으로 전달한다. git hooksPath는 운영자 설정을 조회해 확인한다. 제품 스펙 전체의 무인 완료, 외부 연결 도구, 훅 전체의 Paperclip 실행 경로는 별도 검증 대상이다.
+
+## REA 연결
+
+사용자 요청으로 REA 6.4.0도 이 설치의 Paperclip에 연결했다. 패키지는 `~/.paperclip/tools/rea/`에 고정 버전으로 설치하며 개인 Codex 설정을 바꾸는 setup 명령은 사용하지 않는다.
+
+```bash
+npm install --prefix ~/.paperclip/tools/rea --save-exact rea-agents@6.4.0
+```
+
+Paperclip의 승인된 `local_stdio` 명령 템플릿이 절대 Node 경로와 패키지의 `scripts/rea.mjs mcp`를 실행한다. 실제 MCP `tools/list`에서 받은 도구 스키마를 템플릿에 등록하고, `REA local` 연결과 맞는 버전의 `reverse-engineer-anything` 스킬을 가져온다. 연결 ID·패키지 위치·스킬 키는 `_workspace/paperclip-sync/rea-connection.json`에 있다. REA는 하네스 자체 스킬이 아니므로 `sync.py`가 버전을 올리거나 원본에 복제하지 않는다.
+
+전체 REA 연결은 기존 관리자와 implementer에 배정한다. 탐색·검토 등 읽기 역할에는 외부 프로세스 실행·파일 추출 도구를 자동 노출하지 않는다. REA MCP는 Codex 파일 sandbox 밖의 별도 프로세스이므로 그 sandbox가 MCP 동작까지 막는다고 주장할 수 없다. 기존 승인 경계와 REA 스킬의 대상 실행 조건은 유지한다.
+
+REA로 확인할 대상의 경로와 조사할 기능을 관리자에게 주면 된다. 예: “이 Electron 앱의 설정 저장 방식을 REA로 분석하고 근거와 한계를 정리해줘.” 실제 앱 대신 작은 자체 JavaScript fixture로 연결과 정적 분석을 확인했다. 네이티브 바이너리 분석에는 별도 Hopper/Ghidra/IDA 등의 사용 가능한 엔진이 필요하며 이 설치에서 추가 엔진을 설치하거나 검증하지 않았다.
+
+## 검증
+
+```bash
+python3 .agents/integrations/paperclip/sync_test.py
+python3 .agents/integrations/paperclip/codex_readonly_test.py
+python3 .agents/hooks/integrity-check.py
+```
+
+공식 인터페이스: [Paperclip 스킬](https://docs.paperclip.ing/reference/skills/), [에이전트 CLI](https://docs.paperclip.ing/reference/cli/agent/), [검토 정책](https://docs.paperclip.ing/guides/power/execution-policy/), [Codex 권한 설정](https://learn.chatgpt.com/docs/config-file/config-reference).

@@ -77,6 +77,10 @@ python3 .agents/hooks/integrity-check.py
 | `_workspace/` | 팀 보고서와 세션 운영 산출물. git 미추적 |
 | `project/` | 실제 제품 저장소들. 루트 저장소에서는 미추적 |
 
+## Paperclip에서 사용하기
+
+표준 에이전트와 스킬을 Paperclip에 등록하고 원본에서 다시 동기화할 수 있다. [연결 안내](.agents/integrations/paperclip/README.md)를 따른다. Paperclip 작업에서는 티켓과 검토 정책이 실행 순서를 관리하고, 하네스는 역할과 개발·검증 규칙을 제공한다.
+
 ## FAQ · 트러블슈팅
 
 ### “REGISTRY.md가 없다”는 안내가 나온다
