@@ -1,0 +1,5 @@
+{
+  "id": "nohdol-paperclip-panel",
+  "name": "Paperclip",
+  "requirements": { "paseo": ">=0.11.2 <0.12.0" }
+}

@@ -13,6 +13,8 @@
 - [레지스트리·수집 설정 스펙](specs/2026-10-15-paperclip-registry-privacy.md) — 구현·로컬 검증 완료; 모델 통신 범위 확인 전 에이전트 일시 정지
 - [ADR 059](adr/059-paperclip-native-coordination.md) — 활성: Paperclip 협업과 CLI orchestration 분리
 - [협업 규칙 스펙](specs/2026-10-15-paperclip-native-coordination.md) — 구현·로컬 반영·독립 검증 완료
+- [ADR 060](adr/060-paseo-paperclip-panel.md) — 활성: Paseo의 직접 API 기반 Paperclip 패널
+- [Paseo 패널 스펙](specs/2026-10-15-paseo-paperclip-panel.md) — 로컬 설치·RPC·390px 웹 화면·독립 검토 완료; 실물 폰 미검증
 
 ## ADR (구조적 결정 기록) — `docs/adr/`
 
