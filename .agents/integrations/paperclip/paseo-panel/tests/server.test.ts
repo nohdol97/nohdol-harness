@@ -344,3 +344,19 @@ test("already paused agent does not issue a mutation", async () => {
   await service.pause({ companyId: company, agentId: agent, confirmed: true });
   assert.equal(calls.filter((c) => c.method === "POST").length, 0);
 });
+
+test("draft optional operation UUID uses real create idempotency without assignment or extra wake", async () => {
+  const { service, calls } = fixture();
+  await service.draft({
+    companyId: company,
+    projectId: project,
+    title: "Draft",
+    description: "",
+    operationId: issue,
+  });
+  const posts = calls.filter((c) => c.method === "POST");
+  assert.equal(posts.length, 1);
+  assert.equal((posts[0].body as any).idempotencyKey, "panel-draft:" + issue);
+  assert.equal((posts[0].body as any).status, "backlog");
+  assert.equal((posts[0].body as any).assigneeAgentId, null);
+});

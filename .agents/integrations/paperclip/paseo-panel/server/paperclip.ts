@@ -8,21 +8,51 @@ import {
   id,
 } from "../shared/contracts";
 
-type Method = "GET" | "POST";
+type Method = "GET" | "POST" | "PATCH";
 export type Transport = (
   method: Method,
   path: string,
   body?: unknown,
 ) => Promise<unknown>;
 const MAX_BYTES = 2 * 1024 * 1024;
-const safePath =
-  /^\/(?:companies(?:\/[0-9a-f-]{36}\/(?:projects|agents|issues|heartbeat-runs))?|issues\/[0-9a-f-]{36}(?:\/comments)?|agents\/[0-9a-f-]{36}\/pause|instance\/settings\/experimental)(?:\?(?:limit=100|limit=30&summary=true|limit=50&order=desc))?$/i;
+const uuidPath = "[0-9a-f-]{36}";
+export function permitted(method: string, path: string): boolean {
+  const rules: Record<string, string[]> = {
+    GET: [
+      "/companies",
+      `/companies/${uuidPath}/(?:projects|agents)`,
+      `/companies/${uuidPath}/issues\\?limit=100`,
+      `/companies/${uuidPath}/heartbeat-runs\\?limit=30&summary=true`,
+      `/companies/${uuidPath}/attention\\?limit=50(?:&cursor=[A-Za-z0-9%_.~-]{1,6000})?`,
+      `/companies/${uuidPath}/approvals\\?status=pending`,
+      `/issues/${uuidPath}`,
+      `/issues/${uuidPath}/(?:interactions|approvals|diagnostics/blockers|tree-control/state)`,
+      `/issues/${uuidPath}/comments\\?limit=50&order=desc`,
+      `/issues/${uuidPath}/documents/[A-Za-z0-9_-]{1,100}`,
+      `/approvals/${uuidPath}(?:/issues)?`,
+      `/heartbeat-runs/${uuidPath}`,
+      "/instance/settings/experimental",
+    ],
+    POST: [
+      `/companies/${uuidPath}/issues`,
+      `/agents/${uuidPath}/(?:pause|resume|wakeup)`,
+      `/issues/${uuidPath}/comments`,
+      `/issues/${uuidPath}/scheduled-retry/retry-now`,
+      `/issues/${uuidPath}/interactions/${uuidPath}/(?:respond|accept|reject)`,
+      `/approvals/${uuidPath}/(?:approve|reject)`,
+    ],
+    PATCH: [`/issues/${uuidPath}`],
+  };
+  return (rules[method] ?? []).some((rule) =>
+    new RegExp(`^${rule}$`, "i").test(path),
+  );
+}
 export function createTransport(
   options: { request?: typeof httpRequest; timeoutMs?: number } = {},
 ): Transport {
   const request = options.request ?? httpRequest;
   return async (method, path, body) => {
-    if (!["GET", "POST"].includes(method) || !safePath.test(path))
+    if (!permitted(method, path))
       throw new Error("허용하지 않는 API 요청입니다.");
     return new Promise((resolve, reject) => {
       let done = false;
@@ -111,26 +141,26 @@ export function createTransport(
   };
 }
 
-type Row = Record<string, unknown>;
-function row(value: unknown): Row {
+export type Row = Record<string, unknown>;
+export function row(value: unknown): Row {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Paperclip 데이터 형식이 올바르지 않습니다.");
   return value as Row;
 }
-function rows(value: unknown, limit = 100): Row[] {
+export function rows(value: unknown, limit = 100): Row[] {
   if (!Array.isArray(value))
     throw new Error("Paperclip 목록 형식이 올바르지 않습니다.");
   return value.slice(0, limit).map(row);
 }
-function uuid(value: unknown): string {
+export function uuid(value: unknown): string {
   return id.parse(value);
 }
-function optionalId(value: unknown): string | null {
+export function optionalId(value: unknown): string | null {
   return typeof value === "string" && id.safeParse(value).success
     ? value
     : null;
 }
-function clean(value: unknown, max = 300): string {
+export function clean(value: unknown, max = 300): string {
   if (typeof value !== "string") return "";
   return value
     .slice(0, max)
@@ -168,7 +198,7 @@ function agentView(r: Row) {
     status: clean(r.status, 50),
   };
 }
-function member(r: Row, companyId: string) {
+export function member(r: Row, companyId: string) {
   if (r.companyId !== companyId)
     throw new Error("선택한 회사에 속하지 않는 항목입니다.");
   return r;
@@ -247,7 +277,7 @@ export function createService(transport: Transport = createTransport()) {
       };
     },
     async draft(input: unknown) {
-      const { companyId, projectId, title, description } =
+      const { companyId, projectId, title, description, operationId } =
         draftInput.parse(input);
       await checkCompany(companyId);
       const project = rows(
@@ -262,26 +292,40 @@ export function createService(transport: Transport = createTransport()) {
         throw new Error(
           "외부 객체 자동 감지가 꺼진 Paperclip에서만 초안을 등록할 수 있습니다.",
         );
-      return issueView(
-        member(
-          row(
-            await transport("POST", `/companies/${companyId}/issues`, {
-              projectId,
-              title,
-              description,
-              priority: "medium",
-              status: "backlog",
-              assigneeAgentId: null,
-              assigneeUserId: null,
-              parentId: null,
-              watchdog: null,
-              executionPolicy: null,
-            }),
-          ),
-          companyId,
+      const created = member(
+        row(
+          await transport("POST", `/companies/${companyId}/issues`, {
+            projectId,
+            title,
+            description,
+            priority: "medium",
+            status: "backlog",
+            assigneeAgentId: null,
+            assigneeUserId: null,
+            parentId: null,
+            watchdog: null,
+            executionPolicy: null,
+            ...(operationId
+              ? {
+                  idempotencyKey: "panel-draft:" + operationId,
+                  allowDuplicate: true,
+                }
+              : {}),
+          }),
         ),
-        true,
+        companyId,
       );
+      if (
+        created.projectId !== projectId ||
+        created.assigneeAgentId !== null ||
+        created.assigneeUserId !== null ||
+        created.status !== "backlog" ||
+        created.title !== title
+      )
+        throw new Error(
+          "접수된 초안의 프로젝트·담당자·상태·제목이 요청과 다릅니다. 새로 등록하지 말고 목록을 확인하세요.",
+        );
+      return issueView(created, true);
     },
     async pause(input: unknown) {
       const { companyId, agentId } = pauseInput.parse(input);

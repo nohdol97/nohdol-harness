@@ -1,3 +1,13 @@
+import {
+  ActionButton,
+  AgentPicker,
+  Inbox,
+  IssueActions,
+  ResumeAgent,
+  useInbox,
+  newOperationId,
+} from "./actions";
+import type { Action } from "../shared/actions";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -280,8 +290,8 @@ export function PaperclipPanel({ theme, host, layout }: PluginHostProps) {
         }}
       >
         <Note colors={colors}>
-          연결된 컴퓨터의 Paperclip · 수동 새로고침 · 이슈 최대 100개 / 실행
-          30개
+          연결된 컴퓨터의 Paperclip · 응답 대기함 30초 갱신 · 이슈 최대 100개 /
+          실행 30개
         </Note>
       </View>
     </ScrollView>
@@ -310,8 +320,12 @@ function CompanyBoard({
     queryFn: () => loadBoard({ companyId }),
     retry: false,
   });
+  const inbox = useInbox(companyId, hostId);
+  const [taskAgentId, setTaskAgent] = useState("");
   const [projectId, setProject] = useState("");
-  const [tab, setTab] = useState<"issues" | "agents" | "runs">("issues");
+  const [tab, setTab] = useState<"issues" | "agents" | "runs" | "inbox">(
+    "issues",
+  );
   const [issueId, setIssue] = useState("");
   const [draftOpen, setDraftOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -319,6 +333,7 @@ function CompanyBoard({
   const [notice, setNotice] = useState("");
   const [confirmAgent, setConfirmAgent] = useState<Agent | null>(null);
   const mutationLock = useRef(false);
+  const draftOperation = useRef({ id: newOperationId(), input: "" });
   const detail = useQuery({
     queryKey: ["paperclip", hostId, companyId, "detail", issueId],
     queryFn: () => loadDetail({ companyId, issueId }),
@@ -338,12 +353,26 @@ function CompanyBoard({
     mutationLock.current = true;
     setNotice("");
     try {
-      const result = await draft.mutateAsync({
+      const inputKey = JSON.stringify({
         companyId,
         projectId,
         title: title.trim(),
         description,
       });
+      if (
+        draftOperation.current.input &&
+        draftOperation.current.input !== inputKey
+      )
+        draftOperation.current = { id: newOperationId(), input: inputKey };
+      else draftOperation.current.input = inputKey;
+      const result = await draft.mutateAsync({
+        operationId: draftOperation.current.id,
+        companyId,
+        projectId,
+        title: title.trim(),
+        description,
+      });
+      draftOperation.current = { id: newOperationId(), input: "" };
       setTitle("");
       setDescription("");
       setDraftOpen(false);
@@ -518,24 +547,26 @@ function CompanyBoard({
             </View>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {(["issues", "agents", "runs"] as const).map((value) => (
+            {(["inbox", "issues", "agents", "runs"] as const).map((value) => (
               <Button
                 key={value}
                 colors={colors}
                 active={tab === value}
                 label={
-                  value === "issues"
-                    ? `이슈 ${issues.length}`
-                    : value === "agents"
-                      ? `에이전트 ${data.agents.length}`
-                      : "최근 실행"
+                  value === "inbox"
+                    ? `내 응답 필요 ${inbox.data?.pages[0]?.totalCount ?? "…"}`
+                    : value === "issues"
+                      ? `이슈 ${issues.length}`
+                      : value === "agents"
+                        ? `에이전트 ${data.agents.length}`
+                        : "최근 실행"
                 }
                 onPress={() => setTab(value)}
               />
             ))}
             <Button
               colors={colors}
-              label={draftOpen ? "초안 닫기" : "+ 새 초안"}
+              label={draftOpen ? "작성 닫기" : "+ 새 작업"}
               disabled={busy}
               onPress={() => {
                 setDraftOpen(!draftOpen);
@@ -553,11 +584,11 @@ function CompanyBoard({
                   fontWeight: "700",
                 }}
               >
-                새 작업 초안
+                새 작업 요청
               </Text>
               <Note colors={colors}>
-                선택한 프로젝트에 미배정 backlog로 저장합니다. 자동 실행하지
-                않습니다.
+                초안 등록은 미배정 backlog로 저장합니다. 작업 실행 요청은 선택한
+                담당자의 모델 호출을 요청합니다.
               </Note>
               {!projectId && (
                 <Note colors={colors} error>
@@ -565,7 +596,7 @@ function CompanyBoard({
                 </Note>
               )}
               <TextInput
-                accessibilityLabel="초안 제목"
+                accessibilityLabel="작업 제목"
                 placeholder="어떤 작업이 필요한가요?"
                 placeholderTextColor={colors.foregroundMuted}
                 value={title}
@@ -575,7 +606,7 @@ function CompanyBoard({
                 style={input}
               />
               <TextInput
-                accessibilityLabel="초안 설명"
+                accessibilityLabel="작업 설명"
                 placeholder="목표, 구현 범위, 검토 기준을 적어 주세요."
                 placeholderTextColor={colors.foregroundMuted}
                 value={description}
@@ -604,7 +635,46 @@ function CompanyBoard({
                 disabled={busy || !projectId || !title.trim()}
                 onPress={() => void submitDraft()}
               />
+              <AgentPicker
+                colors={colors}
+                agents={data.agents}
+                value={taskAgentId}
+                onChange={setTaskAgent}
+              />
+              <ActionButton
+                colors={colors}
+                label="작업 실행 요청"
+                warning="선택한 프로젝트와 담당자로 작업을 등록합니다. Paperclip이 모델 호출을 요청합니다. 같은 제목의 별도 작업도 생성할 수 있으니 기존 작업을 먼저 확인하세요."
+                disabled={!projectId || !taskAgentId || !title.trim() || busy}
+                action={
+                  {
+                    kind: "submit",
+                    companyId,
+                    projectId,
+                    agentId: taskAgentId,
+                    title: title.trim(),
+                    description,
+                  } as Action
+                }
+                onDone={(receipt) => {
+                  if (receipt.issueId) setIssue(receipt.issueId);
+                  setNotice(receipt.message);
+                  refresh();
+                }}
+              />
             </View>
+          )}
+          {tab === "inbox" && (
+            <Inbox
+              hostId={hostId}
+              query={inbox}
+              companyId={companyId}
+              colors={colors}
+              onIssue={(id) => {
+                setIssue(id);
+                setTab("issues");
+              }}
+            />
           )}
           {tab === "issues" && (
             <View
@@ -771,6 +841,15 @@ function CompanyBoard({
                         >
                           최근 댓글 · {detail.data.comments.length}
                         </Text>
+                        <IssueActions
+                          key={issueId}
+                          companyId={companyId}
+                          issueId={issueId}
+                          hostId={hostId}
+                          agents={data.agents}
+                          colors={colors}
+                          onIssue={setIssue}
+                        />
                         {!detail.data.comments.length && (
                           <Note colors={colors}>아직 댓글이 없습니다.</Note>
                         )}
@@ -856,6 +935,14 @@ function CompanyBoard({
                       }}
                     />
                   </View>
+                  {agent.status === "paused" && (
+                    <ResumeAgent
+                      hostId={hostId}
+                      companyId={companyId}
+                      agentId={agent.id}
+                      colors={colors}
+                    />
+                  )}
                   {confirmAgent?.id === agent.id && (
                     <View
                       style={{
@@ -869,7 +956,7 @@ function CompanyBoard({
                         style={{ color: colors.foreground, lineHeight: 22 }}
                       >
                         {agent.name}을(를) 일시 정지할까요? 진행 중인 실행이
-                        취소되며, 이 패널에서는 다시 시작할 수 없습니다.
+                        취소되며, 재개는 별도의 확인 후 요청할 수 있습니다.
                       </Text>
                       {pause.error && (
                         <Note colors={colors} error>

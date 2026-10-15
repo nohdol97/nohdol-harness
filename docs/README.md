@@ -15,6 +15,7 @@
 - [협업 규칙 스펙](specs/2026-10-15-paperclip-native-coordination.md) — 구현·로컬 반영·독립 검증 완료
 - [ADR 060](adr/060-paseo-paperclip-panel.md) — 활성: Paseo의 직접 API 기반 Paperclip 패널
 - [Paseo 패널 스펙](specs/2026-10-15-paseo-paperclip-panel.md) — 로컬 설치·RPC·390px 웹 화면·독립 검토 완료; 실물 폰 미검증
+- [Paseo 작업·응답 확장 스펙](specs/2026-10-15-paseo-paperclip-actions.md) — 작업 제출·응답함·질문/승인·차단별 후속 조치
 
 ## ADR (구조적 결정 기록) — `docs/adr/`
 

@@ -7,6 +7,7 @@ const nullable = text.nullable();
 export const companyInput = z.strictObject({ companyId: id });
 export const detailInput = z.strictObject({ companyId: id, issueId: id });
 export const draftInput = z.strictObject({
+  operationId: id.optional(),
   companyId: id,
   projectId: id,
   title: text.trim().min(1).max(200),

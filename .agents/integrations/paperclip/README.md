@@ -33,7 +33,7 @@ Paperclip은 이슈·담당자·실행·재시도를 관리한다. `orchestrate`
 
 ## Paseo 패널
 
-[`paseo-panel/`](paseo-panel/README.md)은 Paseo 사이드바와 워크스페이스에서 로컬 Paperclip을 조작하는 플러그인이다. 프로젝트·이슈·댓글·에이전트·최근 실행을 조회하고, 미배정 backlog 초안 등록과 확인 후 에이전트 일시 정지를 제공한다. 패널 자체는 모델을 호출하지 않는다. 일시 정지는 실행 중인 작업 취소를 포함한다.
+[`paseo-panel/`](paseo-panel/README.md)은 Paseo 사이드바와 워크스페이스에서 로컬 Paperclip을 조작하는 플러그인이다. 조회·초안·정지와 함께 담당자 지정 작업 요청, 내 응답 필요 대기함, 질문·확인·지원하는 업무 승인, 차단 원인별 후속 조치와 명시적 재개를 제공한다. 조회는 모델을 호출하지 않지만 실행 요청·응답·승인·재개·추가 지시는 모델 호출로 이어질 수 있다. 일시 정지는 실행 중인 작업 취소를 포함한다. 상세 지원 범위는 [확장 스펙](../../../docs/specs/2026-10-15-paseo-paperclip-actions.md)을 참고한다.
 
 폰은 Paseo에 연결하고 플러그인 서버가 컴퓨터의 `127.0.0.1:3100`에 접근하므로 Paperclip 포트를 공개할 필요가 없다. 현재 연결은 local_trusted 모드를 대상으로 한다. 인증 모드를 바꾸면 별도 인증 연동이 필요하며 패널은 이를 우회하지 않는다. 설치·검증·한계는 플러그인 README와 [ADR 060](../../../docs/adr/060-paseo-paperclip-panel.md), [스펙](../../../docs/specs/2026-10-15-paseo-paperclip-panel.md)에 기록한다.
 
