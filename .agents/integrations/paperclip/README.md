@@ -23,6 +23,49 @@ python3 .agents/integrations/paperclip/sync.py --config _workspace/paperclip-syn
 - 기존 관리자의 지침은 구분된 안내 블록만 추가한다. 기존 모델·권한·기타 설정은 유지한다.
 - 신규 역할은 타이머를 끄고, 사용자 업무 배정이나 수동 실행을 기다린다.
 
+## 로컬 레지스트리 반영
+
+`REGISTRY.md`의 레지스트리 표를 제품 프로젝트와 로컬 workspace에 연결한다. 역할·스킬 동기화와 별도로 실행한다.
+
+```bash
+python3 .agents/integrations/paperclip/registry_sync.py --config _workspace/paperclip-sync/config.json
+python3 .agents/integrations/paperclip/registry_sync.py --config _workspace/paperclip-sync/config.json --apply
+```
+
+이름·스택·역할·관계·이관 구분은 프로젝트 설명에, 원본 경로·중앙 규칙 경로·하네스 상태·검사 결과는 workspace의 `metadata.nohdolHarnessRegistry`에 담는다. 결과 ID는 `_workspace/paperclip-sync/registry-manifest.json`에 기록한다. `REGISTRY.md`와 중앙 규칙은 원본으로 유지하며 Git에 포함하지 않는다.
+
+기본 실행은 읽기 전용 계획이다. 적용 전 모든 행의 소유권을 검사하고, 관리 표식 없는 동명 프로젝트와 충돌하면 쓰지 않는다. 다시 적용해도 ID를 유지하고 변경 없는 PATCH를 생략한다. 수동 설명과 무관한 metadata·정책은 보존하며, 원본에서 사라진 항목은 삭제하지 않고 `stale`로 보고한다.
+
+준비된 저장소에는 격리 Git worktree 정책을 설정하되 worktree·업무·에이전트 실행은 만들지 않는다. 저장소나 선언된 중앙 규칙이 없으면 `blocked`로 기록하고 새 실행 workspace를 만들지 않는다. 기존 workspace가 나중에 막힌 경우에는 보존하므로 서버 차원의 실행 금지 장치는 아니다. 에이전트는 제품 작업 직전에 원본을 다시 읽고 루트 §7 정지 조건과 `branch-workflow`의 최신 기준점 확인을 적용해야 한다.
+
+Paperclip 자체의 자동 격리는 인스턴스의 `experimental.enableIsolatedWorkspaces`도 필요하다. 현재 설치에서는 이 값이 꺼져 있고 이번 등록은 실험 기능을 변경하지 않는다. 자동 생성이 된다고 가정하지 말고 실제 전용 worktree를 마련해 실행 workspace에 연결한 뒤 작성자를 배정한다.
+
+## 운영사 데이터 전송 비활성화
+
+Paperclip 2026.1012.0 설치 코드에서 확인한 설정이다. `~/.paperclip/instances/default/config.json`에 `telemetry.enabled=false`, `updates.checkEnabled=false`를 적용한다. 서비스의 LaunchAgent 환경 변수와 instance `.env`에도 다음 값을 유지하고 서비스를 재시작한다.
+
+```dotenv
+PAPERCLIP_TELEMETRY_DISABLED=1
+DO_NOT_TRACK=1
+PAPERCLIP_UPDATE_CHECK=0
+SENTRY_DSN=
+SENTRY_DSN_FRONTEND=
+SENTRY_DSN_BACKEND=
+OTEL_SDK_DISABLED=true
+OTEL_EXPORTER_OTLP_ENDPOINT=
+OTEL_TRACES_EXPORTER=none
+OTEL_METRICS_EXPORTER=none
+OTEL_LOGS_EXPORTER=none
+PAPERCLIP_FEEDBACK_EXPORT_BACKEND_URL=http://127.0.0.1:9
+PAPERCLIP_TELEMETRY_BACKEND_URL=
+```
+
+일반 설정의 `feedbackDataSharingPreference`는 `not_allowed`로 둔다. **이 값만으로 피드백 API 전송을 차단하지는 않는다.** `feedback-share-client.js`는 URL이 비면 운영사 주소로 돌아가고, 대기·실패 export를 재시도한다. 별도 disable 옵션이 없어 사용하지 않는 로컬 포트 9를 대상으로 지정했다. 이 주소는 외부로 나가지 않지만 피드백 업로드는 실패하며 로컬 재시도 기록이 남을 수 있다. 업데이트 후에도 기본 주소로 되돌아가지 않는지 확인한다.
+
+현재 설치는 loopback 서버·로컬 DB·로컬 파일 저장소와 로컬 백업을 사용하며 관리형 Cloud 설정은 없다. 기존 브라우저 탭은 새로고침해 frontend 오류 수집 설정도 갱신한다. 설정을 바꾸기 전 백업에는 비밀 값이 있을 수 있으므로 저장소나 `_workspace/`에 복사하지 않는다.
+
+이 설정은 확인한 운영사 수집 경로를 비활성화하며 OS 방화벽은 아니다. OpenAI 구독 실행은 로컬 Paperclip → 로컬 Codex → OpenAI로 요청을 보내고 결과를 로컬 Paperclip에 저장한다. OpenAI 호출·사용자가 연결한 GitHub·REA 도구 등 작업 통신은 별개다. 모델 호출까지 중지하면 화면과 기록은 남지만 현재 AI 작업은 진행할 수 없다. 이 세션에서는 외부 작업 통신 범위가 확정될 때까지 기존 idle 에이전트를 잠시 pause했으며, 재개 여부는 사용자 선택을 따른다.
+
 ## 스펙을 맡기는 방법
 
 Paperclip에서 해당 제품 프로젝트의 업무를 만들고 기존 chief-of-staff에게 배정한다. 스펙 경로와 완료 기준, 제품 저장소를 명시한다. 예:
@@ -57,6 +100,7 @@ REA로 확인할 대상의 경로와 조사할 기능을 관리자에게 주면 
 
 ```bash
 python3 .agents/integrations/paperclip/sync_test.py
+python3 .agents/integrations/paperclip/registry_sync_test.py
 python3 .agents/integrations/paperclip/codex_readonly_test.py
 python3 .agents/hooks/integrity-check.py
 ```
