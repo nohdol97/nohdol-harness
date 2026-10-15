@@ -4,6 +4,10 @@
 
 > **동기화 의무**: ADR·스펙·제안을 새로 만들거나 상태가 바뀌면(대체·구현·기각) 이 인덱스의 해당 행을 **같은 커밋에서 갱신**한다(metaskill 절차·AGENTS.md 6절). 인덱스가 현실과 어긋나면 REGISTRY.md와 같은 이유로 아무도 안 믿게 된다.
 
+## 실행 정책
+
+- [목표·범위 기반 자율 진행](specs/2026-10-15-autonomous-execution.md) — 가역적 선택은 직접 결정하고 중요한 경계에서만 질문
+
 ## Paperclip 연결
 
 - [운영 안내](../.agents/integrations/paperclip/README.md)

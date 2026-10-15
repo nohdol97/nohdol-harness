@@ -134,9 +134,9 @@ class TokenEfficiencyContractTest(unittest.TestCase):
         text = read("CLAUDE.md")
         self.assertTrue(text.startswith("@AGENTS.md\n"))
         for phrase in ("## Harness: root", "Korean", "orchestrate",
-                       "team-review", "metaskill", "Interview-first",
+                       "team-review", "metaskill", "Autonomous execution",
                        "comprehension", "QA/test-and-fix", "design → `architect`",
-                       "mandatory §3 guardrail confirmations",
+                       "Preserve §3 and data-loss confirmations",
                        "diff reading guide"):
             self.assertIn(phrase, text)
 

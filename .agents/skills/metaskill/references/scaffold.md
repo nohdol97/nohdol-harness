@@ -2,9 +2,9 @@
 
 Follow this procedure on a "프로젝트 새로 만들어줘" request. Never create a project without a harness — project creation and harness creation are one body.
 
-## 1. Clarification interview (mandatory)
+## 1. Investigate scope and resolve essential gaps
 
-Minimum items to confirm:
+Investigate the items below. Reuse supplied answers and available evidence; choose reversible in-scope details and record why. Ask only under root §13-0. Handoff boundaries that cannot be discovered and external publication permissions remain necessary inputs.
 
 | Item | Why needed |
 |---|---|
@@ -18,9 +18,9 @@ Read documents such as README before asking about role/purpose (observation firs
 
 ### 1.1 Deployment-site handoff question (ask once, first — only when REGISTRY.md has a 「배포처 이관 경계」 section)
 
-One question: *"이 프로젝트, 다른 곳(배포처)으로 이관해서 후속 작업할 건가요?"* The answer goes into the REGISTRY.md registry row's 이관 column (`배포처` / `로컬`), and never defaults — an unasked project is recorded `미확인`, because guessing `로컬` for a deployment-site project yields a spec with no boundary and the error only surfaces at the deployment site.
+One question: *"이 프로젝트, 다른 곳(배포처)으로 이관해서 후속 작업할 건가요?"* The answer goes into the REGISTRY.md registry row's 이관 column (`배포처` / `로컬`), and never defaults — reuse an explicit answer already supplied; an unresolved project is recorded `미확인`, because guessing `로컬` for a deployment-site project yields a spec with no boundary and the error only surfaces at the deployment site.
 
-**This question ranks above the deployment-method item and rewrites it.** On `배포처`, deployment target, CI/CD, and auth are by definition decided against deployment-site state that cannot be seen from here, so do not press the user for them — record deployment as "배포처 후속(미결정)" and treat the guardrail scope as local-execution only. Asking both without this ordering either duplicates the question or produces a contradictory pair (deployment `k8s` + handoff `배포처`) with no rule saying which wins. On `로컬`, ask the deployment question as usual.
+**This question ranks above the deployment-method item and rewrites it.** On `배포처`, deployment target, CI/CD, and auth are by definition decided against deployment-site state that cannot be seen from here, so do not press the user for them — record deployment as "배포처 후속(미결정)" and treat the guardrail scope as local-execution only. Asking both without this ordering either duplicates the question or produces a contradictory pair (deployment `k8s` + handoff `배포처`) with no rule saying which wins. On `로컬`, investigate deployment needs and ask only if §13-0 requires it.
 
 If the section is absent from REGISTRY.md, skip this step silently — it is install-site-specific, and its absence covers **two** sites that both make this export-side question wrong to ask here: one with no handoff at all, and a `배포처` site, which is the receiving end rather than the side that draws the boundary (`harness-install` step 5). Do not create the section here; `harness-install` owns it.
 
