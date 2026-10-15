@@ -2,6 +2,14 @@
 
 This contract applies only to a Paperclip run using this integration. The generated instructions identify the absolute harness root and the original role definition. Keep the source repository as the source of truth; edit the source and resync, not generated role files.
 
+## Paperclip coordination takes precedence
+
+Apply root §11's Paperclip transport exception only within a real Paperclip run. Use the injected Paperclip skill to verify the supplied company/agent/run identity against Paperclip's API. A document reference or environment variable alone is not sufficient; if identity cannot be verified, report BLOCK rather than claiming an exception.
+
+For that run, this contract replaces CLI-specific orchestration in root rules, copied skills and original role text. Do not invoke the `orchestrate` skill's team-size gate, native dispatch procedure, or `autoloop` scheduler. Corporate-host instructions to perform all work directly, prohibit agent dispatch, or waive independent review do not apply to Paperclip issue assignment: the coordinator may assign registered Paperclip agents, including an independent reviewer. They remain applicable to their ordinary CLI contexts. Do not start native Agent/Task/spawn workers or separate CLI worker processes for this task tree.
+
+This changes collaboration transport only. It does not authorize external model calls or data transfer, change the installation profile, relax corporate root-file edit restrictions, grant tool permissions, or remove destructive-operation approvals. Respect the user's current pause and egress choices; an allowed delegation path is not permission to resume paused agents.
+
 ## Load and preserve the harness
 
 Read the root `AGENTS.md` and installation `REGISTRY.md` at the stated harness root, then the selected project's central `.agents/projects/<project>/AGENTS.md`. A Paperclip company or project name is not a replacement for registry routing. Missing project rules keep the existing implementation stop in force. Preserve the installation profile, SDD/TDD, independent review, model tiers, private-data restrictions, and destructive-operation approvals. Paperclip does not grant an exception to any of them.
@@ -16,13 +24,19 @@ Paperclip owns durable task assignment, dependencies, review routing and run sch
 
 - A source `TaskCreate` or task graph becomes Paperclip child issues, with the parent/spec, stable completion-criterion IDs, dependency links, one owner, exact file scope, expected evidence and worktree location.
 - A source `SendMessage` or return-to-orchestrator becomes a comment on the relevant issue and a handoff/assignment using Paperclip's documented workflow. Preserve the report's finding IDs, severity, evidence and requested action.
-- A source native Agent/Task/spawn call means delegate to the corresponding registered Paperclip role. Do not start a second native agent team or invoke `autoloop` for the same Paperclip task tree. The source `orchestrate` scale assessment and quality gates still apply; Paperclip supplies its execution transport.
+- A source native Agent/Task/spawn call means assign an issue to the corresponding registered Paperclip role. Use the coordinator responsibilities below for decomposition and quality decisions; do not run the source CLI orchestration procedure.
 - `work-tracker`, `carryover` and `wrapup` must leave done/next/blocked/evidence on the Paperclip issue for this task. Existing linked GitHub issues and PRs remain linked records; do not create a second competing scheduler or close them before their own completion conditions hold.
 - Read-only roles publish reports through issue comments/documents/artifacts supported by Paperclip rather than writing `_workspace/` files. Include the original expected artifact name as a report label. This changes report storage, not the prohibition on changing reviewed product files.
 
 ## Coordinator responsibilities
 
-The existing chief of staff coordinates the imported roles. Read the local `_workspace/paperclip-sync/manifest.json` for the installed role and skill IDs. The seven roles are not seven workers that must always run: choose the smallest composition allowed by the harness.
+The existing chief of staff coordinates the imported roles. Read the local `_workspace/paperclip-sync/manifest.json` for the installed role and skill IDs. Paperclip dispatches assigned work; it does not automatically decide the right decomposition, guarantee independent review, or prove spec completion. Use only the roles needed for the task:
+
+- Answer simple questions or status requests directly. Assign explorer for bounded fact collection and troubleshooter for root-cause investigation when useful.
+- For implementation, define numbered completion criteria and child issues with one owner, file scope, dependencies, evidence and workspace. Use architect when design or cross-project interfaces need a separate decision; assign product edits to implementer and infrastructure authoring to infra-specialist.
+- Arrange an independent reviewer for behavior changes and normative harness changes. Corporate CLI self-review exemptions do not replace this review. Use integrator when several results need synthesis; otherwise the coordinator may combine the evidence without approving its own implementation.
+
+There is no additional CLI team-size threshold or native team lifecycle to run. Preserve each role's substantive boundaries and the quality gates below.
 
 Before implementation, settle the spec and numbered, testable completion criteria. Use architect for design and explorer/troubleshooter only when needed. Keep the final scope decision with the coordinator. Create a dedicated product worktree using `branch-workflow` and arrange a Paperclip execution workspace pointing at it BEFORE assigning a writer; do not concurrently write the shared main checkout. Root harness work follows the root's distinct main-branch rule.
 

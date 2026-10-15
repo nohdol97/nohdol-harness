@@ -132,6 +132,8 @@ For Pi-native sessions on either profile, `branch-workflow`'s dedicated worktree
 
 **Corporate host direct execution (ADR 055)**: on `사내` Claude/Codex hosts, the calling LLM directly performs collection, requirements, design, implementation, tests, diagnosis, integration and final review. Internal corporate-model worker delegation is retired, including optional/fallback routes. No worker installation or configuration is required. Native dispatch remains blocked except infra authoring (§7-5); record host verification without a separate independent reviewer session (§13-3). Personal and Pi-native routing, worktree rules, autoloop, corporate root-edit/data-egress restrictions, §3 and SDD/TDD remain unchanged. This replaces ADR 054.
 
+**Paperclip (ADR 059)**: a verified run identity + loaded `.agents/integrations/paperclip/runtime.md` replaces CLI orchestration and corporate direct-work/dispatch/self-review clauses in these rules and inherited roles/skills with issue delegation and independent review. No native workers. Other profile, safety, egress and project rules remain. Env/mentions alone do not activate it; ordinary CLI/Pi is unchanged.
+
 ## 12. Centralized Sub-Project Harness Management (ADR 006)
 
 Sub-project harnesses are managed only here; project repos contain no harness copies/symlinks. Root-opened routing loads the central copy, avoiding distributed drift.

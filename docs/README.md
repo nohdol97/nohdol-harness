@@ -11,6 +11,8 @@
 - [도입 스펙](specs/2026-10-14-paperclip-harness-sync.md) — 구현·로컬 설치 검증 완료
 - [ADR 058](adr/058-paperclip-registry-privacy.md) — 활성: 로컬 레지스트리 연결·운영사 수집 비활성화
 - [레지스트리·수집 설정 스펙](specs/2026-10-15-paperclip-registry-privacy.md) — 구현·로컬 검증 완료; 모델 통신 범위 확인 전 에이전트 일시 정지
+- [ADR 059](adr/059-paperclip-native-coordination.md) — 활성: Paperclip 협업과 CLI orchestration 분리
+- [협업 규칙 스펙](specs/2026-10-15-paperclip-native-coordination.md) — 구현·로컬 반영·독립 검증 완료
 
 ## ADR (구조적 결정 기록) — `docs/adr/`
 

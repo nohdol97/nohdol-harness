@@ -21,6 +21,7 @@ import urllib.request
 
 ROLES = {"architect", "explorer", "implementer", "infra-specialist", "integrator", "reviewer", "troubleshooter"}
 WRITERS = {"implementer", "infra-specialist"}
+CLI_COORDINATION_SKILLS = {"orchestrate", "autoloop"}
 BLOCK_START = "<!-- nohdol-harness:paperclip:start -->"
 BLOCK_END = "<!-- nohdol-harness:paperclip:end -->"
 COMMON_SKILLS = {"context7", "defuddle", "doc-writer", "wait-what"}
@@ -167,6 +168,41 @@ def merge_manager_block(content, block):
     return content + ("\n" if content.endswith("\n") else "\n\n") + block + "\n"
 
 
+def coordination_notice(root):
+    return (f"Read the dedicated contract `{root / '.agents/integrations/paperclip/runtime.md'}` and "
+            f"`{root / 'AGENTS.md'}` §11. Only actual Paperclip run context governed by that contract activates "
+            "native Paperclip coordination; an environment variable or document mention alone is insufficient. "
+            "Within that context, the contract supersedes CLI orchestration, corporate direct execution, "
+            "corporate native dispatch bans, and corporate self-review exemptions for Paperclip issue assignment only. "
+            "Use registered Paperclip roles and independent review; do not run CLI orchestrate/autoloop or start native CLI workers. "
+            "Keep data-egress limits, the corporate root-edit ban, secrets, sandbox/tool permissions, "
+            "approval gates and missing-harness stops. This notice does not resume agents or authorize model calls.")
+
+
+def staged_skill(root, slug, raw):
+    header = re.match(rb'\A---\r?\n.*?^---[ \t]*(?:\r?\n|\Z)', raw, re.MULTILINE | re.DOTALL)
+    if not header:
+        raise SyncError("Skill is missing a complete YAML frontmatter block")
+    notice = ("\n<!-- nohdol-harness:paperclip-skill -->\n" + coordination_notice(root)
+              + f"\nOriginal source: `{root / '.agents/skills' / slug / 'SKILL.md'}`\n"
+              + f"Source SHA-256: `{digest(raw)}`\n\n")
+    return raw[:header.end()] + notice.encode() + raw[header.end():]
+
+
+def sync_agent_skills(api, agent, desired, excluded):
+    preference = (agent.get('adapterConfig') or {}).get('paperclipSkillSync') or {}
+    entries = preference.get('desiredSkills') or []
+    current = {entry.strip() if isinstance(entry, str) else entry.get('key', '').strip()
+               for entry in entries if isinstance(entry, (str, dict))}
+    remove = sorted(current & excluded)
+    if remove:
+        api.request('POST', f"/agents/{agent['id']}/skills/sync", {'mode': 'remove', 'desiredSkills': remove})
+    # Called after any agent PATCH, so stale adapter settings cannot restore removals.
+    additions = sorted(set(desired) - excluded - current)
+    if additions:
+        api.request('POST', f"/agents/{agent['id']}/skills/sync", {'mode': 'add', 'desiredSkills': additions})
+
+
 def rows(value, label):
     if isinstance(value, list):
         return value
@@ -227,9 +263,11 @@ def synchronize(options, api=None):
 
 Read `{root / 'AGENTS.md'}` and `{runtime_path}` before coordinating harness work.
 Installed harness root: `{root}`. Role and skill originals under `.agents/` remain authoritative.
+{coordination_notice(root)}
 You coordinate Paperclip issues, dependencies, delegation, implementation/review cycles and final integration.
 Delegate using the Paperclip roles: {', '.join(sorted(roles))}.
-Paperclip owns scheduling; do not start autoloop or native subagent/team scheduling for these issues.
+Use the native Paperclip contract, not the CLI orchestrate scale-assessment or team-dispatch procedure.
+Paperclip owns scheduling, issue assignment, execution and retries; do not start autoloop or native subagent/team scheduling for these issues.
 Keep independent review, test evidence, explicit completion criteria and human approval guardrails.
 Read-only roles return drafts and evidence through Paperclip comments; an authorized writer persists approved artifacts.
 Do not claim copied prompts activate hooks or grant permissions. Do not deploy or merge without required approval.
@@ -251,7 +289,13 @@ Do not claim copied prompts activate hooks or grant permissions. Do not deploy o
             raise SyncError(f"Harness agent is running: {role}; synchronize after it becomes idle")
         existing_roles[role] = api.request("GET", f"/agents/{agent['id']}")
     for slug, skill in skills.items():
+        established = any(existing.get('key') == skill['key'] and existing.get('sourceType') == 'local_path'
+                          and existing.get('sourceLocator') == str(skill['stage']) for existing in existing_skills)
         for existing in existing_skills:
+            # These copies remain reference assets. A different installation's
+            # same-slug coordination skill is neither imported over nor removed.
+            if established and slug in CLI_COORDINATION_SKILLS and existing.get('key') != skill['key']:
+                continue
             if existing.get("slug") == slug or existing.get("key") == skill["key"]:
                 if (existing.get("key") != skill["key"] or existing.get("sourceType") != "local_path"
                         or existing.get("sourceLocator") != str(skill["stage"])):
@@ -285,7 +329,7 @@ Do not claim copied prompts activate hooks or grant permissions. Do not deploy o
         for relative, data in skill["files"].items():
             destination = stage / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes(data)
+            destination.write_bytes(staged_skill(root, slug, data) if relative == 'SKILL.md' else data)
             destination.chmod(skill["modes"][relative])
     # Import the parent: importing a skill directory itself loses sibling file
     # inventory in Paperclip 2026.1012.0; SKILL.md imports omit custom directories.
@@ -301,6 +345,7 @@ Do not claim copied prompts activate hooks or grant permissions. Do not deploy o
         if inventory != set(skill["files"]):
             raise SyncError(f"Imported file inventory does not match staged tracked files: {slug}")
         skill["id"] = item["id"]
+    excluded_keys = {skill['key'] for slug, skill in skills.items() if slug in CLI_COORDINATION_SKILLS}
     for role, source in roles.items():
         bundle = output / "agents" / role
         bundle.mkdir(parents=True, exist_ok=True)
@@ -308,8 +353,7 @@ Do not claim copied prompts activate hooks or grant permissions. Do not deploy o
         entry.write_text(f"# Paperclip role: {role}\n\nInstalled harness root: `{root}`.\n"
                          f"Read root rules: `{root / 'AGENTS.md'}`.\n\n"
                          f"Source: `{source['source']}`\nsha256: `{source['sha256']}`\n\n"
-                         "The integration contract below replaces incompatible native transport, report storage and runtime details only; "
-                         "all source safety, quality and role boundaries remain in force.\n\n"
+                         + coordination_notice(root) + "\n\n"
                          + runtime + "\n\n---\n\n## Original role document (preserved)\n\n" + source["text"])
         old = existing_roles.get(role, {})
         readonly = role not in WRITERS
@@ -346,10 +390,10 @@ Do not claim copied prompts activate hooks or grant permissions. Do not deploy o
             payload["permissions"] = {"canCreateAgents": False, "canCreateSkills": False}
             agent = api.request("POST", company_path + "/agents", payload)
         source["id"] = agent["id"]
-        keys = [skills[slug]["key"] for slug in sorted(COMMON_SKILLS | ROLE_SKILLS[role]) if slug in skills]
-        api.request("POST", f"/agents/{agent['id']}/skills/sync", {"mode": "add", "desiredSkills": keys})
-    api.request("POST", f"/agents/{manager}/skills/sync",
-                {"mode": "add", "desiredSkills": [skill["key"] for slug, skill in skills.items() if slug != "autoloop"]})
+        keys = [skills[slug]["key"] for slug in sorted((COMMON_SKILLS | ROLE_SKILLS[role]) - CLI_COORDINATION_SKILLS) if slug in skills]
+        sync_agent_skills(api, agent, keys, excluded_keys)
+    sync_agent_skills(api, manager_info,
+                      [skill['key'] for slug, skill in skills.items() if slug not in CLI_COORDINATION_SKILLS], excluded_keys)
     if manager_content != manager_file["content"]:
         api.request("PUT", instruction_path,
                     {"path": "AGENTS.md", "content": manager_content,

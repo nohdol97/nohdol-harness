@@ -74,7 +74,17 @@ class FakeAPI:
             return copy.deepcopy(agent)
         if method == "POST" and path.endswith("/skills/sync"):
             aid = path.split("/")[2]
-            self.assignments.setdefault(aid, set()).update(body["desiredSkills"])
+            agent = next(a for a in self.agents if a["id"] == aid)
+            preference = agent["adapterConfig"].setdefault("paperclipSkillSync", {})
+            existing = preference.get("desiredSkills", [])
+            key_of = lambda entry: entry if isinstance(entry, str) else entry["key"]
+            if body["mode"] == "remove":
+                existing = [entry for entry in existing if key_of(entry) not in body["desiredSkills"]]
+            else:
+                keys = {key_of(entry) for entry in existing}
+                existing += [key for key in body["desiredSkills"] if key not in keys]
+            preference["desiredSkills"] = existing
+            self.assignments[aid] = {key_of(entry) for entry in existing}
             return {}
         if method == "PUT" and path.endswith("/instructions-bundle/file"):
             self.instructions["content"] = body["content"]
@@ -145,7 +155,7 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(len(self.api.skills), 5)
         self.assertEqual(self.api.instructions["content"].count(sync.BLOCK_START), 1)
         self.assertTrue(self.api.instructions["content"].startswith("Original manager instructions.\n"))
-        self.assertEqual(self.api.agents[0]["adapterConfig"], {"model": "keep-model"})
+        self.assertEqual(self.api.agents[0]["adapterConfig"]["model"], "keep-model")
         self.assertEqual(self.api.workspaces[0]["repoUrl"], "keep")
         self.assertEqual(self.api.workspaces[0]["cwd"], str(self.root))
         reviewer = next(a for a in self.api.agents if a["name"] == "reviewer")
@@ -174,6 +184,7 @@ class SyncTest(unittest.TestCase):
             self.assertIn("Original " + agent["name"] + " role.", instructions)
             self.assertIn("sha256:", instructions)
         self.assertFalse(any("autoloop" in key for keys in self.api.assignments.values() for key in keys))
+        self.assertFalse(any("orchestrate" in key for keys in self.api.assignments.values() for key in keys))
         self.assertFalse(any("metaskill" in key for aid, keys in self.api.assignments.items() if aid != "manager" for key in keys))
 
     def test_unchanged_reapply_skips_agent_patches_and_changed_role_patches_once(self):
@@ -191,6 +202,66 @@ class SyncTest(unittest.TestCase):
                    if method == "PATCH" and path.startswith("/agents/")]
         self.assertEqual([path for path, _ in patches], ["/agents/agent-reviewer"])
 
+    def test_migrates_only_owned_coordination_assignments_without_waking_or_reassigning(self):
+        self.run_sync(True)
+        owned = {skill['slug']: skill['key'] for skill in self.api.skills if skill['slug'] in {'orchestrate', 'autoloop'}}
+        foreign_keys = ['foreign/orchestrate', 'foreign/autoloop']
+        for slug, key in zip(['orchestrate', 'autoloop'], foreign_keys):
+            self.api.skills.append({'id': 'foreign-' + slug, 'key': key, 'slug': slug,
+                                    'sourceType': 'github', 'sourceLocator': 'fixture-foreign-source'})
+        seeded = [owned['orchestrate'], {'key': owned['autoloop'], 'versionId': 'owned-pin'},
+                  {'key': foreign_keys[0], 'versionId': 'preserved-pin'}, foreign_keys[1], 'outside/unrelated']
+        for agent in self.api.agents:
+            agent['status'] = 'paused'
+            agent['adapterConfig']['paperclipSkillSync'] = {'desiredSkills': copy.deepcopy(seeded), 'other': 'preserve'}
+        foreign_agent = {'id': 'foreign-agent', 'name': 'unrelated-worker', 'adapterConfig':
+                         {'paperclipSkillSync': {'desiredSkills': copy.deepcopy(seeded)}}}
+        self.api.agents.append(copy.deepcopy(foreign_agent))
+        self.api.calls.clear()
+        self.run_sync(True)
+        removals = [body for method, path, body in self.api.calls
+                    if method == 'POST' and path.endswith('/skills/sync') and body['mode'] == 'remove']
+        self.assertEqual(len(removals), 8)
+        self.assertTrue(all(set(body['desiredSkills']) == set(owned.values()) for body in removals))
+        self.assertFalse(any(method == 'PATCH' and path.startswith('/agents/') for method, path, _ in self.api.calls))
+        for agent in self.api.agents[:8]:
+            self.assertEqual(agent['status'], 'paused')
+            preference = agent['adapterConfig']['paperclipSkillSync']
+            self.assertEqual(preference['other'], 'preserve')
+            self.assertIn({'key': foreign_keys[0], 'versionId': 'preserved-pin'}, preference['desiredSkills'])
+            self.assertIn(foreign_keys[1], preference['desiredSkills'])
+            self.assertIn('outside/unrelated', preference['desiredSkills'])
+            self.assertFalse(self.api.assignments[agent['id']] & set(owned.values()))
+            writes = [body['mode'] for method, path, body in self.api.calls
+                      if method == 'POST' and path == f"/agents/{agent['id']}/skills/sync"]
+            self.assertEqual(writes[0], 'remove')
+        self.assertEqual(self.api.agents[-1], foreign_agent)
+        self.assertEqual(len(self.api.skills), 7)
+        self.assertIn('native Paperclip', self.api.instructions['content'])
+        self.api.calls.clear()
+        self.run_sync(True)
+        self.assertFalse(any(method == 'POST' and path.endswith('/skills/sync') for method, path, _ in self.api.calls))
+
+    def test_staged_skill_notice_preserves_yaml_original_body_and_provenance(self):
+        originals = {path: path.read_bytes() for path in (self.root / '.agents/skills').glob('*/SKILL.md')}
+        self.run_sync(True)
+        self.run_sync(True)
+        for source, raw in originals.items():
+            staged = (self.root / '_workspace/paperclip-sync/skills' / source.parent.name / 'SKILL.md').read_bytes()
+            header, body = raw.split(b'\n---\n', 1)
+            self.assertTrue(staged.startswith(header + b'\n---\n'))
+            self.assertTrue(staged.endswith(body))
+            self.assertEqual(source.read_bytes(), raw)
+            self.assertEqual(staged.count(b'<!-- nohdol-harness:paperclip-skill -->'), 1)
+            self.assertIn(str(self.root / '.agents/integrations/paperclip/runtime.md').encode(), staged)
+            self.assertIn(str(self.root / 'AGENTS.md').encode(), staged)
+            self.assertIn(sync.digest(raw).encode(), staged)
+            self.assertIn(b'corporate direct execution', staged)
+            self.assertIn(b'native dispatch bans', staged)
+            self.assertIn(b'self-review exemptions', staged)
+        self.assertEqual((self.root / '_workspace/paperclip-sync/skills/team-review/references/check.md').read_text(),
+                         'Tracked reference.\n')
+
     def test_stage_only_tracked_files_and_references(self):
         self.run_sync(True)
         stage = self.root / "_workspace/paperclip-sync/skills/team-review"
@@ -203,13 +274,14 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(imports, [{"source": str(stage.parent)}])
 
     def test_foreign_agent_and_skill_collisions_abort_before_any_write(self):
-        for kind in ["agent", "skill"]:
+        for kind in ["agent", "skill", "orchestrate", "autoloop"]:
             with self.subTest(kind=kind):
                 self.api = FakeAPI()
                 if kind == "agent":
                     self.api.agents.append({"id": "foreign", "name": "reviewer", "metadata": {}})
                 else:
-                    self.api.skills.append({"id": "foreign", "slug": "team-review", "key": "company/foreign/team-review"})
+                    slug = kind if kind in {'orchestrate', 'autoloop'} else 'team-review'
+                    self.api.skills.append({"id": "foreign", "slug": slug, "key": "company/foreign/" + slug})
                 before = self.snapshot()
                 with self.assertRaises(sync.SyncError):
                     self.run_sync(True)
