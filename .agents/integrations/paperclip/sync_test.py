@@ -142,6 +142,21 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(len(plan["skills"]), 5)
         self.assertTrue(all(method == "GET" for method, _, _ in self.api.calls))
 
+    def test_autonomy_precedence_reaches_manager_roles_and_skill_copies(self):
+        self.run_sync(True)
+        documents = [self.api.instructions['content']]
+        documents += [p.read_text() for p in (self.root / '_workspace/paperclip-sync/agents').glob('*/AGENTS.md')]
+        documents += [p.read_text() for p in (self.root / '_workspace/paperclip-sync/skills').glob('*/SKILL.md')]
+        self.assertEqual(len(documents), 13)
+        for text in documents:
+            self.assertIn('routine interviews and user spec-finalization', text)
+            self.assertIn('coordinator settles reversible in-scope decisions', text)
+            self.assertIn('independent review', text)
+            self.assertIn('missing-harness stops', text)
+        self.assertTrue(self.api.instructions['content'].startswith('Original manager instructions.'))
+        self.assertFalse(any('/issues' in path or path.endswith(('/wakeup', '/resume'))
+                             for method, path, _ in self.api.calls if method != 'GET'))
+
     def test_apply_twice_preserves_originals_and_foreign_settings(self):
         originals = self.snapshot()
         self.run_sync(True)

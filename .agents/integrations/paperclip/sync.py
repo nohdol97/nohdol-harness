@@ -174,9 +174,13 @@ def coordination_notice(root):
             "native Paperclip coordination; an environment variable or document mention alone is insufficient. "
             "Within that context, the contract supersedes CLI orchestration, corporate direct execution, "
             "corporate native dispatch bans, and corporate self-review exemptions for Paperclip issue assignment only. "
+            "It also replaces routine interviews and user spec-finalization: the coordinator settles reversible in-scope decisions, "
+            "records the rationale, and carries assigned work through tests and independent review. "
+            "Ask humans only for material scope decisions, indispensable unavailable facts, reserved decisions or required safety boundaries; "
+            "do not auto-answer existing questions or approvals. "
             "Use registered Paperclip roles and independent review; do not run CLI orchestrate/autoloop or start native CLI workers. "
             "Keep data-egress limits, the corporate root-edit ban, secrets, sandbox/tool permissions, "
-            "approval gates and missing-harness stops. This notice does not resume agents or authorize model calls.")
+            "required approval gates and missing-harness stops. This notice does not resume agents or authorize model calls.")
 
 
 def staged_skill(root, slug, raw):
