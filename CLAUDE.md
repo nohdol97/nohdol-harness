@@ -16,7 +16,7 @@
   - review, verification, security audit → `team-review`
   - harness creation/improvement → `metaskill`
   - specs, reports, READMEs, runbooks, PR bodies → `doc-writer`; the diagram those owe (ordered exchange, state machine, branch, 4+-component structure) → `diagram`
-  - knowledge notes authored into the study vault → `vault-write` (reading it as design input stays §7 clause 8)
+  - knowledge notes authored into the study vault → `vault-write`; read notes only on the user's explicit request (§7 clause 8)
   - missing `REGISTRY.md`, install, bootstrap → `harness-install`
   - tracked multi-session work or resume → `work-tracker`; manual local handoff → `/carryover`
   - subproject branch/PR → `branch-workflow`; post-merge deploy → `release`

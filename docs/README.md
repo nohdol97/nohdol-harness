@@ -60,7 +60,7 @@
 | [030](adr/030-english-harness-assets.md) | 2026-07-22 | 활성 | 모델-로드 하네스 자산 영어 단일 원본 전환 (§15 개정, 한글 뷰 3종 + 드리프트 가드, ADR·스펙·changelog는 한글 유지) |
 | [031](adr/031-codex-runtime-contract.md) | 2026-07-25 | 활성 | Codex 런타임 계약 실측 정렬 (32KiB 방어, 인라인 훅, trust, custom-agent 발행 확인) |
 | [032](adr/032-token-efficient-orchestration.md) | 2026-07-25 | 활성 | 토큰 효율형 오케스트레이션 (호출 예산·델타 재사용·세션 경계·상시 노출 예산) |
-| [033](adr/033-knowledge-source-routing.md) | 2026-07-26 | 활성 | 지식 소스를 설계 단계 라우팅에 편입 (§7 8항, REGISTRY 기록 시에만 발동·임의 경로·요약은 증거 아님·fail-open) |
+| [033](adr/033-knowledge-source-routing.md) | 2026-07-26 | 부분 대체(→061) | 지식 소스 연결·근거 등급·반출 경계 유지, 설계 단계 자동 조회 폐기 |
 | [034](adr/034-vault-write-delegation.md) | 2026-07-28 | 활성 | vault 쓰기 경로 신설(`vault-write`)과 노트 계약 정본의 참조 위임 — 사본 없이 `nohdol-study` references를 런타임 참조, 부재 시 정지, index/log/hot 기록 필수 |
 | [035](adr/035-subproject-worktree-workflow.md) | 2026-07-29 | 활성(→052) | 개인·사내 하위 프로젝트 worktree 워크플로. ADR 043의 사내 예외는 052가 철회 |
 | [036](adr/036-ownership-boundary-placement-and-vocabulary.md) | 2026-08-02 | 활성 | 소유권 경계를 둘로 분할 — 규칙(영역 표·중단 게이트)은 프로젝트 저장소에 중립 어휘(`공용`/`배포처`)로, 역할 배정만 하위 하네스에. `carry-in.md` → `site-setup.md` |
@@ -84,6 +84,7 @@
 | [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 폐기 → 055 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
 | [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 활성 | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원 |
 | [056](adr/056-retire-harness-review.md) | 2026-10-08 | 활성 | 일일·주간 하네스 리뷰 스킬과 자동 알림 제거, 수동 무결성 검사·관찰 신호 유지 |
+| [061](adr/061-knowledge-notes-explicit-request.md) | 2026-10-16 | 활성 | 지식 노트 자동 조회 폐기, 명시적 요청에만 읽기 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
