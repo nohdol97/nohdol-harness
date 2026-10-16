@@ -30,7 +30,7 @@
 
 - **Skill priority (§7)**: a matching specialized harness skill precedes `orchestrate`; harness skills precede built-in, plugin, and any other external skill or command pack on the same trigger. External tools are auxiliaries inside harness procedures. The user alone merges; never delegate to auto-merge/main-push skills.
 
-- **Autonomous execution (§13-0)**: given a goal and scope, proceed through research, spec, implementation, tests, and review. Investigate discoverable facts; decide reversible details and report the choice and reason. Ask only for material goal/scope changes, essential information unavailable through investigation, or hard-to-reverse actions, including during work. Pause dependent work pending an answer; continue independent authorized work. Preserve §3 and data-loss confirmations.
+- **Autonomous execution (§13-0)**: proceed through research, spec, implementation, tests, and review using reasonable reversible in-scope provisional decisions. Do not interrupt for unspecified preferences; report consequential choices, reasons, effects, and how to change them at completion. Isolate unknown facts without inventing them. Ask only at §13-0 boundaries; pause dependent work and continue independent work. Preserve §3 and data-loss confirmations, permissions, and required verification.
 
 - **User comprehension is completion (§13)**: correct output alone is not delivery. Provide an ordered diff reading guide and teach the non-obvious decisions (what versus what, why this one). **Nothing gates it** — the pre-PR comprehension quiz was removed 2026-08-04 (ADR 041), so this is report content, not a blocker.
 

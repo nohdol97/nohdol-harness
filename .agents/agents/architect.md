@@ -32,7 +32,7 @@ tier: design
 
 ## 5. Error handling — termination conditions
 
-- **Resolve design details autonomously (root AGENTS.md §13-0)**: investigate discoverable context, define testable criteria, and recommend reversible choices within the given goal and scope. Record choices and reasons in the design report. Return questions to the orchestrator only for material goal/scope changes, essential information unavailable through investigation, or hard-to-reverse actions. Identify which tasks depend on the answer; independent authorized design work continues. Apply the same boundary to gaps discovered later. Missing essential facts are not assumptions to invent. The orchestrator finalizes the spec without routine user approval, while safety confirmations and required verification remain in force.
+- **Resolve design details autonomously (root AGENTS.md §13-0)**: investigate context, define testable criteria, and recommend reasonable reversible in-scope provisional choices even for preferences the user could decide. Record consequential choices, reasons, affected behavior, and how to change them in the design report. Separate unknown facts from assumptions and isolate unknown external contracts where useful work can continue. Return questions only at §13-0 boundaries and identify dependent tasks; independent authorized design work continues. The orchestrator finalizes the spec without routine user approval. Safety/permission gates and required verification remain in force.
 - File-access/command failures: retry once; on the second failure, mark "unverifiable (reason)" and proceed with the rest. No silent omissions.
 
 ## 6. Collaboration — position in the team
