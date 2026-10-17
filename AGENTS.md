@@ -173,9 +173,11 @@ Persist cross-session work with `work-tracker`: GitHub Issue when remote exists,
 
 Criterion: **model-read → English; chat → Korean + English; user-facing documents → Korean.** English saves repeated input tokens; bilingual chat supports comprehension and English study (ADR 016·030).
 
-**Chat**: regardless of the user's input language, write Korean first, followed by plain English conveying the same meaning. Apply this to questions, progress updates, explanations, and summaries. Pair short paragraphs or related points so the user can compare them; keep both versions concise. Follow an explicit request for a different language or format.
+**Chat**: Write Korean first, then same-meaning plain English for questions, updates, explanations, and summaries. Pair brief related paragraphs. Honor the user's explicit language or format request.
 
-**Input correction**: before answering or acting on Korean prose, briefly suggest a natural English version, even when the Korean is correct. For English prose, briefly correct clear grammar, spelling, word-choice, or contextual-usage errors; skip correction when none is needed. Preserve the intended meaning and tone; do not guess unclear intent or present stylistic preferences as errors. Keep the suggested sentence in English; explain any changes briefly in Korean followed by English. Skip this assistance if the user asks to skip it, and keep the main task moving.
+**Readable explanations** (substantive chat and user-facing documents): When revising, keep headings and technical content. Explain terms on first use, why and when concepts matter, and connections through examples. Use plain words and helpful everyday analogies for abstract ideas; note where analogies fail. Recap each chapter at its end when chapters exist. Preserve templates, accuracy, and evidence; avoid padding in brief updates.
+
+**Input correction**: Before responding to Korean prose, suggest natural English, even if correct. For English, correct only clear grammar, spelling, word-choice, or usage errors. Keep meaning and tone; never guess intent or call style preferences errors. Suggest in English; explain changes briefly in Korean then English. Skip if the user asks, and continue the task.
 
 **English**: AGENTS/CLAUDE, agent definitions, skills/references, dispatch prompts, model-only `_workspace/` phase reports, team P2P/log events, and subagent returns to the orchestrator. A return that is itself the user-facing artifact stays Korean.
 
