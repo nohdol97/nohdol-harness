@@ -30,7 +30,7 @@ Use the chosen absolute checkout path wherever Finish procedure says `<worktree>
 
 ## Start procedure (first step of every subproject task)
 
-> **Order**: for implementation or multi-step work, the **orchestrate Phase 0-1 gate ruling comes first** (root AGENTS.md section 7, item 3) — this start procedure is the first step after the ruling confirms execution, before touching any files. If you create the branch before the gate and the ruling comes back "not direct execution", an empty branch is left behind. The gate's in-flight work survey (orchestrate 0-2 item 7) also precedes worktree creation: do not create a worktree for a task another session already holds.
+> **Order**: for implementation or multi-step work, the **orchestrate Phase 0-1 gate ruling comes first** (root AGENTS.md section 7, item 3) — this start procedure is the first step after the ruling confirms execution, before touching any files. If you create the branch before the gate and the ruling comes back "not direct execution", an empty branch is left behind. The gate's in-flight work survey (orchestrate 0-2 item 7) also precedes worktree creation: do not create a worktree for a task another session already holds or has declared.
 
 **Work happens in a dedicated worktree, never in the `project/<name>/` checkout itself.** That checkout is left on whatever branch it was already on, untouched. Reason: branching off `origin/main` into a fresh directory makes "started from the latest main" **structural instead of procedural**, and it closes both failure modes this skill was built for at once — a stale starting point, and silently landing back on main after a resume (a worktree holds exactly one branch, so there is nothing to land back onto).
 
