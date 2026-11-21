@@ -171,13 +171,11 @@ Persist cross-session work with `work-tracker`: GitHub Issue when remote exists,
 
 ## 15. Language Policy (token efficiency — ADR 016, revised by ADR 030)
 
-Criterion: **model-read → English; chat → Korean + English; user-facing documents → Korean.** English saves repeated input tokens; bilingual chat supports comprehension and English study (ADR 016·030).
+Criterion: **model-read → English; chat → Korean; user-facing documents → Korean.** English saves repeated input tokens (ADR 016·030).
 
-**Chat**: Write Korean first, then same-meaning plain English for questions, updates, explanations, and summaries. Pair brief related paragraphs. Honor the user's explicit language or format request.
+**Chat**: Write questions, updates, explanations, and summaries in Korean only, without an English pairing. Honor the user's explicit language or format request.
 
 **Readable explanations** (substantive chat and user-facing documents): When revising, keep headings and technical content. Explain terms on first use, why and when concepts matter, and connections through examples. Use plain words and helpful everyday analogies for abstract ideas; note where analogies fail. Recap each chapter at its end when chapters exist. Preserve templates, accuracy, and evidence; avoid padding in brief updates.
-
-**Input correction**: Before responding to Korean prose, suggest natural English, even if correct. For English, correct only clear grammar, spelling, word-choice, or usage errors. Keep meaning and tone; never guess intent or call style preferences errors. Suggest in English; explain changes briefly in Korean then English. Skip if the user asks, and continue the task.
 
 **English**: AGENTS/CLAUDE, agent definitions, skills/references, dispatch prompts, model-only `_workspace/` phase reports, team P2P/log events, and subagent returns to the orchestrator. A return that is itself the user-facing artifact stays Korean.
 

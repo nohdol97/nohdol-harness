@@ -1,5 +1,7 @@
 # ADR 030 — 하네스 모델-로드 자산의 영어 단일 원본 전환
 
+> **2026-11-21 부분 개정**: 채팅의 한국어+영어 병기와 입력 교정(자연스러운 영어 표현 제안)은 사용자 요청으로 폐지했다. 채팅은 한국어 단독이며 영어 단일 원본·한글 뷰 규칙은 그대로다. 근거: `docs/harness-changelog.md` 2026-11-21 행.
+
 - **날짜**: 2026-07-22
 - **상태**: 채택
 - **대상**: AGENTS.md, CLAUDE.md, `.agents/agents/*.md`(7종), `.agents/skills/*/`(SKILL.md+references 16종), metaskill 산출 언어 규칙(§15 개정), 신규 한글 뷰 3종, integrity-check 드리프트 가드
