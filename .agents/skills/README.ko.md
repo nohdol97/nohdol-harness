@@ -14,6 +14,7 @@ Pi 전용 시스템 지침이 로드된 세션은 사내 발행 금지·독립 �
 
 - **역할**: 하나의 확정된 스펙을 대상으로 Claude 또는 Codex 세션을 반복 실행한다.
 - **사용**: “밤새 돌려줘”, “무인 실행”, “자율 루프”처럼 한 세션을 넘는 무인 작업에 쓴다.
+- **기동 전 조사**: worktree를 만들기 전에 `orchestrate`의 진행 중 작업 조사를 돌려, 다른 세션이 잡고 있는 작업·파일이 스펙에 있으면 겹치지 않는 스펙으로 기동하거나 기다린다.
 - **시작 조건**: 하위 프로젝트는 전용 worktree와 실행 가능한 테스트 명령이 있어야 한다. 개인·사내 설치처 모두 같은 조건으로 하위 프로젝트 루프를 시작한다.
 - **작업 분해·실행**: read-only planner의 `orchestrate` 판정과 완료 기준 전체를 덮는 task DAG가 먼저 유효해야 한다. 첫 계획이 구조 검증에 실패하면 정확한 오류로 한 번만 자동 수정하고, 두 번째 실패에서만 작업 시작 전 차단한다. writer는 정확한 파일 또는 `디렉터리/**` 형태의 `file_scope`를 선언한다. 범위가 겹치는 ready writer는 다음 wave로 보내 직전 통합 HEAD에서 실행하고, read task와 비중첩 writer만 같은 wave에서 병렬 실행한다. 모든 writer는 별도 child worktree에서 작업하며 실제 patch가 선언 범위를 벗어나면 integration worktree 생성 전에 차단한다. patch는 integration worktree에서 commit hook까지 통과한 뒤 clean target에만 fast-forward한다. wave를 worktree보다 먼저 예약하고 integration commit과 target HEAD를 재개 시 대조해 중단 경계의 재실행을 막는다. 엔진을 생략하면 Codex에서 시작한 루프는 Codex로, Claude에서 시작한 루프는 Claude로 수행한다. agent 역할은 `design`·`implement`·`explore` 티어 하나로 고정하고, 기동 세션이 현재 CLI 라인업에서 고른 각 티어 모델을 전달한다. Codex writer는 격리된 workspace-write worktree만 사용하고 삭제·rename·파일 타입 변경·symlink·submodule 결과는 fan-in 전에 차단한다.
 - **대시보드**: autoloop 시작 시 `http://127.0.0.1:8765`의 읽기 전용 화면을 자동으로 시작하거나 재사용한다. task·dependency·agent뿐 아니라 역할·티어·기록된 모델·엔진, dispatch/fallback·integration·worktree cleanup·evidence를 추적한다. CLI 기본 모델명이 보고되지 않았으면 추정하지 않고 `CLI 기본값 · 미보고`로 표시한다. 수동 복구는 `python3 .agents/skills/autoloop/scripts/dashboard.py --root _workspace/autoloop --port 8765`로 한다.
@@ -31,7 +32,7 @@ Pi 전용 시스템 지침이 로드된 세션은 사내 발행 금지·독립 �
 - **역할**: 같은 컴퓨터의 다음 세션이 이어받을 메모를 `_workspace/carryover/`에 남긴다.
 - **사용**: `/carryover`로만 실행한다.
 - **내용**: 완료한 일, 다음 행동, 결정, 검증 결과, 남은 위험을 기록한다.
-- **경계**: 여러 세션·여러 PR을 공식 추적하는 작업은 `work-tracker`를 쓴다.
+- **경계**: 여러 세션·여러 PR을 공식 추적하는 작업은 `work-tracker`를 쓴다. 재개 시 쓰기 전에 `orchestrate`의 진행 중 작업 조사를 거친다.
 
 ## context7
 
@@ -89,6 +90,7 @@ Pi 전용 시스템 지침이 로드된 세션은 사내 발행 금지·독립 �
 
 - **역할**: 구현·수정·다단계 작업의 규모와 위험을 먼저 판단한다.
 - **선택지**: 직접 수행, 한 에이전트, 구현-검증 쌍, 관점별 팀 중에서 고른다.
+- **진행 중 작업 조사**: 직접 처리 판정을 포함해 파일을 바꾸기 전에, 그리고 "진행해줘"·"이어서" 같은 재개 때마다 같은 저장소의 다른 세션·커밋 안 된 worktree·push 안 된 커밋·열린 PR·최근 팀 로그를 조사한다. 요청한 작업이 다른 세션과 겹치면 멈추거나 묻지 않고, 겹치지 않는 준비된 작업을 병렬로 수행한 뒤 건너뛴 작업과 소유자를 보고한다. 자기 세션 작업과 작성자가 끝난 인계 worktree는 제외하고, 변경 이력·목차 같은 추가 전용 기록은 각자 자기 행을 넣는다. 루트 하네스와 autoloop 기동에도 적용한다(`references/inflight-survey.md`).
 - **작업 분해**: 비단순 구현은 완료 기준마다 실행 작업·`depends_on`·담당 방식·기대 검증 증거를 먼저 연결한다.
 - **핵심**: 여러 에이전트가 필요하면 작업 의존 관계를 기록하고, 서로 독립인 읽기 작업은 동시에 실행한다. 구현 뒤의 검증은 생략하지 않는다.
 - **Codex**: `spawn_agent`, `send_message`, `list_agents`, `wait_agent`를 사용한다. 공유 작업 큐가 없으므로 완료 기준·실행 작업·의존 관계·담당 방식·기대 검증 증거와 상태를 팀 로그에 기록한다.
@@ -150,7 +152,7 @@ Pi 전용 시스템 지침이 로드된 세션은 사내 발행 금지·독립 �
 - **역할**: 여러 세션이나 여러 PR에 걸치는 작업을 GitHub Issue 또는 `docs/backlog.md`에 기록한다.
 - **사용**: “작업 등록”, “백로그”, “이어서 하자”, “진행 상황 기록”에 쓴다.
 - **핵심**: 스펙 완료 기준을 체크리스트로 옮기고, 중단할 때 완료·다음·막힘을 남긴다. PR의 `Closes #N`으로 코드와 상태를 함께 닫는다.
-- **경계**: 같은 세션에서 계속하는 구현에는 쓰지 않는다. 구현 재개 자체는 다시 `orchestrate` 판단을 거친다.
+- **경계**: 같은 세션에서 계속하는 구현에는 쓰지 않는다. 구현 재개 자체는 다시 `orchestrate` 판단을 거치며, 그때 진행 중 작업 조사로 다른 세션이 "다음" 작업을 가져갔는지 확인한다.
 
 ## wrapup
 
