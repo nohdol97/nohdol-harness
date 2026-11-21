@@ -44,11 +44,11 @@ Keep only the work the user picks from this session as a local note.
    - **If there is nothing worth carrying over** (no changes, decisions, or open items), do not save; notify "이월할 작업이 없습니다" and stop — an empty note is debt.
 
 2. **User selection** (the core — the user must choose):
-   - If there are **4 or fewer** candidates, present them with `AskUserQuestion` (multiSelect: true) and let the user pick.
-   - If there are **5 or more**, present a numbered list in chat and have the user answer with the numbers to keep (or "전부"/all) — AskUserQuestion caps at 4 options, so this method is accurate for long lists.
+   - If there are **4 or fewer** candidates, select by judgment and list what was kept and dropped.
+   - If there are **5 or more**, select by judgment and list what was kept and dropped; the user can narrow it afterwards.
    - If nothing is selected, do not save and stop (an empty note is debt).
 
-3. **Fix the topic**: build a short slug from the common topic of the selected items (confirm once with the user, or proceed if self-evident). If several unrelated topics are mixed, ask the user whether to split into per-topic files.
+3. **Fix the topic**: build a short slug from the common topic of the selected items (choose it yourself and state it in the report). If several unrelated topics are mixed, split into per-topic files by default.
 
 4. **Write the file**: write to `_workspace/carryover/backlog/YYYY-MM-DD-<topic-slug>.md` using the template below. Get the date with `date +%F` (no guessing). Create `backlog/` if missing.
    - If a same-day same-topic file already exists, do not overwrite — append a session-delimited section or add `-2` to the slug (prevents losing previously carried-over content).
@@ -93,7 +93,7 @@ Pick an existing carryover note and take over.
 1. **Scan**: list `*.md` in `backlog/` and `progress/`. Build a list from each note's filename, date, and "One-line summary", tagging **state (queued / in flight)** (in flight = progress goes on top). If there are no notes, notify "이월 노트가 없습니다" and stop.
    - **Legacy migration (one-time)**: if flat notes (`*.md`) remain directly under `_workspace/carryover/` (saved before the two-way split), move them to `backlog/` and list them together.
 
-2. **Select**: if 4 or fewer notes, use `AskUserQuestion`; if more, use a numbered list, letting the user pick one (or several).
+2. **Select**: choose the best-matching note(s) by judgment and state which were chosen.
 
 3. **Load, digest + move**: read the chosen note and report the situation (done / next / blockers / references) **summarized in the chat language required by root §15** (not pasted verbatim — summarized so it is easy to continue now). If the chosen note is in `backlog/`, **move it to `progress/`** — this session has picked it up, so keep the next scan's "queued" list clean. If already in `progress/`, leave it.
 

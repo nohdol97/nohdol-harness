@@ -28,7 +28,7 @@ When composing a team, **reuse the standard agents in `.agents/agents/` first**.
 | reviewer | design | Verification and verdicts (no fixes) | Downstream — verifier in generate-verify, independent verification |
 | integrator | design | Fan-in, integration gate, final report | Farthest downstream — endpoint of all deliverables |
 
-Only when a domain-specific member is needed (e.g., payments domain expert, DB migration expert), define one ad hoc per root AGENTS.md §10 (the 10 agent-definition rules), and if the same role repeats 3+ times, propose promotion to `.agents/agents/` (evolution trigger — the same path by which the k8s expert was promoted to infra-specialist, ADR 011).
+Only when a domain-specific member is needed (e.g., payments domain expert, DB migration expert), define one ad hoc per root AGENTS.md §10 (the 10 agent-definition rules), and if the same role repeats 3+ times, promote it to `.agents/agents/` via `metaskill` (evolution trigger — the same path by which the k8s expert was promoted to infra-specialist, ADR 011).
 
 **Applying tiers is the orchestrator's job (declaration alone does not apply them)**: `tier` in frontmatter is a harness-only field the CLI does not interpret. When creating team members (Agent calls), **explicitly set the `model` parameter per the root AGENTS.md §9 table** — the design tier gets the current CLI's highest-performing model; implement and explore get the standard model. Without it, members inherit the session model as-is and the tier policy (especially "verification uses top performance, no lightweight models") is silently ignored.
 

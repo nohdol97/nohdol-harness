@@ -9,16 +9,16 @@ description: "Wrap up before clearing: route durable work to work-tracker or car
 
 `/clear` is a Claude Code **built-in CLI command**, so the context is emptied the instant it runs, and the model has no turn to intervene at that moment. As a result, "gathering what this session should leave behind, right before clear" gets missed every time — work spanning multiple sessions goes unregistered, notes meant for the next session vanish, and **harness/project improvement signals surfaced in this session evaporate along with the context.**
 
-This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as a **wrap-up gate placed in front of `/clear`** — it sweeps this session's work, **judges the save target by scope** and handles it (local saves are automatic without confirmation; only work-tracker registration gets a just-before confirmation), **captures and proposes improvement signals if any exist**, then guides the user to run `/clear`.
+This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as a **wrap-up gate placed in front of `/clear`** — it sweeps this session's work, **judges the save target by scope** and handles it (local saves are automatic without confirmation; only work-tracker registration gets a just-before confirmation), **captures improvement signals and records a recommended action if any exist**, then guides the user to run `/clear`.
 
-**It is a thin orchestrator — it does not re-implement save/apply logic.** Work saving is delegated to `work-tracker`·`carryover`, and actual application of harness/project improvements to `metaskill`. What this skill does is ⓐ collect session work and branch to the save target ⓑ capture and propose improvement signals ⓒ guide the clear. Reason: duplicating save/apply logic drifts from the source skills and becomes debt — keep only assets whose need is proven and reuse the rest (ADR 007 lazy creation).
+**It is a thin orchestrator — it does not re-implement save/apply logic.** Work saving is delegated to `work-tracker`·`carryover`, and actual application of harness/project improvements to `metaskill`. What this skill does is ⓐ collect session work and branch to the save target ⓑ capture improvement signals and record a recommended action ⓒ guide the clear. Reason: duplicating save/apply logic drifts from the source skills and becomes debt — keep only assets whose need is proven and reuse the rest (ADR 007 lazy creation).
 
 **This skill is invoked only via slash (`/wrapup`)** — for the same reason as carryover, it is not registered in harness auto-routing (CLAUDE.md anchors·§7). It is a tool that should act only at the moment the user explicitly decides "I will now wrap up the session and empty the context."
 
 ## Two core constraints
 
 1. **Cannot auto-clear**: this skill cannot run `/clear` on the user's behalf (a CLI built-in). When processing is done, it finishes by **guiding the user to type `/clear` themselves**. It never promises anything like "I'll do the clear for you automatically."
-2. **Cannot auto-apply improvements**: the retrospective step goes only as far as **capturing, recording, and proposing** signals. It does **not modify the harness or projects directly** — unauthorized harness/project changes bypass the evolution gate (root AGENTS.md §8 propose→approve, §12 lazy creation), and metaskill forbids unauthorized creation/retirement (the harness is the user's operating asset). Actual application goes only through **the metaskill path after user approval** (same as the existing evolution gate).
+2. **Cannot auto-apply improvements**: the retrospective step goes only as far as **capturing, recording, and recommending** signals. It does **not modify the harness or projects directly** — unauthorized harness/project changes bypass the evolution gate (root AGENTS.md §8, §12 lazy creation: application runs through `metaskill` in a later session under §13-0), and metaskill reports every applied change (the harness is the user's operating asset). Actual application goes only through **the metaskill path after user approval** (same as the existing evolution gate).
 
 ## Procedure
 
@@ -42,7 +42,7 @@ Look back over this session and **lightly check only whether improvement signals
 
 **If there are signals**:
 - **Record lessons immediately, now** (no waiting for proposal — §8 "record mistakes immediately"): in Claude sessions, record to auto-memory (feedback type), but **the index line carries the triggering situation, not the lesson's gist** (in what kind of work this should be recalled). In Codex sessions, write the lesson file and the MEMORY.md index line in the same repository directly.
-- **For anything requiring harness/project application, only propose** — "이번 세션에서 〈신호〉를 관찰했습니다. metaskill로 반영할까요?" (harness assets), or propose recording in the sub AGENTS.md "스킬 후보" (skill candidates) section (projects). **Only after user approval does it go to metaskill**; before approval, fix nothing.
+- **For anything requiring harness/project application, record signal + recommended action, and do not edit in this session** — wrapup runs at a session boundary, so edits here would land unverified. State the recommendation as a decision, not a question ("이번 세션에서 〈신호〉를 관찰 — metaskill로 〈조치〉 반영 권장; 다음 세션이 잠정 결정으로 적용"), and for projects record it in the sub AGENTS.md "스킬 후보" (skill candidates) section. The next session applies it through `metaskill` under root §13-0 without asking again.
 
 
 ### 3. Auto-judge the save target by scope
@@ -54,7 +54,7 @@ Hold the scope collected in step 1 (change size, commit/push status, unfinished 
 - **work-tracker**: a formal epic spanning multiple PRs/days, or **cross-machine tracking** is needed → **the judgment is automatic, but confirm once just before registering** ("이 에픽을 work-tracker에 등록할까요?"). Whether the store is a GitHub issue or `docs/backlog.md`, it is git-tracked and externally oriented, and registering everything creates an issue graveyard (§14) — never write without confirmation.
 - **Both**: if formal tracking and a local handoff coexist, split them (formal → work-tracker, local memo → carryover — no duplicate loading of the same content). Only the work-tracker part goes through the confirmation above.
 
-**Tell the user the verdict and its basis in one line** (e.g. "전부 커밋·푸시됨 + 미완 없음 → 남길 것 없음"). If the user overrides, follow that. **Only when the scope signals are too ambiguous to tell carryover from work-tracker, ask back via AskUserQuestion** — auto-judgment is the default; asking back is the exception.
+**Tell the user the verdict and its basis in one line** (e.g. "전부 커밋·푸시됨 + 미완 없음 → 남길 것 없음"). If the user overrides, follow that. **When the scope signals are too ambiguous to tell carryover from work-tracker, choose carryover (local, reversible) and say so** — registering a tracker issue is an external publication, so it is never the guess.
 
 ### 4. Delegate per the verdict
 

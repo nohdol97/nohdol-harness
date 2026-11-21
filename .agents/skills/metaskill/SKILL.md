@@ -44,8 +44,8 @@ Also update the registry on project **deletion/move**. A registry out of sync wi
 
 Trigger: **when a recurring task is observed, or a procedure/role appears mid-work that seems worth registering as a skill/agent** (including the 4 evolution-trigger signals). Procedure:
 
-1. Propose the candidate to the user (no unauthorized creation). Items recorded in the sub AGENTS.md "skill candidates" section are first-priority candidates.
-2. On approval, create at **`.agents/projects/<name>/skills/<skill>/SKILL.md`** or **`.agents/projects/<name>/agents/<agent>.md`** — `.agents/projects/` is untracked, so it never enters git. Format is identical to root (the "skill common rules" below in full, agent-rules.md 10 sections).
+1. Judge the candidate against the evolution signals and decide (root §13-0) — create only on an observed signal, never speculatively. Items recorded in the sub AGENTS.md "skill candidates" section are first-priority candidates.
+2. On a positive decision, create at **`.agents/projects/<name>/skills/<skill>/SKILL.md`** or **`.agents/projects/<name>/agents/<agent>.md`** — `.agents/projects/` is untracked, so it never enters git. Format is identical to root (the "skill common rules" below in full, agent-rules.md 10 sections).
 3. **List the skills/agents and their paths in the sub AGENTS.md** — this location is not auto-discovered by the CLI, so routing reading the sub AGENTS.md is the only path that loads them. Put the actual commands in the body (a skill without commands is worse than none).
 4. Promote to root `.agents/skills/` (tracked) only skills that generalize across projects/install sites (after removing project-specific content).
 
@@ -160,7 +160,7 @@ The path for actually applying improvement items carried over from a corporate i
 
 ## Evolution triggers (automatic conditions that invoke this skill)
 
-The 4 signals of root AGENTS.md §8 — ① same request type 3+ times ② same failure 2+ times (including same correction 2+) ③ observed harness bypass ④ shrink/efficiency (skills/agents unused 3+ weeks, token-overconsumption pattern 2+ times) — when detected, **propose** creation/improvement/**retirement/consolidation to the user**, and execute with this skill on approval. No unauthorized creation or retirement: the harness is the user's operating asset.
+The 4 signals of root AGENTS.md §8 — ① same request type 3+ times ② same failure 2+ times (including same correction 2+) ③ observed harness bypass ④ shrink/efficiency (skills/agents unused 3+ weeks, token-overconsumption pattern 2+ times) — when detected, **judge** creation/improvement/**retirement/consolidation** and execute with this skill as a provisional decision (root §13-0, §8), reported at completion with how to reverse it. Unrecoverable removals (`.agents/projects/**` deletion) and installed external-tool removal keep a user confirmation; the harness is the user's operating asset, so every applied change is reported.
 
 ## Completion checklist (self-verification after create/improve)
 
@@ -192,5 +192,5 @@ The 4 signals of root AGENTS.md §8 — ① same request type 3+ times ② same 
 |---|---|---|
 | Structural consistency | Different harness structure per project, broken routing | Every project shares the same skeleton |
 | Registry | Registration missed after project creation → routing impossible | Registry update built into the creation procedure |
-| Evolution | Manual response to every repeated failure | 4-signal detection → proposal → approval → create/retire |
+| Evolution | Manual response to every repeated failure | 4-signal detection → judged provisional decision → create/retire, reported |
 | Verification | Build and done | Completion judged by the 21-item checklist |

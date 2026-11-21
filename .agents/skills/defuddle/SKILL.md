@@ -17,7 +17,7 @@ However, this is an **external CLI dependency** (not bundled into the mono-works
 
 2. **Check the dependency**: `command -v defuddle`.
    - Present → step 3.
-   - Absent → ask the user once and install (`npm i -g defuddle`, global), or if declined/impossible, **fall back to WebFetch immediately**. **Never install without permission or by force** — network policy and global npm permissions differ per installation. (New installation sites get it by default via harness-install's auxiliary-tool default-install procedure (§3).)
+   - Absent → **fall back to WebFetch immediately** and recommend installation (`npm i -g defuddle`, global) in the report. **Never install without permission or by force** — network policy and global npm permissions differ per installation. (New installation sites get it by default via harness-install's auxiliary-tool default-install procedure (§3).)
 
 3. **Run the extraction**:
    - Default: `defuddle parse <url> --md`

@@ -24,7 +24,7 @@ Write this deployment's plan using the **doc-writer runbook template** (precondi
 | Web·backend — k8s GitOps | Pin image tag → update manifests (declarative-first — `kubectl edit/patch` forbidden) → GitOps sync → observe rollout. Every kubectl call states `--context`·`-n` explicitly |
 | Web — managed platform (Vercel etc.) | Check deploy trigger (if merge auto-deploys, observe the deploy in progress; if manually triggered, it is a mutating action — user confirmation) → confirm preview/production environment distinction → verify the deployment (Phase 3) |
 | App (Flutter etc.) | Bump version·build number → release build → store submission (the submission itself is an external publication — user confirmation) → track review via a work-tracker issue |
-| Other | The project harness's deploy procedure. If none, settle it via a user interview and propose recording it in the sub-project AGENTS.md |
+| Other | The project harness's deploy procedure. If none, draft a provisional runbook from the repository's own CI/deploy files (root §13-0), record it in the sub-project AGENTS.md, and keep every mutating step behind its §3 confirmation |
 
 **Deploys that include DB migrations (common to all types)**: if a migration is included, add the migration step as its own runbook item — **confirm backup·PITR availability before execution → execute (mutating action, user confirmation — section 3) → verify schema·data**, and the rollback section must specify not just code rollback but **the data recovery procedure**. Reason: code can be reverted, but schema·data do not revert automatically — a rollback section without migration recovery is not a rollback.
 
@@ -47,7 +47,7 @@ Write this deployment's plan using the **doc-writer runbook template** (precondi
 ## Phase 4 — Wrap-up
 
 1. If the work is registered in work-tracker, comment the deploy result on the issue and close it (or convert it to app-review tracking).
-2. Release notes·tags·CHANGELOG follow the project's conventions (if none, only propose creating them — no unilateral introduction).
+2. Release notes·tags·CHANGELOG follow the project's conventions (if none, add the minimal convention and report it).
 3. Report a deploy summary (what·where·verification result·rollback or not) to the user.
 
 ## with / without

@@ -22,9 +22,9 @@ However, this is an **external MCP dependency**. If it is missing or fails, **al
 
 2. **Check the dependency**: see whether the context7 MCP tool (`mcp__context7__resolve-library-id`) is present in this session.
    - Present → step 3.
-   - Absent → ask the user once and guide installation (`claude mcp add context7 --scope user -- npx -y @upstash/context7-mcp`; global registration takes effect from the next session), or if declined/impossible, **fall back to WebFetch/WebSearch immediately**. **Never install without permission.** (To make it permanent, follow harness-install step 3c — it is guided automatically on new installations.)
+   - Absent → **fall back to WebFetch/WebSearch immediately** and, in the report, recommend installation (`claude mcp add context7 --scope user -- npx -y @upstash/context7-mcp`; global registration takes effect from the next session). **Never install without permission** — installing changes the user's global configuration. (To make it permanent, follow harness-install step 3c — it is guided automatically on new installations.)
 
-3. **Resolve the library ID**: convert the library name (e.g. "next.js", "prisma") to a context7 ID with `mcp__context7__resolve-library-id`. If there are multiple candidates, pick the one that **matches the library the user named most exactly** (official name, recognition, version match). If ambiguous, confirm with the user which one — scraping the wrong library's docs is worse than answering from memory.
+3. **Resolve the library ID**: convert the library name (e.g. "next.js", "prisma") to a context7 ID with `mcp__context7__resolve-library-id`. If there are multiple candidates, pick the one that **matches the library the user named most exactly** (official name, recognition, version match). If ambiguous, pick the best match, state the choice in the answer, and proceed — scraping the wrong library's docs is worse than answering from memory.
 
 4. **Query the docs**: pass the resolved ID and a **specific topic** (e.g. "app router middleware", "prisma migrate deploy") to `mcp__context7__query-docs` and fetch only the needed sections. If the version matters (migration or version-specific questions), specify the version as well.
 

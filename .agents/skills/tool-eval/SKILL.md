@@ -31,9 +31,9 @@ Judge on every axis — this is where consistency lives:
 - **§3 data-egress**: does it send code/data to a third party at **runtime** (external embeddings, transcription APIs, telemetry)? If so, name the egress point and the mitigation (local model, `--no-whisper`, telemetry-off), and **scope it by profile** — corporate/proprietary requires the mitigation, personal/public content does not.
 - **Precedent**: compare against already-recorded decisions in `docs/proposals/` — especially the rejected ones (graphify: code knowledge graph, stale/17× tokens; agentmemory: always-on capture+search). If it is the same category as a rejection, the burden is to show what materially differs (e.g. opt-in-per-use neutralizes an always-on-cost rejection).
 
-### 3. Decide handling with the user (AskUserQuestion)
+### 3. Decide handling (provisional verdict)
 
-Present the assessment, then let the user pick: **adopt** (into harness-install) / **personal-only** (they install it themselves; harness untouched) / **reject**. For a genuinely forking sub-decision (default-install vs offered, direct-invocation-only vs auto-routed), ask that too — do not presume. Never install anything yourself (§3 — no unauthorized installs).
+Choose the recommended option — **adopt** (into harness-install) / **personal-only** (user installs it; harness untouched) / **reject** — and record it with its basis in the proposal (root §13-0). Forking sub-decisions (default-install vs offered, direct-invocation-only vs auto-routed): pick the default and record how to change it. **Installing anything on the user's machine still needs their permission.**
 
 ### 4. Record the decision (always — adopt or reject)
 
