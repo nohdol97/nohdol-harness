@@ -18,6 +18,17 @@ class LongCommandContract(unittest.TestCase):
             with self.subTest(term=term):
                 self.assertIn(term, text)
 
+    def test_full_suites_go_through_slot_limiter(self):
+        for rel in ("AGENTS.md", ".agents/skills/orchestrate/references/test-execution.md"):
+            with self.subTest(rel=rel):
+                self.assertIn(".agents/hooks/suite-slot.py", (ROOT / rel).read_text())
+        self.assertIn("suite-slot.py", (ROOT / "AGENTS.ko.md").read_text())
+        self.assertTrue((ROOT / ".agents/hooks/suite-slot.py").is_file())
+        text = (ROOT / ".agents/skills/orchestrate/references/test-execution.md").read_text()
+        for term in ("not an attempt under spec R3", "one call", "never ran"):
+            with self.subTest(term=term):
+                self.assertIn(term, text)
+
     def test_review_uses_same_budget(self):
         text = (ROOT / ".agents/agents/reviewer.md").read_text()
         self.assertIn("task-wide full-suite budget", text)
