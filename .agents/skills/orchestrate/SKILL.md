@@ -210,7 +210,16 @@ If TeamDelete fails, **do not hide it** — report the items needing manual clea
 
 ## Completed-task context rotation
 
-After a **completed task boundary**, if the observed peak context is about **150k tokens or higher**, recommend a fresh session. Persist evidence, decisions, next step, and unverified scope through `carryover` for a same-machine handoff or `work-tracker` for cross-session tracked work. **Never rotate mid-task** merely because the threshold was crossed; an incomplete handoff costs more than the context it saves. The threshold is an operating signal, not a CLI limit.
+After a **completed task boundary**, measure the context with `python3 .agents/hooks/session-handoff.py context` (tokens of the latest request — the peak unless the context was compacted; on `unknown` use your own estimate). At about **150k tokens or higher**, rotate: persist evidence, decisions, next step, and unverified scope through `carryover` for a same-machine handoff or `work-tracker` for cross-session tracked work, then recommend a fresh session — or open it yourself under the conditions below. **Never rotate mid-task** merely because the threshold was crossed; an incomplete handoff costs more than the context it saves. The threshold is an operating signal, not a CLI limit.
+
+**Open the successor yourself when all four hold**; otherwise only recommend one. Reason: the user was re-typing the same resume prompt into a new session each time one filled up.
+
+1. This session is itself a Paseo agent's main thread: `PASEO_CLI` is set **and** you are not a subagent, an autoloop or driver child, or a nested CLI. Those inherit the same variables, so the variables alone prove nothing — a dispatched worker returns to its caller and never opens a successor.
+2. The user's instruction still has work left that a fresh session can pick up from persisted state alone — a standing resume ("이어서 진행해" over a roadmap) or unfinished tasks of the requested scope — and the in-flight survey shows at least one of them ready and not held by a peer.
+3. This session completed at least one task. A session that finished nothing hands over nothing; this is what keeps a failing chain from re-opening itself.
+4. The session is not ending on something the user must answer or see first: a pending §3 or data-loss confirmation, a stop-and-report condition, a failed gate, or an open question.
+
+Write the successor prompt to a file under `_workspace/` — the user's standing instruction **verbatim**, plus the handoff note's path when one was written; a §3 or data-loss confirmation the user gave this session is not part of it and does not carry over — and run `python3 .agents/hooks/session-handoff.py spawn --prompt-file <file>` as the **last action** of the session. It opens one agent with this session's provider, model, thinking and mode, and prints its id; name that id in the final report, then end. A non-zero exit other than 70 means no successor was opened (already opened one, five other agents running, not under Paseo, CLI failure); 70 means the open was attempted and stderr says whether a successor is listed. Either way report the message and end — with the recommendation when none was opened — and never retry, raise the limit, or call the Paseo CLI directly to get around it. Below the threshold, whether to continue with the next task in the same session is the project's rule, not this section's.
 
 ## Final response format (fixed)
 
