@@ -1,7 +1,9 @@
 # ADR 059: Paperclip 협업과 CLI orchestration 분리
 
+> 폐기: 2026-11-24 [ADR 061](061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 아래 내용은 당시 결정의 이력이며 현재 실행 지침이 아니다.
+
 - 날짜: 2026-10-15
-- 상태: 활성
+- 상태: 폐기 — ADR 061
 - ADR 057의 Paperclip 실행 계약을 구체화한다. ADR 055의 일반 사내 CLI 직접 수행 정책은 유지한다.
 
 ## 배경

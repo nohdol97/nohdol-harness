@@ -1,5 +1,7 @@
 # Paperclip 전용 협업 규칙 분리
 
+> 폐기: 2026-11-24 [ADR 061](../adr/061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 이 스펙이 가리키는 코드는 저장소에 없으며, 아래는 당시 기록이다.
+
 ## 목표
 Paperclip에서 CLI용 orchestrate 스킬을 중복 실행하지 않고 등록된 역할을 배정하며, 사내 CLI의 직접 수행·native 호출 금지·독립 검토 면제가 Paperclip 역할 배정을 막지 않게 한다.
 

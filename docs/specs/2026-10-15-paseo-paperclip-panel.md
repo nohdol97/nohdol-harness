@@ -1,5 +1,7 @@
 # Paseo 안의 Paperclip 패널
 
+> 폐기: 2026-11-24 [ADR 061](../adr/061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 이 스펙이 가리키는 코드는 저장소에 없으며, 아래는 당시 기록이다.
+
 ## 배경과 목표
 폰과 데스크톱의 Paseo에서 로컬 Paperclip 업무를 확인하고 등록한다. 화면 조작은 로컬 API를 직접 호출하며 LLM을 거치지 않는다. 기존 하네스 연동의 배포 자산으로 관리한다.
 
