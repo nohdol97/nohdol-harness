@@ -65,26 +65,27 @@
 | [035](adr/035-subproject-worktree-workflow.md) | 2026-07-29 | 활성(→052) | 개인·사내 하위 프로젝트 worktree 워크플로. ADR 043의 사내 예외는 052가 철회 |
 | [036](adr/036-ownership-boundary-placement-and-vocabulary.md) | 2026-08-02 | 활성 | 소유권 경계를 둘로 분할 — 규칙(영역 표·중단 게이트)은 프로젝트 저장소에 중립 어휘(`공용`/`배포처`)로, 역할 배정만 하위 하네스에. `carry-in.md` → `site-setup.md` |
 | [037](adr/037-tier-gate-dispatch-enforcement.md) | 2026-08-03 | **대체됨 → 040** | 티어 매핑의 실행 계층 승격 — 발행 시 `model` 미지정 차단(`tier-gate`), 값 판정 없음·`inherit`는 미지정 동치·fail-open. **판정 방향이 뒤집혔다**(발행 지점 강제라는 결정은 040이 유지) |
-| [038](adr/038-corporate-profile-verification-exemption.md) | 2026-08-03 | **부분 대체(→042)** (045가 폐기했다가 046이 되살림) | 사내 프로필의 검증 목적 발행 면제 — reviewer·관점 팬아웃·리뷰 fan-in integrator·infra-specialist 리뷰 모드를 끄고 메인 루프 자체 검증+면제 기록으로 대체, 명시 요청은 실행. 훅(`review-gate`)이 막는 것은 `reviewer` 타입 하나 |
+| [038](adr/038-corporate-profile-verification-exemption.md) | 2026-08-03 | **대체됨(→062)** (이전: 부분 대체→042, 045 폐기·046 복원) | 사내 프로필의 검증 목적 발행 면제 — reviewer·관점 팬아웃·리뷰 fan-in integrator·infra-specialist 리뷰 모드를 끄고 메인 루프 자체 검증+면제 기록으로 대체, 명시 요청은 실행. 훅(`review-gate`)이 막는 것은 `reviewer` 타입 하나 |
 | [039](adr/039-diagram-obligation-and-skill-port.md) | 2026-08-03 | 활성 | 다이어그램 의무의 **임계값 기반** 발동 조건 + `diagram` 스킬 nohdol-study 포팅 — 스펙·PR 본문·work-tracker 이슈에서 필수(임계값을 넘을 때만), 그 외 권고. 붙잡는 단계는 둘로 갈린다: **품질**은 doc-writer 자체 검증의 체커, **의무**는 유형별(스펙=team-review·reviewer·architect / PR 본문=branch-workflow 마무리 4 / 이슈=work-tracker 등록) |
 | [040](adr/040-tier-gate-inversion-lightweight-ban.md) | 2026-08-04 | 활성 | `tier-gate` 판정 반전(037 대체) — 미지정(=세션 모델 상속)은 통과, REGISTRY.md 「경량 모델」 절이 나열한 등급 지정만 차단. 우회는 `[light-ok]`. 모델명은 코드가 아니라 그 미추적 절에 두어 ADR 005 유지 |
 | [041](adr/041-comprehension-quiz-removal.md) | 2026-08-04 | 활성 | **PR 전 이해도 퀴즈 게이트 제거** — `branch-workflow` 마무리 4단계(퀴즈 스펙 단일 원본)를 삭제하고 그것을 실행시키던 `orchestrate`·`team-review`의 리뷰 창 퀴즈 문단, 5절 루트 원격 PR 사이클의 면제 괄호, 13-0의 퀴즈 회수 문구를 함께 걷어냈다. 이후 단계는 4(PR 생성)·5(머지)로 당겨진다. 13절 서두의 「사용자 이해는 완료의 요건」과 그 리포트 의무(결정 갈림길 교습 + diff 읽기 가이드)는 유지하되, **이제 무엇도 그것을 붙잡지 않는다는 사실을 조항 안에 명시**해 점검이 이를 결함으로 재개봉하지 않게 했다. 사용자 판정(2026-08-04) + 실측: 9일 사이 퀴즈 장치 자체를 주제로 한 이력 행 7건, 그중 4건이 사용자 지적·결정발 수리다 |
-| [042](adr/042-corporate-profile-dispatch-block.md) | 2026-08-04 | 활성 (045가 폐기했다가 046이 되살림) | **사내 프로필에서 서브에이전트 발행 전면 차단**(038 범위 확장) — 검증 축만 끄던 것을 **역할 무관 발행 축 전체**로 넓혔다: 빌드 측·모든 `integrator` 용도·로스터 밖 타입·`subagent_type` 미지정까지 포함하고, `infra-specialist` 하나만 통과(비용이 아니라 블라스트 반경으로 판정하는 축 — 7절 5항 admission 선확인). **우회 표식 폐기**(`[review-ok]`). `orchestrate` 판정은 항상 「직접 수행」으로 수렴하고, 팬아웃이 절차인 스킬(`project-status`·`team-review`·`harness-review`)은 정지가 아니라 **메인 루프 순차 수행으로 저하**한다. 훅 개명 `review-gate.py` → `dispatch-gate.py` |
+| [042](adr/042-corporate-profile-dispatch-block.md) | 2026-08-04 | **대체됨(→062)** (045가 폐기했다가 046이 되살림) | **사내 프로필에서 서브에이전트 발행 전면 차단**(038 범위 확장) — 검증 축만 끄던 것을 **역할 무관 발행 축 전체**로 넓혔다: 빌드 측·모든 `integrator` 용도·로스터 밖 타입·`subagent_type` 미지정까지 포함하고, `infra-specialist` 하나만 통과(비용이 아니라 블라스트 반경으로 판정하는 축 — 7절 5항 admission 선확인). **우회 표식 폐기**(`[review-ok]`). `orchestrate` 판정은 항상 「직접 수행」으로 수렴하고, 팬아웃이 절차인 스킬(`project-status`·`team-review`·`harness-review`)은 정지가 아니라 **메인 루프 순차 수행으로 저하**한다. 훅 개명 `review-gate.py` → `dispatch-gate.py` |
 | [043](adr/043-corporate-branch-in-checkout-and-worktree-bootstrap.md) | 2026-08-05 | 부분 대체(→052) | worktree별 의존성 부트스트랩. 작업 위치는 052·053을 따르며 철회된 지시 본문은 제거 |
 | [044](adr/044-mattpocock-skills-partial-adoption.md) | 2026-08-07 | 부분 대체(→056, 정기 점검 경로 폐기) | **mattpocock/skills 부분 채택** — 통설치 기각(ADR 022와 동일 범주: 25개 description 고정 로드·트리거 전면 충돌·§11 심링크 제약), 착안 4건만 이식: ① `harness-review` 신호 ④에 죽은 규칙 판정 방법(무동작·환경-캐시 테스트, 새 의무 아님) ② §13-0을 「1회 일괄」에서 **프론티어 라운드**로 정련(독립 질문은 종전대로 한 라운드) ③ `wait-what` 스킬 신설(슬래시 전용 — ADR 041이 남긴 이해도 요건의 당기는 쪽) ④ `orchestrate/references/product-design.md` 신설(deep module 어휘·폐기 전제 프로토타입, 참고·허용). ①④를 의무로 안 적은 이유는 공통규칙 15 ②의 실측 실패 부재 |
 | [045](adr/045-corporate-profile-dispatch-restored.md) | 2026-08-07 | **폐기(→046)** | **사내 프로필의 발행 차단 폐기**(042·038 대체) — 설치처 프로필을 발행의 판정 입력에서 빼고 `dispatch-gate`를 삭제했다. 같은 날 046이 철회해 커밋이 revert됐으므로 **현재 규칙이 아니다**. 남겨 둔 이유는 §6 규약과, 「프로필 분기를 넣고 빼는 데 무엇이 드는가」의 실측치(35개 파일)를 046이 이 파일에서 인용하기 때문 |
-| [046](adr/046-corporate-profile-dispatch-block-restored.md) | 2026-08-07 | 활성 | **ADR 045 철회 — 사내 발행 차단 복원**(042·038 다시 활성) — 사용자 판정 「비용 때문에 안 되겠다」로 `1b1779f`를 revert. **되돌리지 않은 것 3건**: 045를 검증하다 발견된 테스트 결함(C4b 대상 선택을 파일명 → `read_profile` 보유 여부, R18 어서션을 게이트 이름 → 고유 문구, R21 `gate-reminder` 어서션을 개수로) — 전부 042 시절부터 있던 것이라 차단 여부와 무관하다. 독립 검증 발행 없음(비용이 롤백 사유 — 사용자 결정) |
+| [046](adr/046-corporate-profile-dispatch-block-restored.md) | 2026-08-07 | **대체됨(→062)** | **ADR 045 철회 — 사내 발행 차단 복원**(042·038 다시 활성) — 사용자 판정 「비용 때문에 안 되겠다」로 `1b1779f`를 revert. **되돌리지 않은 것 3건**: 045를 검증하다 발견된 테스트 결함(C4b 대상 선택을 파일명 → `read_profile` 보유 여부, R18 어서션을 게이트 이름 → 고유 문구, R21 `gate-reminder` 어서션을 개수로) — 전부 042 시절부터 있던 것이라 차단 여부와 무관하다. 독립 검증 발행 없음(비용이 롤백 사유 — 사용자 결정) |
 | [047](adr/047-autoloop-observation-dashboard.md) | 2026-08-19 | 활성 | autoloop 표시 상태를 게이트 체크포인트에서 분리하고 loopback 전용 읽기 대시보드 추가 |
 | [048](adr/048-autoloop-structured-orchestration.md) | 2026-08-19 | 활성 | autoloop 구조화 task DAG·ready-set 병렬 dispatch·writer별 worktree 격리·agent/task dashboard 투영 |
 | [049](adr/049-autoloop-dashboard-operator-experience.md) | 2026-08-19 | 활성·부분 대체 | autoloop 대시보드의 최소 개요·T 핸드오프·압축 Coordination을 고정 |
 | [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | 활성 | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
 | [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
 | [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성 | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
-| [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 활성 | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
+| [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 부분 대체(→062) | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
 | [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 폐기 → 055 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
-| [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 활성 | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원 |
+| [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 부분 대체(→062) | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원(직접 수행 부분은 062가 대체) |
 | [056](adr/056-retire-harness-review.md) | 2026-10-08 | 활성 | 일일·주간 하네스 리뷰 스킬과 자동 알림 제거, 수동 무결성 검사·관찰 신호 유지 |
 | [061](adr/061-knowledge-notes-explicit-request.md) | 2026-10-16 | 활성 | 지식 노트 자동 조회 폐기, 명시적 요청에만 읽기 |
+| [062](adr/062-corporate-dispatch-unblocked.md) | 2026-11-24 | 활성 | **사내 호스트의 서브에이전트 발행 차단 해제**(042·038·046 대체) — 프로필은 발행·검증의 판정 입력이 아니다. `dispatch-gate`·`read_profile` 삭제, 사내 루트 수정 금지·반출 제한·내부 Pi 위임 폐기는 유지 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -107,7 +108,7 @@
 | [2026-07-25-codex-runtime-compatibility](specs/2026-07-25-codex-runtime-compatibility.md) | 구현됨 | `AGENTS.md`, `.codex/`, `.agents/hooks/integrity-check.py` | 019·027·029·031 |
 | [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
 | [2026-08-03-tier-gate-hook](specs/2026-08-03-tier-gate-hook.md) | 구현됨(040으로 개정) | `.agents/hooks/tier-gate.py` | 037·040 |
-| [2026-08-04-dispatch-gate-hook](specs/2026-08-04-dispatch-gate-hook.md) | 구현됨 | `.agents/hooks/dispatch-gate.py` | 038·042·046 |
+| [2026-08-04-dispatch-gate-hook](specs/2026-08-04-dispatch-gate-hook.md) | 폐기(062) | `.agents/hooks/dispatch-gate.py`(삭제) | 038·042·046·062 |
 | [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 구현됨(048로 해결) | `.agents/skills/autoloop/scripts/driver.py` | 025·048 |
 | [2026-08-14-harness-functional-and-language-audit](specs/2026-08-14-harness-functional-and-language-audit.md) | 구현됨 | 루트 규칙·문서·훅·CLI 로더 | — |
 | [2026-08-19-autoloop-dashboard](specs/2026-08-19-autoloop-dashboard.md) | 구현됨 | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047 |
@@ -115,12 +116,12 @@
 | [2026-08-19-autoloop-dashboard-operator-ux](specs/2026-08-19-autoloop-dashboard-operator-ux.md) | 확정·구현 완료, 독립 검증 미완료 | `.agents/skills/autoloop/{dashboard-ui/,scripts/dashboard.py,scripts/dashboard_test.py}` | 047·048·049 |
 | [2026-08-26-evaluation-independence-review](specs/2026-08-26-evaluation-independence-review.md) | 구현됨 | `.agents/skills/team-review/SKILL.md`, `.agents/hooks/eval-independence-contract_test.py` | 051 |
 | [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨 | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052 |
-| [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨 | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053 |
+| [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨(사내 발행 예외 부분은 062로 무의미) | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053·062 |
 | [2026-10-05-corporate-pi-workers](specs/2026-10-05-corporate-pi-workers.md) | 폐기 → 055 | 사내 전용 Pi 배치 실행·실패 회수·호스트 검토 | 054 |
 | [2026-10-06-pi-worker-cli-compatibility](specs/2026-10-06-pi-worker-cli-compatibility.md) | 폐기 → 055 | 기존 Pi·AX CLI 분리와 정상·오류·빈 응답 판정 | 054 |
 | [2026-10-06-pi-worker-economy](specs/2026-10-06-pi-worker-economy.md) | 폐기 → 055 | 도구 잘림 판정·배치 요약·호스트 전달량 측정 | 054 |
 | [2026-10-06-pi-worker-recovery](specs/2026-10-06-pi-worker-recovery.md) | 폐기 → 055 | 보고된 tool_result·혼합 stdout 판정과 산출물 재사용·부분 재시도·정체 중단; CLI-JSONL 별도 후속 | 054 |
-| [2026-10-07-retire-corporate-pi](specs/2026-10-07-retire-corporate-pi.md) | 구현·검증 완료 | 사내 직접 수행 복원·전용 실행기 제거·기존 안전 경계 보존 | 055 |
+| [2026-10-07-retire-corporate-pi](specs/2026-10-07-retire-corporate-pi.md) | 구현·검증 완료(직접 수행 부분은 062가 대체) | 사내 직접 수행 복원·전용 실행기 제거·기존 안전 경계 보존 | 055·062 |
 | [2026-10-08-retire-harness-review](specs/2026-10-08-retire-harness-review.md) | 구현됨 | 일일·주간 리뷰 스킬·알림·활성 참조 제거 | 056 |
 | [2026-10-07-long-command-logs](specs/2026-10-07-long-command-logs.md) | 구현됨 | 장기 명령 원본 로그·전체 스위트 공유 한도 | — |
 

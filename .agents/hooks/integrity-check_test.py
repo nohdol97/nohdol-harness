@@ -69,17 +69,13 @@ def make_good_fixture(root):
     write(os.path.join(root, ".agents/skills/bar/SKILL.md"),
           "---\nname: bar\ndescription: A test skill\n---\n# bar\n")
     write_codex_adapter(root)
-    # Codex 매처와 두 핸들러가 같은 발행 도구명 집합을 가져야 한다.
-    for gate in ("tier-gate.py", "dispatch-gate.py"):
-        body = (
-            'AGENT_TOOLS = ("Agent", "Task", "spawn_agent")\n'
-            'AGENT_TYPE_FIELDS = {"Agent": "subagent_type", '
-            '"Task": "subagent_type", "spawn_agent": "agent_type"}\n'
-        )
-        if gate == "tier-gate.py":
-            body += ('AGENT_PROMPT_FIELDS = {"Agent": "prompt", "Task": "prompt", '
-                     '"spawn_agent": "message"}\n')
-        write(os.path.join(root, ".agents/hooks", gate), body)
+    # Codex 매처와 발행 게이트 핸들러가 같은 발행 도구명 집합을 가져야 한다.
+    write(os.path.join(root, ".agents/hooks", "tier-gate.py"),
+          'AGENT_TOOLS = ("Agent", "Task", "spawn_agent")\n'
+          'AGENT_TYPE_FIELDS = {"Agent": "subagent_type", '
+          '"Task": "subagent_type", "spawn_agent": "agent_type"}\n'
+          'AGENT_PROMPT_FIELDS = {"Agent": "prompt", "Task": "prompt", '
+          '"spawn_agent": "message"}\n')
     write(os.path.join(root, ".codex/config.toml"),
           "project_doc_max_bytes = 65536\n\n"
           "[features]\n"
@@ -94,14 +90,12 @@ def make_good_fixture(root):
           'matcher = "apply_patch"\n'
           "[[hooks.PreToolUse.hooks]]\n"
           'type = "command"\ncommand = "python3 .agents/hooks/gate-reminder.py --check"\n\n'
-          # 발행 게이트 2종(ADR 037·038) — R18이 `Agent` 매처 블록을 보게 된 뒤
+          # 발행 게이트(ADR 037) — R18이 `Agent` 매처 블록을 보게 된 뒤
           # 정상 픽스처도 이것을 갖고 있어야 한다.
           "[[hooks.PreToolUse]]\n"
           'matcher = "Agent|Task|spawn_agent"\n'
           "[[hooks.PreToolUse.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/tier-gate.py"\n'
-          "[[hooks.PreToolUse.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/dispatch-gate.py"\n\n'
+          'type = "command"\ncommand = "python3 .agents/hooks/tier-gate.py"\n\n'
           "[[hooks.PostToolUse]]\n"
           'matcher = "Bash|shell|local_shell"\n'
           "[[hooks.PostToolUse.hooks]]\n"
@@ -124,8 +118,7 @@ def make_good_fixture(root):
                 {"matcher": "Edit|Write", "hooks": [
                     {"type": "command", "command": "python3 .agents/hooks/gate-reminder.py --check"}]},
                 {"matcher": "Agent", "hooks": [
-                    {"type": "command", "command": "python3 .agents/hooks/tier-gate.py"},
-                    {"type": "command", "command": "python3 .agents/hooks/dispatch-gate.py"}]},
+                    {"type": "command", "command": "python3 .agents/hooks/tier-gate.py"}]},
             ],
             "PostToolUse": [{"matcher": "Bash", "hooks": [
                 {"type": "command", "command": "python3 .agents/hooks/gate-reminder.py --record"}]}],
@@ -545,11 +538,10 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertIn("FAIL R18", out)
         self.assertIn("tier-gate.py", out)
         self.assertIn("spawn_agent", out)
-        self.assertIn("dispatch-gate.py", out)
 
     def test_codex_gate_role_fields_must_match_tool_schema(self):
         """R18: 도구명뿐 아니라 역할 필드도 실제 CLI 스키마와 같아야 한다."""
-        path = os.path.join(self.root, ".agents/hooks/dispatch-gate.py")
+        path = os.path.join(self.root, ".agents/hooks/tier-gate.py")
         with open(path, "a", encoding="utf-8") as f:
             f.write('AGENT_TYPE_FIELDS = {"Agent": "subagent_type", '
                     '"Task": "subagent_type", "spawn_agent": "subagent_type"}\n')
@@ -571,12 +563,11 @@ class TestIntegrityCheck(unittest.TestCase):
         self.assertIn("AGENT_PROMPT_FIELDS", out)
         self.assertIn("message", out)
 
-    def test_codex_config_missing_dispatch_gates_fails(self):
+    def test_codex_config_missing_agent_gate_fails(self):
         """R18: 발행 게이트 등록을 통째로 지우면 FAIL한다.
 
         이 항목이 없던 동안 `Agent` 매처 블록 전체를 삭제해도 R18이 PASS였다
-        (독립 검증 2026-08-03 F6). ADR 037 때 생겨 ADR 038로 둘이 됐으므로,
-        회귀를 잡는 것은 이 케이스 하나다.
+        (독립 검증 2026-08-03 F6). 회귀를 잡는 것은 이 케이스 하나다.
         """
         path = os.path.join(self.root, ".codex/config.toml")
         with open(path, encoding="utf-8") as f:
@@ -591,30 +582,27 @@ class TestIntegrityCheck(unittest.TestCase):
         # 줄이 어서션을 대신 충족시켜, `CODEX_HOOK_COMMANDS`에서 해당 항목을
         # 지우는 변이가 초록으로 통과한다(독립 검증 2026-08-07 C-03).
         self.assertIn("PreToolUse command missing contract: tier-gate.py", out)
-        self.assertIn("PreToolUse command missing contract: dispatch-gate.py", out)
 
-    def test_claude_settings_missing_dispatch_gate_fails(self):
+    def test_claude_settings_missing_tier_gate_fails(self):
         """R21: `.claude/settings.json`에서 발행 게이트 등록이 사라지면 FAIL한다.
 
         R18은 Codex 쪽만 봐서, Claude 쪽 등록을 지워도 무결성 출력이 바이트
-        단위로 동일했다(독립 검증 2026-08-04 C-03 실측). ADR 042 이후 그 유실은
-        사내에서 발행 차단이 통째로 꺼지는 것을 뜻한다.
+        단위로 동일했다(독립 검증 2026-08-04 C-03 실측). 그 유실은 경량 모델
+        금지가 Claude 런타임에서 조용히 꺼지는 것을 뜻한다.
         """
         path = os.path.join(self.root, ".claude/settings.json")
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         for entry in data["hooks"]["PreToolUse"]:
             entry["hooks"] = [h for h in entry["hooks"]
-                              if "dispatch-gate" not in h.get("command", "")]
+                              if "tier-gate" not in h.get("command", "")]
         write(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
         code, out = run_check(self.root)
         self.assertEqual(code, 1, out)
-        self.assertIn("FAIL R21", out)
-        self.assertIn("dispatch-gate.py", out)
+        self.assertIn("FAIL R21 Claude hooks tier-gate.py", out)
 
     def test_claude_settings_intact_passes_r21(self):
         code, out = run_check(self.root)
-        self.assertIn("PASS R21 Claude hooks dispatch-gate.py", out)
         self.assertIn("PASS R21 Claude hooks tier-gate.py", out)
         # `gate-reminder`는 PreToolUse·PostToolUse 양쪽에 필수라 PASS 줄이 둘이다.
         # `assertIn`으로 두면 한쪽을 지워도 다른 쪽이 어서션을 충족시켜 변이가

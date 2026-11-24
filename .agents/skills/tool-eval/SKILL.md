@@ -6,7 +6,7 @@ description: "Evaluate a candidate external tool/plugin/MCP/skill for adoption: 
 # tool-eval — External Tool Adoption Evaluation
 
 
-**Runtime routing — root AGENTS.md §11 (ADR 053·055)**: the **Pi runtime exception** preserves ordinary dispatch/independent review in Pi-native sessions. Corporate Claude/Codex hosts perform collection, implementation, tests and review directly; native dispatch remains blocked except infra authoring. Record host verification without a separate independent reviewer session. Personal routing, corporate root-edit and data-egress restrictions stay unchanged.
+**Runtime routing — root AGENTS.md §11 (ADR 053·062)**: every installation profile uses ordinary subagent dispatch and independent review; the **Pi runtime exception** adds only Pi-native runtime and checkout rules. Corporate root-edit and data-egress restrictions stay unchanged.
 
 ## Why this skill
 
@@ -44,7 +44,7 @@ Regardless of outcome, write a `docs/proposals/YYYY-MM-DD-<tool>-<review|adoptio
 - **harness-install section**: add a default-install (or offered) step under §3 of harness-install. **The §3 runtime-egress mitigation must live HERE, in the executed doc — not only in the proposal** (runtime egress happens when the user later runs the tool, so the actionable install doc is the carrier — §12; real case: a real adopted-tool F1 finding — changelog 2026-07-25). Note the marketplace-blocked fallback for `/plugin` tools on corporate networks.
 - **Routing**: if the tool exposes auto-triggering skills, decide auto-route vs **direct-invocation-only** (the default for token-heavy or egress-sensitive tools) and state it in the CLAUDE.md routing anchor + §7 precedence — the enforcement is a documented model-followed policy (external global frontmatter is not edited, §11).
 - **Boundary encoding**: if the tool produces an artifact the model might over-trust (a cached code graph, etc.), state "not harness-agent ground truth" not only in the main-loop docs but in the `explorer`/`architect` definitions that would actually use it (subagents don't inherit CLAUDE.md).
-- **Verify**: a normative harness change → independent `reviewer` verification (background dispatch) before commit. On a `사내` profile that dispatch is blocked at the call and no marker overrides it (ADR 042) — verify inline and record that it ran without an independent reviewer.
+- **Verify**: a normative harness change → independent `reviewer` verification (background dispatch) before commit. This holds on every installation profile (ADR 062); if review could not run, record that it is owed.
 
 ### 6. Korean views + completion
 

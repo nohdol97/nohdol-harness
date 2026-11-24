@@ -6,7 +6,7 @@ description: "Summarize all registered projects from REGISTRY.md with explorer f
 # project-status — Full Project Status Report
 
 
-**Runtime routing — root AGENTS.md §11 (ADR 053·055)**: the **Pi runtime exception** preserves ordinary dispatch/independent review in Pi-native sessions. Corporate Claude/Codex hosts perform collection, implementation, tests and review directly; native dispatch remains blocked except infra authoring. Record host verification without a separate independent reviewer session. Personal routing, corporate root-edit and data-egress restrictions stay unchanged.
+**Runtime routing — root AGENTS.md §11 (ADR 053·062)**: every installation profile uses ordinary subagent dispatch and independent review; the **Pi runtime exception** adds only Pi-native runtime and checkout rules. Corporate root-edit and data-egress restrictions stay unchanged.
 
 ## Why this skill
 
@@ -22,8 +22,6 @@ In a multi-project management harness, "what state is everything in right now" i
 
 ### Phase 1 — Parallel collection (**execution mode:** subagents)
 
-> **Corporate Claude/Codex host**: the host collects registry projects sequentially and integrates the result, recording actual coverage and that no fan-out ran. No internal-worker runtime or configuration is required (root §11, ADR 055).
-
 Deploy one explorer per registry row in parallel (orchestrate mode B, cap 10–20 — **dispatch all of them simultaneously in one turn**, the mode-B simultaneous-dispatch rule). Fixed collection items for each explorer:
 
 1. git state: whether it is an independent repository, branch, uncommitted changes, 3 most recent commits
@@ -34,8 +32,6 @@ Deploy one explorer per registry row in parallel (orchestrate mode B, cap 10–2
 Output: `phase1_explorer-<project>_status.md`
 
 ### Phase 2 — Integration (**execution mode:** integrator solo)
-
-> **Corporate Claude/Codex host**: the host integrates its collection results; do not issue a native integrator.
 
 The integrator merges per the gate principles, but since this skill's final report is a status report, the sections are fixed as follows:
 

@@ -1,12 +1,14 @@
 # ADR 046 — ADR 045 철회: 사내 프로필의 발행 차단을 되살린다
 
+> **대체됨(→062, 2026-11-24)**: [ADR 062](062-corporate-dispatch-unblocked.md)가 이 ADR이 되살린 사내 발행 차단을 다시 폐기했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 > 후속: [ADR 055](055-retire-corporate-pi-workers.md)가 ADR 054의 사내 호스트 위임 경로를 폐기하고 호스트 직접 수행을 복원했다. 네이티브 차단과 Pi 자체 세션 정책은 유지한다.
 
 > 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
 
 
 - **날짜**: 2026-08-07
-- **상태**: 활성
+- **상태**: **대체됨(→062)**
 - **관련**: [ADR 045](045-corporate-profile-dispatch-restored.md)(**이 ADR이 폐기**), [ADR 042](042-corporate-profile-dispatch-block.md)·[ADR 038](038-corporate-profile-verification-exemption.md)(**둘 다 다시 활성**), ADR 012(설치처 프로필), 스펙 `2026-08-04-dispatch-gate-hook`(다시 구현됨)
 
 ## 변경 내용

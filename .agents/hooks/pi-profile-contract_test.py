@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Pi policy wiring and branch-only recipe regression (no model calls)."""
-import json
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -47,16 +45,6 @@ class PiProfileContractTest(unittest.TestCase):
             result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', '@{upstream}'], cwd=checkout, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(len(git('worktree', 'list', '--porcelain', cwd=checkout).split('worktree ')) - 1, 1)
-
-    def test_pi_environment_does_not_exempt_claude_or_codex(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            Path(tmp, 'REGISTRY.md').write_text('## 설치처 프로필\n\n- **사내**\n')
-            env = dict(os.environ, CLAUDE_PROJECT_DIR=tmp, PI_SESSION_ID='fixture', PI_CODING_AGENT_DIR=tmp)
-            for tool, field in (('Agent', 'subagent_type'), ('spawn_agent', 'agent_type')):
-                result = subprocess.run(['python3', str(ROOT / '.agents/hooks/dispatch-gate.py')],
-                    input=json.dumps({'tool_name': tool, 'tool_input': {field: 'reviewer'}}),
-                    text=True, capture_output=True, cwd=tmp, env=env)
-                self.assertEqual(result.returncode, 2, result.stderr)
 
 
 if __name__ == '__main__':

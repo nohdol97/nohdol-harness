@@ -10,7 +10,7 @@
 
 Claude Code와 Codex를 이 디렉터리에서 열면 같은 `AGENTS.md` 규칙과 같은 에이전트·스킬 정의를 사용한다.
 
-Pi Coding Agent도 루트에서 실행할 수 있으며 자체 세션 규칙은 [ADR 053](docs/adr/053-pi-profile-exception.md)을 따른다. 사내 Claude/Codex는 [ADR 055](docs/adr/055-retire-corporate-pi-workers.md)에 따라 호스트가 직접 작업한다.
+Pi Coding Agent도 루트에서 실행할 수 있으며 자체 세션 규칙은 [ADR 053](docs/adr/053-pi-profile-exception.md)을 따른다. 사내 Claude/Codex도 개인과 같은 방식으로 서브에이전트를 발행한다([ADR 062](docs/adr/062-corporate-dispatch-unblocked.md)).
 
 ## 시작하기
 
