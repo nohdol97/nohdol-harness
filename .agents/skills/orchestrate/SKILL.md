@@ -210,7 +210,7 @@ If TeamDelete fails, **do not hide it** — report the items needing manual clea
 
 ## Completed-task context rotation
 
-After a **completed task boundary**, measure the context with `python3 .agents/hooks/session-handoff.py context` (tokens of the latest request — the peak unless the context was compacted; on `unknown` use your own estimate). At about **150k tokens or higher**, rotate: persist evidence, decisions, next step, and unverified scope through `carryover` for a same-machine handoff or `work-tracker` for cross-session tracked work, then recommend a fresh session — or open it yourself under the conditions below. **Never rotate mid-task** merely because the threshold was crossed; an incomplete handoff costs more than the context it saves. The threshold is an operating signal, not a CLI limit.
+After a **completed task boundary**, measure the context with `python3 .agents/hooks/session-handoff.py context` (tokens of the latest request — the peak unless the context was compacted; on `unknown` use your own estimate). At about **200k tokens or higher**, rotate: persist evidence, decisions, next step, and unverified scope through `carryover` for a same-machine handoff or `work-tracker` for cross-session tracked work, then recommend a fresh session — or open it yourself under the conditions below. **Never rotate mid-task** merely because the threshold was crossed; an incomplete handoff costs more than the context it saves. The threshold is an operating signal, not a CLI limit.
 
 **Open the successor yourself when all four hold**; otherwise only recommend one. Reason: the user was re-typing the same resume prompt into a new session each time one filled up.
 

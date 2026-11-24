@@ -33,7 +33,7 @@
 
 - **User comprehension is completion (§13)**: correct output alone is not delivery. Provide an ordered diff reading guide and teach the non-obvious decisions (what versus what, why this one). **Nothing gates it** — the pre-PR comprehension quiz was removed 2026-08-04 (ADR 041), so this is report content, not a blocker.
 
-- **Context/output economy (ADR 032)**: treat imported AGENTS.md as already read. Reopen only changed, compacted-away, or conflicting evidence; hand phases a delta packet. At a completed task boundary near 150k peak context, hand off evidence, decisions, next step, and unverified scope to a fresh session. Use targeted/`rtk` exploration while preserving raw final evidence. Default user updates to 1–2 sentences and completion to result, key evidence, and unverified scope.
+- **Context/output economy (ADR 032)**: treat imported AGENTS.md as already read. Reopen only changed, compacted-away, or conflicting evidence; hand phases a delta packet. At a completed task boundary near 200k peak context, hand off evidence, decisions, next step, and unverified scope to a fresh session. Use targeted/`rtk` exploration while preserving raw final evidence. Default user updates to 1–2 sentences and completion to result, key evidence, and unverified scope.
 
 ## Harness: root
 
