@@ -54,6 +54,21 @@ class TokenEfficiencyContractTest(unittest.TestCase):
         for phrase in ("evidence", "decisions", "next step", "unverified scope"):
             self.assertIn(phrase, text)
 
+    def test_session_end_continuation_until_user_stop(self):  # C10 (R4)
+        text = section(".agents/skills/orchestrate/SKILL.md",
+                       "## Completed-task context rotation", "## Final response format")
+        for phrase in ("**Continuation at session end (any context size)**",
+                       "whether or not the threshold was reached",
+                       "**A stop from the user ends it**",
+                       "a successor prompt never re-grants work the user stopped",
+                       "or a user stop of the chain",
+                       "does not carry over",
+                       "This session completed at least one task"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+        root = read("AGENTS.md")
+        self.assertIn("opens a successor at any context size, until the user stops the chain", root)
+
     def test_tool_and_user_output_contract(self):
         text = section(
             ".agents/skills/orchestrate/SKILL.md",
