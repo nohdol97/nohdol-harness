@@ -5,9 +5,12 @@ Usage:
   session-handoff.py context
   session-handoff.py spawn --prompt-file PATH [--title TEXT] [--max-running N]
 
-context  prints the token count of this Claude Code session's latest main-thread
-         request (input + cache read + cache creation), read from its transcript.
-         Prints `unknown` and exits 3 when the session id or transcript is missing.
+context  prints the token count of this session's latest main-thread request
+         (input + cache read + cache creation). A Pi session is read from
+         PI_SESSION_FILE (latest assistant message usage, Pi 1.6.0 session JSONL)
+         and/or the Claude Code transcript of CLAUDE_CODE_SESSION_ID; when both
+         exist, the more recently written record is this session's.
+         Prints `unknown` and exits 3 when neither yields a usage record.
 spawn    opens a successor agent with this agent's provider, model, thinking and
          mode, in the same working directory, labelled handoff-from=<this agent>,
          then detaches it so it outlives this agent. Prints the new agent id.
@@ -32,30 +35,70 @@ EX_USAGE, EX_UNAVAILABLE, EX_SOFTWARE, EX_OSERR, EX_CANTCREAT, EX_TEMPFAIL = 64,
 FAILURES = (RuntimeError, ValueError, KeyError, TypeError, AttributeError, OSError, subprocess.TimeoutExpired)
 
 
+def read_lines(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.readlines()
+    except OSError:
+        return []
+
+
+def records(lines):
+    for line in reversed(lines):
+        try:
+            rec = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(rec, dict) and isinstance(rec.get("message"), dict):
+            yield rec, rec["message"]
+
+
+def pi_total(path):
+    # Pi 1.6.0 session JSONL: count assistant requests only. Tool results may carry
+    # usage, and top-level `usage` entries (e.g. cache warming) have no `message`.
+    for _, msg in records(read_lines(path)):
+        usage = msg.get("usage")
+        if msg.get("role") == "assistant" and isinstance(usage, dict):
+            total = sum(int(usage.get(k) or 0) for k in ("input", "cacheRead", "cacheWrite"))
+            if total:
+                return total
+    return None
+
+
+def claude_total(path):
+    for rec, msg in records(read_lines(path)):
+        usage = msg.get("usage")
+        if not rec.get("isSidechain") and isinstance(usage, dict):
+            total = sum(int(usage.get(k) or 0) for k in
+                        ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+            if total:
+                return total
+    return None
+
+
 def context():
+    candidates = []
+    pi_file = os.environ.get("PI_SESSION_FILE", "")
+    if pi_file:
+        candidates.append((pi_file, pi_total))
     sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
     root = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
-    paths = glob.glob(os.path.join(root, "projects", "*", f"{sid}.jsonl")) if sid else []
-    if paths:
+    for path in (glob.glob(os.path.join(root, "projects", "*", f"{sid}.jsonl")) if sid else [])[:1]:
+        candidates.append((path, claude_total))
+
+    # A child CLI inherits its parent's variables (Pi passes PI_SESSION_FILE to a
+    # `claude -p` it launches), so the running session is the one whose record was
+    # written last. A Codex child of Pi has no record here and reads its parent.
+    def mtime(item):
         try:
-            with open(paths[0], encoding="utf-8", errors="replace") as f:
-                lines = f.readlines()
+            return os.path.getmtime(item[0])
         except OSError:
-            lines = []
-        for line in reversed(lines):
-            try:
-                rec = json.loads(line)
-            except ValueError:
-                continue
-            if not isinstance(rec, dict) or rec.get("isSidechain"):
-                continue
-            usage = (rec.get("message") or {}).get("usage") if isinstance(rec.get("message"), dict) else None
-            if isinstance(usage, dict):
-                total = sum(int(usage.get(k) or 0) for k in
-                            ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
-                if total:
-                    print(total)
-                    return 0
+            return -1.0
+    for path, total_of in sorted(candidates, key=mtime, reverse=True):
+        total = total_of(path)
+        if total:
+            print(total)
+            return 0
     print("unknown")
     return 3
 

@@ -82,7 +82,8 @@ class Handoff(unittest.TestCase):
 
     def run_script(self, args, **env):
         e = {k: v for k, v in os.environ.items()
-             if not k.startswith(("PASEO_", "FAKE_")) and k not in ("CLAUDE_CODE_SESSION_ID", "CLAUDE_CONFIG_DIR")}
+             if not k.startswith(("PASEO_", "FAKE_"))
+             and k not in ("CLAUDE_CODE_SESSION_ID", "CLAUDE_CONFIG_DIR", "PI_SESSION_FILE")}
         e.update({"FAKE_STATE": self.dir, "PASEO_CLI": self.cli, "PASEO_AGENT_ID": ME,
                   "PASEO_AGENT_CWD": "/work", **env})
         e = {k: v for k, v in e.items() if v is not None}
@@ -190,6 +191,50 @@ class Handoff(unittest.TestCase):
         for env in ({}, {"CLAUDE_CODE_SESSION_ID": "absent", "CLAUDE_CONFIG_DIR": self.dir}):
             with self.subTest(env=env):
                 r = self.run_script(["context"], **env)
+                self.assertEqual((r.returncode, r.stdout.strip()), (3, "unknown"))
+
+    def write_pi_session(self, rows):
+        # Pi 1.6.0 session JSONL (docs/session-format.md, message-types.md Usage).
+        p = Path(self.dir) / "pi-session.jsonl"
+        p.write_text("\n".join(json.dumps(r) for r in rows) + "\nnot json\n")
+        return str(p)
+
+    def test_context_reads_latest_pi_assistant_usage(self):
+        def assistant(i, r, w):
+            return {"type": "message", "message": {"role": "assistant", "usage": {
+                "input": i, "output": 999, "cacheRead": r, "cacheWrite": w, "totalTokens": 1}}}
+        path = self.write_pi_session([
+            {"type": "session", "version": 3, "id": "s"},
+            assistant(1, 1, 1),
+            assistant(3, 150000, 700),
+            # Tool results may carry usage too (Pi message-types.md); only assistant requests count.
+            {"type": "message", "message": {"role": "toolResult", "content": [],
+                                            "usage": {"input": 900000, "cacheRead": 0, "cacheWrite": 0}}},
+            {"type": "usage", "usage": {"input": 9, "cacheRead": 9, "cacheWrite": 9}},
+            assistant(0, 0, 0),
+        ])
+        r = self.run_script(["context"], PI_SESSION_FILE=path)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "150703"))
+
+    def test_most_recently_written_session_record_wins(self):
+        # A `claude -p` child of Pi inherits PI_SESSION_FILE; the record the running
+        # session writes is the newer one, whichever CLI it is.
+        env = self.write_transcript([{"message": {"usage": {"input_tokens": 5}}}])
+        claude = next((Path(self.dir) / "claude" / "projects").glob("*/sess-1.jsonl"))
+        path = self.write_pi_session([{"type": "message", "message": {
+            "role": "assistant", "usage": {"input": 7, "cacheRead": 0, "cacheWrite": 0}}}])
+        for newer, older, expected in ((path, claude, "7"), (claude, path, "5")):
+            with self.subTest(expected=expected):
+                os.utime(older, (1_000_000, 1_000_000))
+                os.utime(newer, (2_000_000, 2_000_000))
+                r = self.run_script(["context"], PI_SESSION_FILE=path, **env)
+                self.assertEqual(r.stdout.strip(), expected)
+
+    def test_context_unknown_for_unreadable_or_empty_pi_session(self):
+        empty = self.write_pi_session([{"type": "session", "version": 3}])
+        for path in (empty, str(Path(self.dir) / "missing.jsonl")):
+            with self.subTest(path=path):
+                r = self.run_script(["context"], PI_SESSION_FILE=path)
                 self.assertEqual((r.returncode, r.stdout.strip()), (3, "unknown"))
 
 

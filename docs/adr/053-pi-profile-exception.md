@@ -79,3 +79,11 @@ python3 .agents/skills/diagram/scripts/check.py docs/specs/2026-09-28-pi-profile
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |---|---|---|---|
 | 2026-09-28 | Pi 발행·worktree 예외 확정 | 위 영향 목록 | 사용자 답변으로 범위 확정, 사내 데이터·하네스 소유권 제한 유지 |
+
+## 추가 (2026-11-24): 프로젝트 신뢰와 활성화 조건
+
+Pi 1.6.0은 `.pi/APPEND_SYSTEM.md`·`.pi/skills`·프로젝트 `.agents/skills`를 프로젝트 신뢰 보호 자원으로 다룬다(Pi `docs/security.md`). print·JSON·RPC 모드는 신뢰 프롬프트를 띄울 수 없어, `--approve`·확장 결정·`~/.pi/agent/trust.json` 저장 결정·`defaultProjectTrust: "always"` 중 무엇도 없으면 이 자원을 조용히 건너뛴다. 그러면 이 ADR의 활성화 조건(`APPEND_SYSTEM.md`가 시스템 지침으로 로드됨)이 충족되지 않아 **Pi 예외가 꺼지고 하네스 스킬도 없다**. `AGENTS.md`·`CLAUDE.md`는 신뢰와 무관하게 로드된다.
+
+- 관찰: 2026-11-24 사내 설치처의 Pi 세션(런처가 print/RPC 모드로 실행)에서 하네스 스킬 20개가 목록에 없었고, `pi -p` 재현 3회와 `--skill` 강제 지정 대조로 발견 단계 차단을 확인했다고 보고됐다. 이 개인 설치처에는 Pi가 설치돼 있지 않아 재현하지 않았고, 동작 근거는 npm `@earendil-works/pi-coding-agent@1.6.0` 문서로만 대조했다. 런처가 `--approve`를 넘기는지는 미확인이다.
+- 결정: 활성화 조건은 바꾸지 않는다(파일 존재로 판정하지 않는다는 원칙 유지). 신뢰가 없어 꺼진 세션은 일반 정책을 따르고 그 사실을 보고한다(루트 §11). 신뢰 부여는 사용자의 로컬 권한 결정이므로 `harness-install` 3i가 안내만 한다.
+
