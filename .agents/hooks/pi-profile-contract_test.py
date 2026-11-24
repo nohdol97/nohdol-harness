@@ -15,7 +15,7 @@ class PiProfileContractTest(unittest.TestCase):
         for text in ('Pi Coding Agent', 'AGENTS.md §11', 'system prompt', 'REGISTRY.md'):
             self.assertIn(text, prompt)
         policy = (ROOT / 'AGENTS.md').read_text().split('**Pi runtime exception', 1)[1].split('\n## ', 1)[0]
-        for text in ('not from file existence', 'Claude/Codex', '§3', 'autoloop', 'corporate root-edit', 'data-egress'):
+        for text in ('not from file existence', 'Claude/Codex', '§3', 'corporate root-edit', 'data-egress'):
             self.assertIn(text, policy)
 
     def test_policy_consumers_defer_to_pi_exception(self):

@@ -1,5 +1,7 @@
 # ADR 026 — oh-my-openagent 검증·운영 착안 5건 이식 + integrity-check 훅
 
+> **부분 대체(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop을 삭제해 이 ADR의 autoloop 관련 조항은 현재 규칙이 아니다. 그 밖의 결정은 유지한다.
+
 - **날짜**: 2026-07-19
 - **상태**: 활성
 - **관련**: 제안 docs/proposals/2026-07-19-oh-my-openagent-adoption.md, 스펙 docs/specs/2026-07-19-integrity-check-script.md, ADR 017(ponytail)·018(claude-mem)·022(superpowers)·023(loop-engineering)·025(autoloop)

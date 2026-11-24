@@ -1,5 +1,7 @@
 # 스펙: autoloop 무인 세션의 엔진 간 하네스 로드 비대칭 해소
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](../adr/063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 - 날짜: 2026-08-03 / 상태: 구현됨(ADR 048·구조화 오케스트레이션 스펙으로 해결)
 - 관련: `docs/specs/2026-07-19-autoloop-driver.md`(선행 스펙), `.agents/skills/autoloop/scripts/driver.py`, 루트 AGENTS.md §12·§3
 

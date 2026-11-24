@@ -4,7 +4,7 @@ Run before the first write on a project under **every** Phase 0-1 verdict (direc
 
 ## Why
 
-Several sessions (Claude, Codex, Pi, autoloop drivers) can work the same repository at once, and the user's belief about what another session is doing is not evidence. Observed 2026-11-21: the user believed a peer session was running PKI Phase 0; measurement showed it was implementing V01 T09/T11/T14 with uncommitted edits made within the last minute. A new session started on "the next phase" would have written into the same files. Worktree isolation separates working trees, not overlapping file edits, shared documents, or duplicated tasks.
+Several sessions (Claude, Codex, Pi) can work the same repository at once, and the user's belief about what another session is doing is not evidence. Observed 2026-11-21: the user believed a peer session was running PKI Phase 0; measurement showed it was implementing V01 T09/T11/T14 with uncommitted edits made within the last minute. A new session started on "the next phase" would have written into the same files. Worktree isolation separates working trees, not overlapping file edits, shared documents, or duplicated tasks.
 
 ## Collect (`<P>` = `project/<name>`; root harness: `.`)
 

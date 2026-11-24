@@ -1,5 +1,7 @@
 # ADR 050: autoloop 계획 자동 수정과 파일 범위 기반 wave 직렬화
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 - **날짜**: 2026-08-20
 - **변경 내용**: 첫 planner DAG가 구조 검증에 실패하면 오류를 포함해 read-only planner를 한 번만 다시 실행한다. 쓰기 task는 `file_scope`를 선언하고 겹치는 writer를 다른 wave로 직렬화하며 실제 patch가 선언 범위를 벗어나면 fan-in 전에 차단한다.
 - **대상**: `.agents/skills/autoloop/{SKILL.md,scripts/driver.py,scripts/driver_test.py}`, `.agents/skills/README.ko.md`, `docs/specs/2026-08-19-autoloop-orchestration-runtime.md`, `docs/adr/{048-autoloop-structured-orchestration.md,050-autoloop-plan-repair-and-scope-aware-waves.md}`, `docs/README.md`, `docs/harness-changelog.md`, `_workspace/harness-ops-log.md`

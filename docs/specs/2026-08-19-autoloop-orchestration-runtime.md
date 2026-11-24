@@ -1,5 +1,7 @@
 # 스펙: autoloop 구조화 오케스트레이션 런타임
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](../adr/063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 - 날짜: 2026-08-19 / 상태: 구현됨
 - 관련: `docs/specs/2026-07-19-autoloop-driver.md`, `docs/specs/2026-08-19-autoloop-dashboard.md`, `docs/specs/2026-08-03-autoloop-engine-harness-load-symmetry.md`, ADR 025·047·048, `_workspace/autoloop-orchestration-review/phase2_integrator_verdict.md`
 

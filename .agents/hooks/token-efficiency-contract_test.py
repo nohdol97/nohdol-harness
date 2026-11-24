@@ -90,7 +90,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
     def test_skill_descriptions_keep_routing_contract(self):
         skill_dir = os.path.join(ROOT, ".agents", "skills")
         bounded = {
-            "autoloop", "carryover", "context7", "defuddle", "doc-writer",
+            "carryover", "context7", "defuddle", "doc-writer",
             "metaskill", "orchestrate", "release",
             "team-review", "tool-audit", "tool-eval", "work-tracker", "wrapup",
         }

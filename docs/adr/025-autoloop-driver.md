@@ -1,5 +1,7 @@
 # ADR 025: autoloop — 세션 외부 드라이버 기반 자율 멀티세션 루프
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 > **부분 대체(ADR 048, 2026-08-19; 2026-08-20 개정)**: 단일 구현 세션 반복·carryover 중심 작업 선택은 구조화 task DAG, ready-set 병렬 dispatch, writer별 child worktree fan-in으로 대체됐다. Codex writer는 2026-08-20부터 launcher-native 실행과 격리된 `workspace-write` + fan-in 전 파괴 diff 차단으로 다시 허용한다. Codex network는 driver가 false로 고정한다. 외부 driver·안전/검증/정지 gate라는 이 ADR의 중심 결정은 유지된다.
 
 - **날짜**: 2026-07-19

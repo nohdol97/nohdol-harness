@@ -22,7 +22,6 @@
   - all-project status → `project-status`
   - supplied article/page URL → `defuddle`; library/framework docs → `context7`
   - installed external-tool usage → `tool-audit`; candidate adoption → `tool-eval`
-  - unattended multi-session loop → `autoloop`
   - video → `claude-video` only on explicit `/watch`; sensitive audio uses captions/`--no-whisper`
 
 - **Orchestration invariants (§7·§11, ADR 028·032·062)**: implementation continuations, resumes and diagnosis→first product edit re-enter `orchestrate`. K8s/IaC uses `infra-specialist`. Every installation profile uses normal role tiers, native subagent dispatch and independent review; the profile gates only root-harness edits and data egress. No internal-worker setup is required.

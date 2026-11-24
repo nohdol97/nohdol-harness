@@ -1,5 +1,7 @@
 # ADR 052 — 사내 프로필 worktree 복원
 
+> **부분 대체(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop을 삭제해 이 ADR의 autoloop 관련 조항은 현재 규칙이 아니다. 그 밖의 결정은 유지한다.
+
 > 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
 
 

@@ -1,5 +1,7 @@
 # ADR 049: autoloop 대시보드를 운영자 중심 작업공간으로 개편
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 > **부분 대체(2026-08-19)**: 사용자가 실제 관계 시각화와 React·TypeScript 전환을 명시해 기존 결정 3·8·9·10과 “프런트엔드 프레임워크·그래프 라이브러리” 기각안을 아래 내용으로 갱신했다. ADR 047의 Python loopback·읽기 전용·bounded 경계와 ADR 048의 artifact 역할 분리는 유지한다.
 
 > **부분 대체(2026-08-19, 단순화)**: 사용자가 상세 화면의 과잉 정보를 지적해 결정 2·3·6·9·10을 다시 좁혔다. Task DAG와 React Flow·Dagre는 제거하고, 기본 상세은 최소 개요·기록된 T 핸드오프·한 줄 실행 시간축·압축 Coordination만 남긴다. 비용·engine·worktree·integration·commit·evidence는 초기 접힘 세부 정보로 이동한다.

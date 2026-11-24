@@ -1,5 +1,7 @@
 # ADR 053 — Pi 세션의 사내 발행 제한 해제와 worktree 선택권
 
+> **부분 대체(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop을 삭제해 이 ADR의 autoloop 관련 조항은 현재 규칙이 아니다. 그 밖의 결정은 유지한다.
+
 > **부분 대체(→062, 2026-11-24)**: [ADR 062](062-corporate-dispatch-unblocked.md)가 사내 발행 차단 자체를 폐기해, 이 ADR의 「Pi 세션의 사내 발행 제한 해제」는 대상이 없어졌다. Pi 실행 방식과 worktree 선택권은 유지한다.
 
 > 후속: [ADR 055](055-retire-corporate-pi-workers.md)가 ADR 054의 사내 호스트 위임 경로를 폐기하고 호스트 직접 수행을 복원했다. 네이티브 차단과 Pi 자체 세션 정책은 유지한다.

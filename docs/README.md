@@ -52,7 +52,7 @@
 | [022](adr/022-superpowers-adoption.md) | 2026-07-17 | 활성 | superpowers 규율 착안 3건 이식 (압박 테스트·신선한 증거·리뷰 수신 규율) |
 | [023](adr/023-secret-gate-hook.md) | 2026-07-18 | 활성 | secret-gate 훅 (3절 시크릿 금지의 실행 계층 승격) |
 | [024](adr/024-remove-dev-dir.md) | 2026-07-19 | 활성 | `dev/` 실험 공간 디렉토리 제거 (실작업은 전부 `project/`, tdd-gate `dev/` 예외 삭제) |
-| [025](adr/025-autoloop-driver.md) | 2026-07-19 | 부분 대체(→048) | autoloop — 외부 driver·게이트 3종은 유지, 단일 구현 반복·Codex writer 정책은 048로 대체 |
+| [025](adr/025-autoloop-driver.md) | 2026-07-19 | **폐기(→063)** | autoloop — 세션 외부 드라이버 기반 자율 멀티세션 루프(당시: 단일 구현 반복·Codex writer 정책은 048로 대체) |
 | [026](adr/026-oh-my-openagent-adoption.md) | 2026-07-19 | 활성 | oh-my-openagent 검증·운영 착안 5건 이식 + integrity-check 무결성 점검 훅 |
 | [027](adr/027-codex-agent-adapters.md) | 2026-07-19 | 활성 | Codex custom-agent 얇은 어댑터 (`.agents/agents` 원본 → `.codex/agents` 로더 계층) |
 | [028](adr/028-gate-reminder-hook.md) | 2026-07-22 | 활성 | gate-reminder 훅 — 진단→구현 전환점 orchestrate 게이트 상기의 실행 계층 승격 (세션당 1회 차단) |
@@ -74,18 +74,19 @@
 | [044](adr/044-mattpocock-skills-partial-adoption.md) | 2026-08-07 | 부분 대체(→056, 정기 점검 경로 폐기) | **mattpocock/skills 부분 채택** — 통설치 기각(ADR 022와 동일 범주: 25개 description 고정 로드·트리거 전면 충돌·§11 심링크 제약), 착안 4건만 이식: ① `harness-review` 신호 ④에 죽은 규칙 판정 방법(무동작·환경-캐시 테스트, 새 의무 아님) ② §13-0을 「1회 일괄」에서 **프론티어 라운드**로 정련(독립 질문은 종전대로 한 라운드) ③ `wait-what` 스킬 신설(슬래시 전용 — ADR 041이 남긴 이해도 요건의 당기는 쪽) ④ `orchestrate/references/product-design.md` 신설(deep module 어휘·폐기 전제 프로토타입, 참고·허용). ①④를 의무로 안 적은 이유는 공통규칙 15 ②의 실측 실패 부재 |
 | [045](adr/045-corporate-profile-dispatch-restored.md) | 2026-08-07 | **폐기(→046)** | **사내 프로필의 발행 차단 폐기**(042·038 대체) — 설치처 프로필을 발행의 판정 입력에서 빼고 `dispatch-gate`를 삭제했다. 같은 날 046이 철회해 커밋이 revert됐으므로 **현재 규칙이 아니다**. 남겨 둔 이유는 §6 규약과, 「프로필 분기를 넣고 빼는 데 무엇이 드는가」의 실측치(35개 파일)를 046이 이 파일에서 인용하기 때문 |
 | [046](adr/046-corporate-profile-dispatch-block-restored.md) | 2026-08-07 | **대체됨(→062)** | **ADR 045 철회 — 사내 발행 차단 복원**(042·038 다시 활성) — 사용자 판정 「비용 때문에 안 되겠다」로 `1b1779f`를 revert. **되돌리지 않은 것 3건**: 045를 검증하다 발견된 테스트 결함(C4b 대상 선택을 파일명 → `read_profile` 보유 여부, R18 어서션을 게이트 이름 → 고유 문구, R21 `gate-reminder` 어서션을 개수로) — 전부 042 시절부터 있던 것이라 차단 여부와 무관하다. 독립 검증 발행 없음(비용이 롤백 사유 — 사용자 결정) |
-| [047](adr/047-autoloop-observation-dashboard.md) | 2026-08-19 | 활성 | autoloop 표시 상태를 게이트 체크포인트에서 분리하고 loopback 전용 읽기 대시보드 추가 |
-| [048](adr/048-autoloop-structured-orchestration.md) | 2026-08-19 | 활성 | autoloop 구조화 task DAG·ready-set 병렬 dispatch·writer별 worktree 격리·agent/task dashboard 투영 |
-| [049](adr/049-autoloop-dashboard-operator-experience.md) | 2026-08-19 | 활성·부분 대체 | autoloop 대시보드의 최소 개요·T 핸드오프·압축 Coordination을 고정 |
-| [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | 활성 | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
+| [047](adr/047-autoloop-observation-dashboard.md) | 2026-08-19 | **폐기(→063)** | autoloop 표시 상태를 게이트 체크포인트에서 분리하고 loopback 전용 읽기 대시보드 추가 |
+| [048](adr/048-autoloop-structured-orchestration.md) | 2026-08-19 | **폐기(→063)** | autoloop 구조화 task DAG·ready-set 병렬 dispatch·writer별 worktree 격리·agent/task dashboard 투영 |
+| [049](adr/049-autoloop-dashboard-operator-experience.md) | 2026-08-19 | **폐기(→063)** | autoloop 대시보드의 최소 개요·T 핸드오프·압축 Coordination을 고정 |
+| [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | **폐기(→063)** | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
 | [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
-| [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성 | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
+| [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성(autoloop 조항은 063이 대체) | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
 | [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 부분 대체(→062) | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
 | [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 폐기 → 055 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
 | [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 부분 대체(→062) | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원(직접 수행 부분은 062가 대체) |
 | [056](adr/056-retire-harness-review.md) | 2026-10-08 | 활성 | 일일·주간 하네스 리뷰 스킬과 자동 알림 제거, 수동 무결성 검사·관찰 신호 유지 |
 | [061](adr/061-knowledge-notes-explicit-request.md) | 2026-10-16 | 활성 | 지식 노트 자동 조회 폐기, 명시적 요청에만 읽기 |
 | [062](adr/062-corporate-dispatch-unblocked.md) | 2026-11-24 | 활성 | **사내 호스트의 서브에이전트 발행 차단 해제**(042·038·046 대체) — 프로필은 발행·검증의 판정 입력이 아니다. `dispatch-gate`·`read_profile` 삭제, 사내 루트 수정 금지·반출 제한·내부 Pi 위임 폐기는 유지 |
+| [063](adr/063-retire-autoloop.md) | 2026-11-24 | 활성 | **autoloop 스킬 폐기**(025·047~050 대체) — 스킬·드라이버·대시보드 삭제, 라우팅·규칙 언급 제거. `_workspace/autoloop/` 정리 예외는 기존 실행 상태 보호를 위해 유지 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -101,7 +102,7 @@
 | [2026-07-15-hooks-common-bootstrap](specs/2026-07-15-hooks-common-bootstrap.md) | 구현됨 | `.agents/hooks/_common.py` | 040(REGISTRY 절 판독기 2종) |
 | [2026-07-16-worklog-reminder-hook](specs/2026-07-16-worklog-reminder-hook.md) | 구현됨 | `.agents/hooks/worklog-reminder.py` | 018·019 |
 | [2026-07-18-secret-gate-hook](specs/2026-07-18-secret-gate-hook.md) | 구현됨 | `.agents/githooks/secret-gate.py` | 023 |
-| [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 구현됨 | `.agents/skills/autoloop/scripts/driver.py` | 025 |
+| [2026-07-19-autoloop-driver](specs/2026-07-19-autoloop-driver.md) | 폐기(063) | `.agents/skills/autoloop/scripts/driver.py` | 025 |
 | [2026-07-19-integrity-check-script](specs/2026-07-19-integrity-check-script.md) | 구현됨 | `.agents/hooks/integrity-check.py` | — (제안: 2026-07-19-oh-my-openagent-adoption) |
 | [2026-07-19-codex-agent-adapters](specs/2026-07-19-codex-agent-adapters.md) | 구현·실발행 확인 | `.codex/agents/*.toml` | 027·031 |
 | [2026-07-22-gate-reminder-hook](specs/2026-07-22-gate-reminder-hook.md) | 구현됨 | `.agents/hooks/gate-reminder.py` | 028 |
@@ -109,11 +110,11 @@
 | [2026-07-25-token-efficiency-contract](specs/2026-07-25-token-efficiency-contract.md) | 구현됨 | `CLAUDE.md`, `.agents/skills/`, `.agents/agents/`, `.agents/hooks/integrity-check.py` | 032 |
 | [2026-08-03-tier-gate-hook](specs/2026-08-03-tier-gate-hook.md) | 구현됨(040으로 개정) | `.agents/hooks/tier-gate.py` | 037·040 |
 | [2026-08-04-dispatch-gate-hook](specs/2026-08-04-dispatch-gate-hook.md) | 폐기(062) | `.agents/hooks/dispatch-gate.py`(삭제) | 038·042·046·062 |
-| [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 구현됨(048로 해결) | `.agents/skills/autoloop/scripts/driver.py` | 025·048 |
+| [2026-08-03-autoloop-engine-harness-load-symmetry](specs/2026-08-03-autoloop-engine-harness-load-symmetry.md) | 폐기(063) | `.agents/skills/autoloop/scripts/driver.py` | 025·048 |
 | [2026-08-14-harness-functional-and-language-audit](specs/2026-08-14-harness-functional-and-language-audit.md) | 구현됨 | 루트 규칙·문서·훅·CLI 로더 | — |
-| [2026-08-19-autoloop-dashboard](specs/2026-08-19-autoloop-dashboard.md) | 구현됨 | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047 |
-| [2026-08-19-autoloop-orchestration-runtime](specs/2026-08-19-autoloop-orchestration-runtime.md) | 구현됨 | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047·048 |
-| [2026-08-19-autoloop-dashboard-operator-ux](specs/2026-08-19-autoloop-dashboard-operator-ux.md) | 확정·구현 완료, 독립 검증 미완료 | `.agents/skills/autoloop/{dashboard-ui/,scripts/dashboard.py,scripts/dashboard_test.py}` | 047·048·049 |
+| [2026-08-19-autoloop-dashboard](specs/2026-08-19-autoloop-dashboard.md) | 폐기(063) | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047 |
+| [2026-08-19-autoloop-orchestration-runtime](specs/2026-08-19-autoloop-orchestration-runtime.md) | 폐기(063) | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047·048 |
+| [2026-08-19-autoloop-dashboard-operator-ux](specs/2026-08-19-autoloop-dashboard-operator-ux.md) | 폐기(063) | `.agents/skills/autoloop/{dashboard-ui/,scripts/dashboard.py,scripts/dashboard_test.py}` | 047·048·049 |
 | [2026-08-26-evaluation-independence-review](specs/2026-08-26-evaluation-independence-review.md) | 구현됨 | `.agents/skills/team-review/SKILL.md`, `.agents/hooks/eval-independence-contract_test.py` | 051 |
 | [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨 | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052 |
 | [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨(사내 발행 예외 부분은 062로 무의미) | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053·062 |

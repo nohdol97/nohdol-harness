@@ -1,5 +1,7 @@
 # ADR 047: autoloop 관측 상태와 로컬 대시보드 분리
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 > **부분 확장(ADR 048, 2026-08-19)**: loop aggregate 관측에 `orchestration.json` 기반 task·dependency·agent·worktree·evidence 투영이 추가됐다. 읽기 전용·loopback·게이트 상태 분리 결정은 유지된다.
 
 - **날짜**: 2026-08-19

@@ -1,5 +1,7 @@
 # ADR 048: autoloop 구조화 오케스트레이션과 writer 격리
 
+> **폐기(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop 스킬과 코드를 삭제했다. 아래는 시점 기록이며 현재 규칙이 아니다.
+
 > **부분 확장:** ADR 050이 결정 3의 직렬화 근거에 writer `file_scope` 중첩을 추가하고, planner 구조 오류의 1회 자동 수정과 실제 patch 범위 검증을 정의한다. 기존 budget·dependency·fan-in 차단은 그대로 유효하다.
 
 - **날짜**: 2026-08-19
