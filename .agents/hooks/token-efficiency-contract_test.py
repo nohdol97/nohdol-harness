@@ -69,6 +69,49 @@ class TokenEfficiencyContractTest(unittest.TestCase):
         root = read("AGENTS.md")
         self.assertIn("opens a successor at any context size, until the user stops the chain", root)
 
+    def test_continues_below_threshold_on_every_project(self):  # ADR 064
+        text = section(".agents/skills/orchestrate/SKILL.md",
+                       "## Completed-task context rotation", "## Final response format")
+        for phrase in ("**Continuous run (every project, every installation profile)**",
+                       "take the next ready task in this same session",
+                       "names one task ends when that task does",
+                       "stops only what depends on it", "no peer holds", "§3 confirmation — stops",
+                       "ends the run at once", "covers all remaining ready work"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+        for path in (".agents/skills/orchestrate/SKILL.md",
+                     ".agents/skills/orchestrate/references/inflight-survey.md"):
+            self.assertNotIn("sequentially on corporate", read(path))
+
+    def test_session_merge_gate(self):  # ADR 064
+        text = section(".agents/skills/branch-workflow/SKILL.md",
+                       "## Session merge", "## Worktree cleanup")
+        for phrase in ("every installation profile", "PASS on the PR's final head",
+                       "could not run → do not merge", "full suite green",
+                       "Do not wait for CI", "caused by this change", "--match-head-commit",
+                       "never `--admin`", "never `--auto`", "triggers a production deploy",
+                       "needs the §3 confirmation first", "stops only what depends on it",
+                       "Merge only PRs this session owns", "Clean up in the same turn",
+                       "Host self-review does not count", "PR patch is unchanged",
+                       "delta review", "never loop", "cause undetermined", "shown unrelated",
+                       "unknown trigger on a deployable project → treat as deploying",
+                       "are respected", "a precondition fails twice", "a live peer holds overlapping files",
+                       "touches credentials or migrates user data",
+                       "shows its author stopped", "`headRefOid`"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+        cleanup = section(".agents/skills/branch-workflow/SKILL.md", "## Worktree cleanup", "## Edge cases")
+        steps = [cleanup.index(c) for c in ("worktree remove <abs-path>   #", "merge --ff-only origin/main   #",
+                                            "branch -d <branch>\n")]
+        self.assertEqual(steps, sorted(steps))
+        self.assertIn("branch --show-current)\" = main &&", cleanup)
+        root = read("AGENTS.md")
+        self.assertIn("§3 still binds a merge that deploys", root)
+        self.assertIn("The owning session merges its own sub-project PR", root)
+        for stale in ("let the user merge", "merge stays with the user", "PRs and user merge stay"):
+            self.assertNotIn(stale, root)
+        self.assertNotIn("The user alone merges", read("CLAUDE.md"))
+
     def test_tool_and_user_output_contract(self):
         text = section(
             ".agents/skills/orchestrate/SKILL.md",
@@ -135,7 +178,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
 
     def test_adjacent_routing_boundaries_remain_explicit(self):
         samples = {
-            "branch-workflow": ("never auto-merge", "never push directly to main"),
+            "branch-workflow": ("never --auto/--admin", "never push directly to main"),
             "context7": ("Anthropic/Claude API", "model-ID", "general programming"),
             "tool-audit": ("harness-native usage", "metaskill"),
         }

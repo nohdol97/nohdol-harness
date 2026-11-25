@@ -72,7 +72,7 @@ If no worktree exists, say nothing (an empty cleanup report is noise). Report su
 
 After eligible worktrees are removed, the `project/<name>/` checkouts still need refreshing. `branch-workflow`'s start procedure stopped pulling them when work moved into worktrees, and it says so itself while prescribing a fetch before any read. That prescription is the fallback, not the fix: it fires inside whatever future session happens to read, and a dispatched agent that never opened `branch-workflow` does not carry it. Correcting the state here removes the condition instead of relying on the next reader to remember.
 
-**Scope: the projects this session touched** — committed, or merely surveyed. This is a cost boundary, not a safety claim: an untouched project can still go stale when the user merges an open PR elsewhere, and `branch-workflow` routes read-only work to that same checkout without creating a worktree. Widening the scope to every registered project would put a fetch round-trip per project into every wrap-up, which is the trade this boundary takes.
+**Scope: the projects this session touched** — committed, or merely surveyed. This is a cost boundary, not a safety claim: an untouched project can still go stale when an open PR is merged elsewhere, and `branch-workflow` routes read-only work to that same checkout without creating a worktree. Widening the scope to every registered project would put a fetch round-trip per project into every wrap-up, which is the trade this boundary takes.
 
 For each, from the harness root:
 
@@ -91,7 +91,7 @@ Report each outcome in one line — advanced (with the short hashes), already cu
 
 **This reduces how often the stale-read condition exists; it does not close it.** Say it that way rather than calling the remainder covered — the premise of this whole step is that `branch-workflow`'s fetch-before-read did not reach a dispatched agent, so handing the residual back to that same prescription would describe as guarded the exact reader class that already failed. Three gaps, and none of them is small:
 
-1. **A PR merged after wrap-up.** The step pulls only what is already merged, so it cannot advance a checkout whose PR the user merges later. The worktree survives step 5 for the same reason, and both settle at the next wrap-up.
+1. **A PR merged after wrap-up.** The step pulls only what is already merged, so it cannot advance a checkout whose PR is merged later. The worktree survives step 5 for the same reason, and both settle at the next wrap-up.
 2. **Sessions that never run this skill.** `/wrapup` is slash-invoked only and deliberately outside auto-routing, so every session the user ends without typing it leaves the checkouts exactly as they were.
 3. **A project this session did not touch**, made stale by a merge elsewhere and then read read-only next session — the scope boundary above, restated as what it costs.
 

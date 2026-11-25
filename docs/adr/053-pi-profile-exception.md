@@ -1,5 +1,7 @@
 # ADR 053 — Pi 세션의 사내 발행 제한 해제와 worktree 선택권
 
+> **부분 대체(2026-11-25)**: "사용자 머지 유지"는 [ADR 064](064-session-merge-and-continuous-run.md)의 세션 머지 조건으로 대체됐다.
+
 > **부분 대체(→063, 2026-11-24)**: [ADR 063](063-retire-autoloop.md)이 autoloop을 삭제해 이 ADR의 autoloop 관련 조항은 현재 규칙이 아니다. 그 밖의 결정은 유지한다.
 
 > **부분 대체(→062, 2026-11-24)**: [ADR 062](062-corporate-dispatch-unblocked.md)가 사내 발행 차단 자체를 폐기해, 이 ADR의 「Pi 세션의 사내 발행 제한 해제」는 대상이 없어졌다. Pi 실행 방식과 worktree 선택권은 유지한다.

@@ -7,12 +7,12 @@ description: "Run post-merge releases: verify merge, draft runbook, confirm ever
 
 ## Why this skill
 
-branch-workflow ends at PR creation — deploy, verification, and wrap-up after the merge (done by the user) had no procedure and were handled ad hoc each session. Deployment is the core target of the section 3 guardrails (the blast radius of a mistake is a running system), so the most dangerous stage must not be the one left without a procedure. External skills (gstack land-and-deploy etc.) do not know this harness's guardrails (confirmation with no exceptions, dev included) or its k8s conventions (explicit context, declarative-first) — per the CLAUDE.md skill priority, deployment is governed by this skill, and external tools are used only as aids in the verification phase.
+branch-workflow ends at the merge — deploy, verification, and wrap-up after it had no procedure and were handled ad hoc each session. Deployment is the core target of the section 3 guardrails (the blast radius of a mistake is a running system), so the most dangerous stage must not be the one left without a procedure. External skills (gstack land-and-deploy etc.) do not know this harness's guardrails (confirmation with no exceptions, dev included) or its k8s conventions (explicit context, declarative-first) — per the CLAUDE.md skill priority, deployment is governed by this skill, and external tools are used only as aids in the verification phase.
 
 ## Phase 0 — Preconditions (always first)
 
 1. **Identify the target**: identify the project in REGISTRY.md and read its harness (`.agents/projects/<name>/AGENTS.md`) — if there are project-specific deploy conventions (environment names, approval procedures), those take precedence.
-2. **Check merge state**: confirm the changes to be deployed are merged into main. If the PR is unmerged, stop and direct the user to the branch-workflow finish procedure (merge is the user's) — never deploy directly from a branch.
+2. **Check merge state**: confirm the changes to be deployed are merged into main. If the PR is unmerged, run `branch-workflow` 「Session merge」 for this session's own PR (its §3 item covers merges that deploy); otherwise stop and report — never deploy directly from a branch.
 3. **Check verification state**: confirm tests·build pass and the review verdict (team-review pass). Do not start a deploy in a failing state.
 
 ## Phase 1 — Deploy plan (runbook draft)

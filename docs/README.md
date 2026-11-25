@@ -80,13 +80,14 @@
 | [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | **폐기(→063)** | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
 | [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
 | [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성(autoloop 조항은 063이 대체) | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
-| [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 부분 대체(→062) | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
+| [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 부분 대체(→062·064) | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
 | [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 폐기 → 055 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
 | [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 부분 대체(→062) | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원(직접 수행 부분은 062가 대체) |
 | [056](adr/056-retire-harness-review.md) | 2026-10-08 | 활성 | 일일·주간 하네스 리뷰 스킬과 자동 알림 제거, 수동 무결성 검사·관찰 신호 유지 |
 | [061](adr/061-knowledge-notes-explicit-request.md) | 2026-10-16 | 활성 | 지식 노트 자동 조회 폐기, 명시적 요청에만 읽기 |
 | [062](adr/062-corporate-dispatch-unblocked.md) | 2026-11-24 | 활성 | **사내 호스트의 서브에이전트 발행 차단 해제**(042·038·046 대체) — 프로필은 발행·검증의 판정 입력이 아니다. `dispatch-gate`·`read_profile` 삭제, 사내 루트 수정 금지·반출 제한·내부 Pi 위임 폐기는 유지 |
 | [063](adr/063-retire-autoloop.md) | 2026-11-24 | 활성 | **autoloop 스킬 폐기**(025·047~050 대체) — 스킬·드라이버·대시보드 삭제, 라우팅·규칙 언급 제거. `_workspace/autoloop/` 정리 예외는 기존 실행 상태 보호를 위해 유지 |
+| [064](adr/064-session-merge-and-continuous-run.md) | 2026-11-25 | 활성 | **세션 직접 머지·연속 진행을 모든 프로젝트로 확대** — 독립 리뷰 PASS와 전체 시험 통과 뒤 CI를 기다리지 않고 머지, 프로젝트·설치 프로필 구분 없음. §3·브랜치 보호·반출 제한은 유지 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
