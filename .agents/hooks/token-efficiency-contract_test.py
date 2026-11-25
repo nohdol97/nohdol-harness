@@ -48,7 +48,7 @@ class TokenEfficiencyContractTest(unittest.TestCase):
 
     def test_session_rotation_is_only_at_completed_boundary(self):
         text = read(".agents/skills/orchestrate/SKILL.md")
-        self.assertIn("200k", text)
+        self.assertIn("**100k tokens or higher**", text)
         self.assertIn("completed task boundary", text)
         self.assertIn("Never rotate mid-task", text)
         for phrase in ("evidence", "decisions", "next step", "unverified scope"):
