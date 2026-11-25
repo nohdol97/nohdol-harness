@@ -3,7 +3,7 @@
 
 Usage:
   session-handoff.py context
-  session-handoff.py spawn --prompt-file PATH [--title TEXT] [--max-running N]
+  session-handoff.py spawn --prompt-file PATH [--title TEXT]
 
 context  prints the token count of this session's latest main-thread request
          (input + cache read + cache creation). A Pi session is read from
@@ -17,9 +17,8 @@ spawn    opens a successor agent with this agent's provider, model, thinking and
 
 Exit codes for spawn: 0 opened; 64 usage or empty/option-like prompt; 69 not a
 Paseo agent session (PASEO_CLI / PASEO_AGENT_ID unset); 73 this agent already
-opened a successor; 75 too many agents running (others >= --max-running, default
-5); 71 the Paseo CLI failed before the open was attempted. Those mean no
-successor was opened. 70 means the open was attempted and its result could not
+opened a successor; 71 the Paseo CLI failed before the open was attempted. Those
+mean no successor was opened. 70 means the open was attempted and its result could not
 be read: stderr names the successor found by label, or says none is listed.
 A failed detach is warned on stderr with exit 0.
 The environment check cannot tell a Paseo agent's main thread from a subagent
@@ -31,7 +30,7 @@ import os
 import subprocess
 import sys
 
-EX_USAGE, EX_UNAVAILABLE, EX_SOFTWARE, EX_OSERR, EX_CANTCREAT, EX_TEMPFAIL = 64, 69, 70, 71, 73, 75
+EX_USAGE, EX_UNAVAILABLE, EX_SOFTWARE, EX_OSERR, EX_CANTCREAT = 64, 69, 70, 71, 73
 FAILURES = (RuntimeError, ValueError, KeyError, TypeError, AttributeError, OSError, subprocess.TimeoutExpired)
 
 
@@ -111,7 +110,7 @@ def paseo(cli, *args):
 
 
 def spawn(argv):
-    opts = {"--prompt-file": None, "--title": None, "--max-running": "5"}
+    opts = {"--prompt-file": None, "--title": None}
     i = 0
     while i < len(argv):
         if argv[i] in opts and i + 1 < len(argv):
@@ -120,12 +119,11 @@ def spawn(argv):
         else:
             return usage()
     try:
-        cap = int(opts["--max-running"])
         with open(opts["--prompt-file"] or "", encoding="utf-8") as f:
             prompt = f.read().strip()
     except (ValueError, OSError):
         return usage()
-    if not prompt or prompt.startswith("-") or cap < 1:
+    if not prompt or prompt.startswith("-"):
         return usage()
     cli, me = os.environ.get("PASEO_CLI"), os.environ.get("PASEO_AGENT_ID")
     if not cli or not me:
@@ -137,12 +135,6 @@ def spawn(argv):
         if prior:
             print(f"session-handoff: successor already opened ({prior[0].get('id')}); none opened", file=sys.stderr)
             return EX_CANTCREAT
-        others = [a for a in json.loads(paseo(cli, "ls", "-a", "-g", "--json"))
-                  if a.get("status") == "running" and a.get("id") != me]
-        if len(others) >= cap:
-            print(f"session-handoff: {len(others)} other agents running (limit {cap}); no successor opened",
-                  file=sys.stderr)
-            return EX_TEMPFAIL
         info = json.loads(paseo(cli, "inspect", me, "--json"))
         args = ["run", "--no-wait", "--json", "--provider", f"{info['Provider']}/{info['Model']}",
                 "--mode", info["Mode"], "--cwd", os.environ.get("PASEO_AGENT_CWD") or os.getcwd(),

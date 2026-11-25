@@ -45,10 +45,10 @@ if os.environ.get("FAKE_FAIL") == cmd:
     sys.exit("boom")
 if cmd == "ls":
     opts, _ = parse(rest, {"--label"}, {"-a", "-g", "--json"}, 0)
-    if "--label" in opts:
-        print(json.dumps(load("successors.json", [])))
-    elif os.environ.get("FAKE_BAD_LS"):
+    if os.environ.get("FAKE_BAD_LS"):
         print(json.dumps(["not-an-agent"]))
+    elif "--label" in opts:
+        print(json.dumps(load("successors.json", [])))
     else:
         print(json.dumps(load("ls.json", [])))
 elif cmd == "inspect":
@@ -107,8 +107,7 @@ class Handoff(unittest.TestCase):
             self.assertEqual(run[run.index(opt) + 1], val)
         self.assertIn("--no-wait", run)
         self.assertEqual(self.calls("agent"), [["agent", "detach", "agent-new"]])
-        self.assertEqual(self.calls("ls"), [["ls", "-a", "-g", "--label", f"handoff-from={ME}", "--json"],
-                                            ["ls", "-a", "-g", "--json"]])
+        self.assertEqual(self.calls("ls"), [["ls", "-a", "-g", "--label", f"handoff-from={ME}", "--json"]])
 
     def test_refuses_outside_paseo(self):
         for missing in ("PASEO_CLI", "PASEO_AGENT_ID"):
@@ -123,20 +122,10 @@ class Handoff(unittest.TestCase):
         self.assertIn("agent-old", r.stderr)
         self.assertEqual(self.calls("run"), [])
 
-    def test_running_limit_counts_other_running_agents_only(self):
-        agents = [{"id": ME, "status": "running"}, {"id": "idle", "status": "idle"}]
-        agents += [{"id": f"p{n}", "status": "running"} for n in range(2)]
-        (Path(self.dir) / "ls.json").write_text(json.dumps(agents))
-        self.assertEqual(self.spawn("--max-running", "2").returncode, 75)
-        self.assertEqual(self.calls("run"), [])
-        self.assertEqual(self.spawn("--max-running", "3").returncode, 0)
-
-    def test_default_running_limit_is_five(self):
-        peers = [{"id": f"p{n}", "status": "running"} for n in range(5)]
-        (Path(self.dir) / "ls.json").write_text(json.dumps(peers))
-        self.assertEqual(self.spawn().returncode, 75)
-        (Path(self.dir) / "ls.json").write_text(json.dumps(peers[:4]))
-        self.assertEqual(self.spawn().returncode, 0)
+    def test_running_agents_do_not_limit_the_successor(self):
+        (Path(self.dir) / "ls.json").write_text(json.dumps([{"id": f"p{n}", "status": "running"} for n in range(50)]))
+        r = self.spawn()
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "agent-new"), r.stderr)
 
     def test_cli_failure_opens_nothing_and_detach_failure_still_reports_id(self):
         for cmd in ("ls", "inspect"):
@@ -166,7 +155,7 @@ class Handoff(unittest.TestCase):
         self.assertEqual(self.spawn().returncode, 64)
         Path(self.prompt).write_text("ok")
         for args in ([], ["spawn"], ["spawn", "--prompt-file", "/nonexistent-x"], ["spawn", "--prompt-file"],
-                     ["spawn", "--prompt-file", self.prompt, "--max-running", "0"],
+                     ["spawn", "--prompt-file", self.prompt, "--max-running", "5"],
                      ["spawn", "--prompt-file", self.prompt, "--bogus", "1"], ["context", "x"]):
             with self.subTest(args=args):
                 self.assertEqual(self.run_script(args).returncode, 64)
