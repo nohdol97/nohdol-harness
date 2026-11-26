@@ -53,7 +53,13 @@ if cmd == "ls":
         print(json.dumps(load("ls.json", [])))
 elif cmd == "inspect":
     parse(rest, set(), {"--json"}, 1)
-    print(json.dumps({"Provider": "claude", "Model": "m-1", "Thinking": "medium", "Mode": "auto"}))
+    info = {"Provider": "claude", "Model": "m-1", "Thinking": "medium", "Mode": "auto"}
+    if os.environ.get("FAKE_UTF8"):
+        # Real Paseo writes UTF-8 regardless of locale; "가" carries byte 0x80.
+        info["Title"] = "가"
+        sys.stdout.buffer.write(json.dumps(info, ensure_ascii=False).encode("utf-8") + b"\n")
+    else:
+        print(json.dumps(info))
 elif cmd == "run":
     parse(rest, {"--provider", "--mode", "--cwd", "--label", "--thinking", "--title"}, {"--no-wait", "--json"}, 1)
     if os.environ.get("FAKE_RUN_GARBAGE"):
@@ -108,6 +114,12 @@ class Handoff(unittest.TestCase):
         self.assertIn("--no-wait", run)
         self.assertEqual(self.calls("agent"), [["agent", "detach", "agent-new"]])
         self.assertEqual(self.calls("ls"), [["ls", "-a", "-g", "--label", f"handoff-from={ME}", "--json"]])
+
+    def test_spawn_decodes_cli_output_as_utf8_under_non_utf8_locale(self):
+        # Windows Korean locale decodes child output as cp949 unless told otherwise.
+        r = self.spawn(FAKE_UTF8="1", LC_ALL="ko_KR.CP949", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0",
+                       PYTHONIOENCODING=None)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "agent-new"), r.stderr)
 
     def test_refuses_outside_paseo(self):
         for missing in ("PASEO_CLI", "PASEO_AGENT_ID"):

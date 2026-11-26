@@ -103,7 +103,7 @@ def context():
 
 
 def paseo(cli, *args):
-    r = subprocess.run([cli, *args], capture_output=True, text=True, timeout=120)
+    r = subprocess.run([cli, *args], capture_output=True, text=True, timeout=120, encoding="utf-8")
     if r.returncode != 0:
         raise RuntimeError(f"paseo {args[0]} exited {r.returncode}: {r.stderr.strip()[:300]}")
     return r.stdout
