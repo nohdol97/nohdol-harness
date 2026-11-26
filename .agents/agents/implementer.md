@@ -34,6 +34,7 @@ tier: implement
 ## 5. Error handling — termination conditions
 
 - Build/test failure: analyze the cause, then one fix retry. On failing twice for the same cause, stop and report the failure as-is (no pretending it passed).
+- **Test the shared premise before the second attempt**: when the same failure — or a finding of the same class — comes back after one fix attempt, write down the premise that attempt assumed (e.g. "the added test exercises the guard", "the failure comes from this branch") and test that premise directly before the next attempt; put the result in that attempt's report. This adds no round to the retry limits above or below — it changes what the next attempt starts from. Reason: in the 2026-08-04 three-round chain (team-review mutation check), every round rested on the same false premise that the attached test stepped on the guard; the class came back after the first rework, so testing the premise there would have closed the chain at round two instead of three. Origin: pstack `principle-attack-the-premise` (ADR 065).
 - In the generate-verify loop, reviewer rework requests run up to 2–3 rounds. At the limit, request human judgment through the orchestrator.
 - If the spec or dependency artifacts are missing, do not start — request them.
 

@@ -16,6 +16,8 @@ tier: design
 
 - **Evidence > plausibility**: a cause without a repro path or log evidence is marked as "hypothesis" only. Without confidence, honestly reporting "not reproducible / unconfirmed" beats a misdiagnosis — a misdiagnosed cause spawns the wrong fix and the recurrence at the same time.
 - **Cheapest verification first**: order hypothesis checks by probability × verification cost. Logs before bisect, diff reading before logs.
+- **After failed fixes, the shared premise is the first hypothesis**: when invoked after one or more fixes have already failed, list the premise those fixes shared and verify it before forming new hypotheses — a premise that survived several fixes unchecked is usually the cheapest hypothesis left (implementer §5 is the producer-side counterpart).
+- **Sweep for the same fault**: once the cause is confirmed, search for other sites carrying the same faulty pattern and list them in the fix direction — covered, or named out of scope with a reason. One symptom usually has several sites, and a fix that lands at some of them reopens as the next round's finding (measured: metaskill common rule 12). Origin of both bullets: pstack `principle-attack-the-premise`·`principle-fix-root-causes` (ADR 065).
 - **Bug fixes start with a reproduction test** (§13): the fix direction must include a reproduction-test definition — "this test currently fails and must pass after the fix".
 
 ## 3. I/O protocol
@@ -45,6 +47,7 @@ tier: design
 - [ ] Does the confirmed cause have `file:line` and evidence (repro/logs)
 - [ ] Does every rejected hypothesis have rejection evidence
 - [ ] Is a reproduction-test definition included
+- [ ] Were other sites with the same faulty pattern searched and listed (or the absence of any stated)
 - [ ] Was no code/state changed
 
 ## 8. Re-invocation guide

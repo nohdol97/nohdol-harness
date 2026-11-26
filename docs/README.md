@@ -88,6 +88,7 @@
 | [062](adr/062-corporate-dispatch-unblocked.md) | 2026-11-24 | 활성 | **사내 호스트의 서브에이전트 발행 차단 해제**(042·038·046 대체) — 프로필은 발행·검증의 판정 입력이 아니다. `dispatch-gate`·`read_profile` 삭제, 사내 루트 수정 금지·반출 제한·내부 Pi 위임 폐기는 유지 |
 | [063](adr/063-retire-autoloop.md) | 2026-11-24 | 활성 | **autoloop 스킬 폐기**(025·047~050 대체) — 스킬·드라이버·대시보드 삭제, 라우팅·규칙 언급 제거. `_workspace/autoloop/` 정리 예외는 기존 실행 상태 보호를 위해 유지 |
 | [064](adr/064-session-merge-and-continuous-run.md) | 2026-11-25 | 활성 | **세션 직접 머지·연속 진행을 모든 프로젝트로 확대** — 독립 리뷰 PASS와 전체 시험 통과 뒤 CI를 기다리지 않고 머지, 프로젝트·설치 프로필 구분 없음. §3·브랜치 보호·반출 제한은 유지 |
+| [065](adr/065-pstack-partial-adoption.md) | 2026-11-26 | 활성 | **pstack 부분 채택** — 통설치 기각, 변이 검사(team-review Tests)·소비 경로 기준 위험 해소(reviewer)·공유 전제 검증(implementer·troubleshooter) 3건 이식 |
 
 **대체 체인**: tdd-gate는 008(Claude Code 한정 PreToolUse) → 014(git 계층 추가, 도구 무관) → 015(git 계층 단일화, PreToolUse 제거)로 진화했고, 예외 경로의 `dev/` 항목은 024로 제거됐다. 008·014의 나머지 결정(차단 지점·fail-open·나머지 예외·commit-msg 선택·전역 hooksPath 등)은 유효하다. Codex 훅은 019(SessionStart 병행) → 029(파리티 기본값) → 031(인라인 설정·trust·실측 계약)로 정렬됐다. 그 밖의 부분 대체: 티어 모델명·REGISTRY.md 추적은 001·004 → 005(탈모델명·미추적), CLAUDE.md 산문 포인터·변경 이력 위치는 001 → 021(`@AGENTS.md` 임포트·changelog 분리), 공용 Markdown agent를 Codex가 직접 읽는 가정은 001 → 027(역할 원본 유지+TOML 어댑터), `project/`·`dev/` 미추적은 002 → 024(`dev/` 제거).
 
@@ -162,3 +163,4 @@
 | [2026-08-07-mattpocock-skills-review](proposals/2026-08-07-mattpocock-skills-review.md) | 부분 채택(→044) | aihero.dev/skills(25스킬, MIT) 대조 — 워크플로 척추는 orchestrate·team-review·troubleshooter·doc-writer·§13+tdd-gate가 이미 상회하거나 겹쳐 통설치 기각(ADR 022와 동일 범주, 다른 점 미발견). `grep` 실측으로 확인한 잔여 공백 4건만 이식하고, `wayfinder`(결정 티켓·fog of war)와 `CONTEXT.md` 용어집은 실사용 관찰 시 재검토로 남김 | 022·041·044 |
 | [2026-08-26-paperthin-review](proposals/2026-08-26-paperthin-review.md) | 부분 채택(→051) | Paperthin 통설치는 고정 context 17,862B·라우팅 중복·hook/config 충돌로 기각. `mandela`의 평가 독립성만 기존 `team-review` Tests 관점에 조건부 이식해 model·scorer·designer·dataset과 외부 정답을 확인하며 새 스킬·agent·호출은 만들지 않음 |
 | [2026-11-25-rea-adoption](proposals/2026-11-25-rea-adoption.md) | 채택(명시 호출 전용) | REA 역분석 CLI를 얇은 루트 스킬 `rea`로 채택 — 상시 MCP·자동 트리거 등록은 제외, 6.7.0 고정. CLI 실행은 미검증 |
+| [2026-11-26-pstack-review](proposals/2026-11-26-pstack-review.md) | 부분 채택(→065) | pstack(cursor/plugins) 통설치는 poteto-mode의 라우팅 대체·모델명 고정 상시 규칙 파일로 기각(자동 호출은 최상위 스킬 59개 중 58개 꺼짐). 실측 실패가 기록된 축 3건만 역할 파일에 이식, 나머지는 재검토 조건과 함께 기각·보류 |
