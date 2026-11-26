@@ -12,7 +12,8 @@ context  prints the token count of this session's latest main-thread request
          exist, the more recently written record is this session's.
          Prints `unknown` and exits 3 when neither yields a usage record.
 spawn    opens a successor agent with this agent's provider, model, thinking and
-         mode, in the same working directory, labelled handoff-from=<this agent>,
+         mode (mode only when `paseo provider ls` lists modes for the provider),
+         in the same working directory, labelled handoff-from=<this agent>,
          then detaches it so it outlives this agent. Prints the new agent id.
 
 Exit codes for spawn: 0 opened; 64 usage or empty/option-like prompt; 69 not a
@@ -136,8 +137,13 @@ def spawn(argv):
             print(f"session-handoff: successor already opened ({prior[0].get('id')}); none opened", file=sys.stderr)
             return EX_CANTCREAT
         info = json.loads(paseo(cli, "inspect", me, "--json"))
+        # `run --mode` accepts only registered modes, yet inspect reports a placeholder
+        # ("default") for providers with none (pi, opencode, copilot) — pass it only when registered.
+        providers = {p.get("provider"): p for p in json.loads(paseo(cli, "provider", "ls", "--json"))}
+        mode_args = ["--mode", info["Mode"]] if providers.get(info["Provider"], {}).get("modes") else []
         args = ["run", "--no-wait", "--json", "--provider", f"{info['Provider']}/{info['Model']}",
-                "--mode", info["Mode"], "--cwd", os.environ.get("PASEO_AGENT_CWD") or os.getcwd(),
+                *mode_args,
+                "--cwd", os.environ.get("PASEO_AGENT_CWD") or os.getcwd(),
                 "--label", f"handoff-from={me}"]
         if info.get("Thinking"):
             args += ["--thinking", info["Thinking"]]

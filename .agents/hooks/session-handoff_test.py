@@ -53,13 +53,20 @@ if cmd == "ls":
         print(json.dumps(load("ls.json", [])))
 elif cmd == "inspect":
     parse(rest, set(), {"--json"}, 1)
-    info = {"Provider": "claude", "Model": "m-1", "Thinking": "medium", "Mode": "auto"}
+    provider = os.environ.get("FAKE_PROVIDER", "claude")
+    info = {"Provider": provider, "Model": "m-1", "Thinking": "medium",
+            "Mode": "auto" if provider == "claude" else "default"}
     if os.environ.get("FAKE_UTF8"):
         # Real Paseo writes UTF-8 regardless of locale; "가" carries byte 0x80.
         info["Title"] = "가"
         sys.stdout.buffer.write(json.dumps(info, ensure_ascii=False).encode("utf-8") + b"\n")
     else:
         print(json.dumps(info))
+elif cmd == "provider" and rest[:1] == ["ls"]:
+    parse(rest[1:], set(), {"--json"}, 0)
+    # Shape observed from real `paseo provider ls --json`: modes is a display string, "" when none.
+    print(json.dumps([{"provider": "claude", "modes": "Plan Mode, Always Ask"},
+                      {"provider": "pi", "modes": ""}]))
 elif cmd == "run":
     parse(rest, {"--provider", "--mode", "--cwd", "--label", "--thinking", "--title"}, {"--no-wait", "--json"}, 1)
     if os.environ.get("FAKE_RUN_GARBAGE"):
@@ -80,11 +87,17 @@ else:
 class Handoff(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
-        self.cli = os.path.join(self.dir, "paseo")
-        Path(self.cli).write_text(FAKE)
-        os.chmod(self.cli, os.stat(self.cli).st_mode | stat.S_IXUSR)
+        # Windows CreateProcess cannot run a shebang script, so it gets a .cmd shim.
+        fake = os.path.join(self.dir, "paseo.py" if os.name == "nt" else "paseo")
+        Path(fake).write_text(FAKE, encoding="utf-8")
+        os.chmod(fake, os.stat(fake).st_mode | stat.S_IXUSR)
+        self.cli = fake
+        if os.name == "nt":
+            self.cli = os.path.join(self.dir, "paseo.cmd")
+            # cmd.exe reads batch files in the locale code page, not UTF-8 (non-ASCII python path).
+            Path(self.cli).write_text(f'@"{sys.executable}" "%~dp0paseo.py" %*\r\n')
         self.prompt = os.path.join(self.dir, "prompt.txt")
-        Path(self.prompt).write_text("이어서 진행해\n")
+        Path(self.prompt).write_text("이어서 진행해\n", encoding="utf-8")
 
     def run_script(self, args, **env):
         e = {k: v for k, v in os.environ.items()
@@ -120,6 +133,22 @@ class Handoff(unittest.TestCase):
         r = self.spawn(FAKE_UTF8="1", LC_ALL="ko_KR.CP949", PYTHONUTF8="0", PYTHONCOERCECLOCALE="0",
                        PYTHONIOENCODING=None)
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "agent-new"), r.stderr)
+
+    def test_mode_passed_only_to_providers_that_register_modes(self):
+        run = lambda: self.calls("run")[-1]
+        r = self.spawn(FAKE_PROVIDER="pi")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "agent-new"), r.stderr)
+        self.assertNotIn("--mode", run())
+        self.assertEqual(run()[run().index("--provider") + 1], "pi/m-1")
+        (Path(self.dir) / "calls.jsonl").unlink()
+        r = self.spawn()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(run()[run().index("--mode") + 1], "auto")
+
+    def test_provider_list_failure_opens_nothing(self):
+        r = self.spawn(FAKE_FAIL="provider")
+        self.assertEqual(r.returncode, 71, r.stderr)
+        self.assertEqual(self.calls("run"), [])
 
     def test_refuses_outside_paseo(self):
         for missing in ("PASEO_CLI", "PASEO_AGENT_ID"):
