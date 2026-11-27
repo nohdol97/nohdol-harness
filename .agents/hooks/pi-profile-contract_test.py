@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[2]
 class PiProfileContractTest(unittest.TestCase):
     def test_pi_identity_is_system_only_and_keeps_profile(self):
         prompt = (ROOT / '.pi/APPEND_SYSTEM.md').read_text()
-        for text in ('Pi Coding Agent', 'AGENTS.md §11', 'system prompt', 'REGISTRY.md'):
+        for text in ('Pi Coding Agent', 'AGENTS.md §11', 'system prompt', 'REGISTRY.md',
+                     '.agents/hooks/memory-index.py', '§8'):
             self.assertIn(text, prompt)
         policy = (ROOT / 'AGENTS.md').read_text().split('**Pi runtime exception', 1)[1].split('\n## ', 1)[0]
         for text in ('not from file existence', 'Claude/Codex', '§3', 'corporate root-edit', 'data-egress'):

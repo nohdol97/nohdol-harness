@@ -25,6 +25,8 @@ try {
   await loader.reload();
   assert.ok(loader.getAgentsFiles().agentsFiles.some(f => f.path === join(cwd, 'AGENTS.md')));
   assert.ok(loader.getAppendSystemPrompt().some(p => p.includes('# Runtime: Pi Coding Agent')));
+  // §8 lessons reach Pi only through this instruction (Pi has no loader for the store).
+  assert.ok(loader.getAppendSystemPrompt().some(p => p.includes('.agents/hooks/memory-index.py')));
   assert.ok(loader.getSkills().skills.some(s => s.name === 'orchestrate'));
   // Explicit append sources replace discovery in Pi 0.73.1. A child must carry both.
   const role = await readFile(join(root, '.agents/agents/reviewer.md'), 'utf8');
