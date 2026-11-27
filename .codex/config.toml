@@ -10,14 +10,14 @@ matcher = "Bash|shell|local_shell"
 
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/gate-reminder.py\" --record; done; exit 0"
+command = "f=\"$PWD/.agents/hooks/gate-reminder.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\" --record; done; exit 0"
 
 [[hooks.PreToolUse]]
 matcher = "Edit|Write|MultiEdit|NotebookEdit|apply_patch"
 
 [[hooks.PreToolUse.hooks]]
 type = "command"
-command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/gate-reminder.py\" --check; done; exit 0"
+command = "f=\"$PWD/.agents/hooks/gate-reminder.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\" --check; done; exit 0"
 
 # tier-gate — 서브에이전트 발행에서 9절 경량 모델 금지 강제(ADR 040). 판정
 # 입력은 REGISTRY.md 「경량 모델」 절이고 `model` 미지정(=세션 모델 상속)은
@@ -36,8 +36,8 @@ matcher = "startup|resume|clear"
 
 [[hooks.SessionStart.hooks]]
 type = "command"
-command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/agentsview-daemon.py\"; done; exit 0"
+command = "f=\"$PWD/.agents/hooks/agentsview-daemon.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
 
 [[hooks.SessionStart.hooks]]
 type = "command"
-command = "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$PWD/.agents/hooks/worklog-reminder.py\"; done; exit 0"
+command = "f=\"$PWD/.agents/hooks/worklog-reminder.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"

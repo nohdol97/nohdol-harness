@@ -8,6 +8,7 @@
 그대로 있으면 이 테스트 파일의 커밋이 게이트 자신에게 차단된다(스펙 R2 자기 매칭).
 """
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -166,6 +167,105 @@ def main():
             cwd=g11, capture_output=True, timeout=30,
             encoding="utf-8", errors="replace")
         check("C11b", "shim 경유 [secret-ok] 커밋 → 통과", p_ok.returncode, 0)
+
+        # A-C02: 사용자 diff 설정(color.ui=always·diff.external·textconv)이 훅의
+        # diff 출력을 바꿔 게이트가 조용히 꺼지면 안 된다(감사 1127 C-02).
+        ga = make_repo(os.path.join(tmp, "ga"))
+        put(ga, "cfg.txt", "key = %s\n" % AWS_KEY)
+        sh(ga, "add", "cfg.txt")
+        sh(ga, "config", "color.ui", "always")
+        check("A-C02a", "color.ui=always 설정 → 여전히 차단", run_hook(ga, "feat: cfg")[0], 65)
+        sh(ga, "config", "--unset", "color.ui")
+        ext = put(tmp, "ext-diff.sh", "#!/bin/sh\nexit 0\n")
+        os.chmod(os.path.join(tmp, ext), 0o755)
+        sh(ga, "config", "diff.external", os.path.join(tmp, ext))
+        check("A-C02b", "diff.external 설정 → 여전히 차단", run_hook(ga, "feat: cfg")[0], 65)
+        sh(ga, "config", "--unset", "diff.external")
+        put(ga, ".gitattributes", "*.txt diff=hide\n")
+        sh(ga, "config", "diff.hide.textconv", "true")
+        check("A-C02c", "textconv 드라이버 → 여전히 차단", run_hook(ga, "feat: cfg")[0], 65)
+        os.remove(os.path.join(ga, ".gitattributes"))
+
+        # A-C04: [secret-ok]는 실제 메시지 본문에서만 인정한다 — 주석 줄·`commit -v`
+        # 가위선 아래 diff는 최종 메시지가 아니다(감사 1127 C-04).
+        check("A-C04a", "주석 줄의 [secret-ok] → 무시(차단)",
+              run_hook(ga, "feat: cfg\n# [secret-ok]\n")[0], 65)
+        check("A-C04b", "가위선 아래의 [secret-ok] → 무시(차단)",
+              run_hook(ga, "feat: cfg\n# ------------------------ >8 ------------------------\n"
+                           "+see [secret-ok] docs\n")[0], 65)
+        check("A-C04c", "본문의 [secret-ok] + 주석 줄 → 통과",
+              run_hook(ga, "docs: example [secret-ok]\n# Please enter the commit message\n")[0], 0)
+        sh(ga, "config", "core.commentChar", ";")
+        check("A-C04d", "core.commentChar=; 주석 줄의 [secret-ok] → 무시(차단)",
+              run_hook(ga, "feat: cfg\n; [secret-ok]\n")[0], 65)
+        sh(ga, "config", "--unset", "core.commentChar")
+
+        # A-C04e: 실커밋 재현 — 마커를 언급한 문서가 `git commit -v` diff로 메시지
+        # 파일에 들어가도 확인 없는 면제가 되면 안 된다.
+        gv = make_repo(os.path.join(tmp, "gv"))
+        put(gv, "cfg.txt", "k=%s\n" % AWS_KEY)
+        put(gv, "NOTES.md", "see the [secret-ok] marker docs\n")
+        sh(gv, "add", "-A")
+        editor = put(tmp, "prepend-editor.py",
+                     "import sys\np = sys.argv[1]\nold = open(p).read()\n"
+                     "open(p, 'w').write('feat: add cfg\\n' + old)\n")
+        p_v = subprocess.run(
+            ["git", "-c", "core.hooksPath=%s" % GITHOOKS, "commit", "-q", "-v"],
+            cwd=gv, capture_output=True, timeout=30, encoding="utf-8", errors="replace",
+            env={**os.environ, "GIT_EDITOR": "%s %s" % (
+                shlex.quote(sys.executable), shlex.quote(os.path.join(tmp, editor)))})
+        check("A-C04e", "commit -v diff 속 [secret-ok] → 차단", p_v.returncode != 0, True)
+
+        # A-C04f: core.commentChar=auto — 메시지에 `#`로 시작하는 줄이 있으면 git은
+        # 다른 후보(`;` 등)를 주석 문자로 골라 가위선도 `; … >8 …`이 된다. 훅이 `#`로
+        # 가정하면 가위선 아래 diff의 마커가 면제가 된다(리뷰 V-02 실커밋 재현).
+        sh(gv, "config", "core.commentChar", "auto")
+        p_f = subprocess.run(
+            ["git", "-c", "core.hooksPath=%s" % GITHOOKS, "commit", "-q", "-v", "-e",
+             "-m", "#123 feat: add cfg"],
+            cwd=gv, capture_output=True, timeout=30, encoding="utf-8", errors="replace",
+            env={**os.environ, "GIT_EDITOR": "true"})
+        check("A-C04f", "commentChar=auto + `#` 줄 메시지의 commit -v diff 속 [secret-ok] → 차단",
+              p_f.returncode != 0, True)
+        sh(gv, "config", "--unset", "core.commentChar")
+
+        # A-C04h: 실커밋 — core.commentString을 설정해도 git <2.45는 `#` 가위선을 쓴다.
+        # 훅이 commentString만 따르면 `#` 가위선을 놓쳐 diff 속 마커가 면제가 된다(리뷰
+        # V2-01).
+        sh(gv, "config", "core.commentString", "//")
+        p_h = subprocess.run(
+            ["git", "-c", "core.hooksPath=%s" % GITHOOKS, "commit", "-q", "-v"],
+            cwd=gv, capture_output=True, timeout=30, encoding="utf-8", errors="replace",
+            env={**os.environ, "GIT_EDITOR": "%s %s" % (
+                shlex.quote(sys.executable), shlex.quote(os.path.join(tmp, editor)))})
+        check("A-C04h", "commentString=// + commit -v diff 속 [secret-ok] → 차단",
+              p_h.returncode != 0, True)
+        sh(gv, "config", "--unset", "core.commentString")
+
+        # A-C04i·j: git ≥2.45가 쓰는 가위선을 훅 수준에서 재현 — 뒤 공백 접두 "// "의
+        # `//  --- >8 ---`(V2-02), `#`이 가릴 수 있는 더 긴 접두 "##"(V3-01). 가위선 아래
+        # 마커는 무시돼야 한다.
+        for cid, val in (("A-C04i", "// "), ("A-C04j", "##")):
+            sh(ga, "config", "core.commentString", val)
+            check(cid, "commentString=%r 가위선 아래 [secret-ok] → 무시(차단)" % val,
+                  run_hook(ga, "feat: cfg\n%s %s\n[secret-ok]\n" % (val, "------------------------ >8 ------------------------"))[0], 65)
+            sh(ga, "config", "--unset", "core.commentString")
+
+        # A-C04g: core.commentString(git ≥2.45)도 주석 접두에 더한다 — 접두는 `#`·commentChar·
+        # commentString의 합집합이다(리뷰 V-03, V2-01).
+        sh(ga, "config", "core.commentChar", ";")
+        sh(ga, "config", "core.commentString", "//")
+        check("A-C04g", "core.commentString=// 주석 줄의 [secret-ok] → 무시(차단)",
+              run_hook(ga, "feat: cfg\n// [secret-ok]\n")[0], 65)
+        sh(ga, "config", "--unset", "core.commentString")
+        sh(ga, "config", "--unset", "core.commentChar")
+
+        # A-C09: 내용이 `++ `로 시작하는 추가 줄(diff 줄 `+++ …`)도 검사한다 —
+        # `+++ `는 파일 헤더 구간에서만 헤더다(감사 1127 C-09).
+        gp = make_repo(os.path.join(tmp, "gp"))
+        put(gp, "plus.txt", "++ %s\nok\n" % AWS_KEY)
+        sh(gp, "add", "plus.txt")
+        check("A-C09", "`++ ` 접두 줄의 시크릿 → 차단", run_hook(gp, "feat: plus")[0], 65)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

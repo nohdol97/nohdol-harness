@@ -28,7 +28,9 @@
 - R3 (check-통과): 상태 파일이 없거나 `reminded`면 exit 0. Claude형 `file_path`·`notebook_path`와 Codex형 `apply_patch.command`의 Add/Update/Delete/Move 경로를 모두 읽는다. 모든 대상이 `_workspace` 또는 시스템 임시 경로(`/tmp/` 등)면 상태를 소모하지 않고 exit 0; 하나라도 제품 경로면 R2로 차단한다.
 - R4 (fail-open): stdin JSON 파싱 실패, session_id 부재, 상태 디렉토리 쓰기 실패 등 모든 예외에서 exit 0. stdio는 `_common.utf8_stdio()`로 재구성(유실 시 no-op 폴백).
 - R5 (정리): record 시 7일 초과 상태 파일을 기회적으로 삭제한다(mtime 기준, 실패 무시) — 세션 잔재가 누적되지 않게.
-- R6 (등록): `.claude/settings.json`에 PostToolUse(matcher `Bash`, `--record`)·PreToolUse(matcher `Edit|Write|MultiEdit|NotebookEdit`, `--check`)로 등록하고, 기존 훅과 같은 python 탐색 래퍼(`for p in python3 python py; ... exec`)를 쓴다 — python 부재 시 exit 0(fail-open). Codex는 `.codex/config.toml` 인라인 PostToolUse·PreToolUse에 `$PWD` 경로로 등록한다(ADR 031).
+- R6 (등록): `.claude/settings.json`에 PostToolUse(matcher `Bash`, `--record`)·PreToolUse(matcher `Edit|Write|MultiEdit|NotebookEdit`, `--check`)로 등록하고, 기존 훅과 같은 python 탐색 래퍼(`for p in python3 python py; ... exec`)를 쓴다 — python 부재 시 exit 0(fail-open). Codex는 `.codex/config.toml` 인라인 PostToolUse·PreToolUse에 `$PWD` 경로로 등록한다(ADR 031). 래퍼 앞에는 R7의 존재 가드를 둔다.
+- R7 (등록 존재 가드): 두 등록 모두 `f="<기준 경로>/.agents/hooks/gate-reminder.py"; [ -r "$f" ] || exit 0;`로 시작하고 탐색 래퍼는 확인한 `"$f"`를 실행한다. 이유: 경로가 안 풀리면(빈 `CLAUDE_PROJECT_DIR`, Codex `$PWD`가 루트 아님, 파일 유실·권한) 인터프리터가 exit 2로 죽고, PreToolUse에서 그 값은 도구 호출 차단이다 — R4의 fail-open 훅이 **모든 Edit/Write를 막는** fail-closed로 뒤집힌다(2026-11-27 하네스 전수 점검 C-07 — 가드 없는 `--check`가 빈 `CLAUDE_PROJECT_DIR`에서 rc=2 실측). tier-gate 스펙 R11과 같은 형태이며, 등록 형태의 회귀는 integrity-check R18·R21(스펙 2026-07-19-integrity-check-script 4b)이 맡는다.
+- R8 (입력 디코딩): `--record`·`--check` 모두 stdin을 읽기 전에 `_common.utf8_stdio()`로 stdin을 UTF-8(errors=replace)로 재구성한다 — cp949 로케일에서 한글이 든 진단 명령의 판독이 실패하면 R4 fail-open으로 전환점을 놓친다(2026-11-27 하네스 전수 점검 C-05). 훅 자체 코드는 그대로이고 `_common` 단일 원본이 stdin을 포함하게 됐다(스펙 2026-07-15-hooks-common-bootstrap R1).
 
 ## 완료 기준
 
@@ -42,6 +44,8 @@
 - [x] 회귀 테스트: `.agents/hooks/gate-reminder_test.py` 전체 통과 (수정 시 필수)
 - [x] Codex CLI 0.145.0에서 PostToolUse 진단 기록 뒤 PreToolUse `apply_patch`가 exit 2로 실행 전에 차단됨
 - [x] Codex형 `apply_patch.command`에서 `_workspace` 단독은 diag 유지·통과, 제품 단독/혼합은 exit 2 차단
+- [x] `.claude/settings.json`·`.codex/config.toml`의 gate-reminder 등록 4건이 존재 가드형이며, 가드를 지우거나 실행 경로를 `"$f"` 밖으로 바꾸면 integrity-check가 FAIL한다(`integrity-check_test.py`의 `test_every_claude_command_needs_the_existence_guard`·`test_every_codex_command_needs_the_existence_guard`·`test_guard_must_cover_the_executed_path`·`test_live_registrations_carry_the_guard`) (R7)
+- [x] `PYTHONIOENCODING=cp949`에서 한글이 든 진단 명령을 원 바이트 UTF-8로 record → exit 0, 상태 `diag`(`test_utf8_payload_arms_under_a_cp949_locale`) (R8)
 
 ## 변경 이력
 
@@ -49,3 +53,4 @@
 |---|---|---|---|
 | 2026-07-25 | Codex 등록을 인라인 config로 전환하고 Pre·PostToolUse 입력·exit 2 차단 실측 완료 | 비목표·R6·완료 기준 | ADR 031, Codex CLI 0.145.0 macOS 런타임 검증 |
 | 2026-07-25 | Codex `apply_patch.command` 대상 경로 파싱과 단독/혼합 회귀 3종 추가 | R3·완료 기준·훅 | 독립 reviewer F1 — `_workspace` patch가 one-shot 상태를 소모해 후속 제품 수정을 무차단하던 회귀 차단 |
+| 2026-11-27 | 등록 존재 가드 R7·stdin 디코딩 R8 신설, 완료 기준 2건 추가 | R6·R7·R8·완료 기준, `.claude/settings.json`, `.codex/config.toml`, `gate-reminder_test.py` | 하네스 전수 점검 — C-07: 가드 없는 `--check` 등록이 빈 `CLAUDE_PROJECT_DIR`에서 rc=2로 모든 Edit/Write를 막음(실측). C-05: cp949 stdin 디코딩이 한글 진단 명령 판독을 깸 |

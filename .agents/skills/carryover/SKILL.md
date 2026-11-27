@@ -7,7 +7,7 @@ description: "Save or resume a same-machine session through a local _workspace c
 
 ## Why this skill
 
-Session context and `_workspace/` do not automatically carry over across sessions. Yet "the few things from this session I want to pick up next time" — not big enough to open a GitHub issue — get lost every time. This skill fills exactly that gap: the user **personally picks the work to keep**, it is written in a resume-ready format under local `_workspace/carryover/`, and the next session picks a note and takes over.
+Session context and `_workspace/` do not automatically carry over across sessions. Yet "the few things from this session I want to pick up next time" — not big enough to open a GitHub issue — get lost every time. This skill fills exactly that gap: the work worth keeping is **selected by judgment and reported** (the user can narrow it), it is written in a resume-ready format under local `_workspace/carryover/`, and the next session picks a note and takes over.
 
 **Boundary with work-tracker (important — coexistence, not replacement)**:
 
@@ -35,7 +35,7 @@ Determine the mode from the invocation arguments.
 
 ## Save mode
 
-Keep only the work the user picks from this session as a local note.
+Keep only the work selected (by judgment, step 2) from this session as a local note.
 
 1. **Collect candidates**: enumerate this session's work as candidate items.
    - Check changed/uncommitted files with `git status --short` and `git diff --stat` (in the subproject's repository if the target is a subproject).
@@ -43,9 +43,8 @@ Keep only the work the user picks from this session as a local note.
    - Express each candidate as a one-line gist (e.g. `sona_app 로그인 리팩토링 — AuthProvider 분리 완료, 테스트 미작성`).
    - **If there is nothing worth carrying over** (no changes, decisions, or open items), do not save; notify "이월할 작업이 없습니다" and stop — an empty note is debt.
 
-2. **User selection** (the core — the user must choose):
-   - If there are **4 or fewer** candidates, select by judgment and list what was kept and dropped.
-   - If there are **5 or more**, select by judgment and list what was kept and dropped; the user can narrow it afterwards.
+2. **Selection** (the core — by judgment, reported):
+   - Select the candidates worth carrying over and list what was kept and dropped; the user can narrow it afterwards.
    - If nothing is selected, do not save and stop (an empty note is debt).
 
 3. **Fix the topic**: build a short slug from the common topic of the selected items (choose it yourself and state it in the report). If several unrelated topics are mixed, split into per-topic files by default.
@@ -116,6 +115,6 @@ Pick an existing carryover note and take over.
 | Metric | Without this skill | With this skill |
 |---|---|---|
 | Session handoff | Work not worth an issue is lost every session | Only chosen work carried over as a local note |
-| Selectivity | Keep everything (graveyard) or lose everything | The user selects only what to keep |
+| Selectivity | Keep everything (graveyard) or lose everything | Only what is worth keeping is selected by judgment and reported; the user can narrow it |
 | Resume | Manually reconstruct what the last session did | Pick a note and get the re-entry point instantly |
 | work-tracker boundary | Even lightweight memos become GitHub issues → graveyard | Lightweight = local carryover, formal = work-tracker |

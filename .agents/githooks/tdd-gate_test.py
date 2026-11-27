@@ -5,6 +5,7 @@
 부수 효과: 임시 디렉토리만 사용하며 전부 정리한다.
 """
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -221,6 +222,108 @@ def main():
         check("C12-commit", "체인 대상 커밋 성공",
               git_with_hooks(g12, "commit", "-q", "-m", "docs: note").returncode, 0)
         check("C12", "로컬 commit-msg 훅으로 체인됨", os.path.exists(marker), True)
+
+        # A-C03: linked worktree에서도 7개 shim 전부가 로컬 훅으로 체인된다 — git은
+        # 로컬 훅을 공통 디렉토리(.git/hooks)에서 찾는데, worktree의 --git-dir은
+        # .git/worktrees/<n>이라 훅이 없다(감사 1127 C-03, 루트 5절 worktree 의무).
+        g12w = make_repo(os.path.join(tmp, "g12w"))
+        wt = os.path.join(tmp, "g12w-wt")
+        remote = os.path.join(tmp, "g12w-remote.git")
+        sh(tmp, "init", "-q", "--bare", remote)
+        sh(g12w, "worktree", "add", "-q", wt, "-b", "feat")
+        chain = ("pre-commit", "prepare-commit-msg", "commit-msg", "post-commit",
+                 "post-checkout", "post-merge", "pre-push")
+        for name in chain:  # worktree 생성 뒤에 설치 — add 자체의 post-checkout 오염 방지
+            hook = os.path.join(g12w, ".git", "hooks", name)
+            with open(hook, "w") as f:
+                f.write("#!/bin/sh\ntouch \"%s\"\n"
+                        % os.path.join(g12w, ".git", "chain-" + name))
+            os.chmod(hook, 0o755)
+        put(wt, "note.md", "hi\n"); sh(wt, "add", "note.md")
+        ops = [git_with_hooks(wt, "commit", "-q", "-m", "docs: note"),
+               git_with_hooks(wt, "checkout", "-q", "-b", "feat2")]
+        # 설정 커밋은 훅 없이 — `--no-verify`는 pre-commit·commit-msg만 끄므로,
+        # 전역 hooksPath(고친 공유 shim)나 기본 .git/hooks가 prepare-commit-msg·
+        # post-commit 로컬 훅을 직접 실행해 두 케이스를 거짓 PASS로 만든다(리뷰 V-01).
+        no_hooks = os.path.join(tmp, "no-hooks")
+        os.makedirs(no_hooks, exist_ok=True)
+        put(wt, "note2.md", "hi\n"); sh(wt, "add", "note2.md")
+        sh(wt, "-c", "core.hooksPath=%s" % no_hooks, "commit", "-q", "-m", "docs: note2")
+        ops += [git_with_hooks(wt, "checkout", "-q", "feat"),
+                git_with_hooks(wt, "merge", "-q", "feat2"),
+                git_with_hooks(wt, "push", "-q", remote, "feat")]
+        check("A-C03-ops", "worktree git 조작 전부 성공",
+              [p.returncode for p in ops], [0] * len(ops))
+        for name in chain:
+            check("A-C03-" + name, "worktree에서 로컬 %s 훅으로 체인됨" % name,
+                  os.path.exists(os.path.join(g12w, ".git", "chain-" + name)), True)
+
+        # A-C04: [no-test]는 실제 메시지 본문에서만 인정한다 — 주석 줄·`commit -v`
+        # 가위선 아래 diff는 최종 메시지가 아니다(감사 1127 C-04). g1은 app.py만 스테이징.
+        check("A-C04a", "주석 줄의 [no-test] → 무시(차단)",
+              run_git_hook(g1, "feat: x\n# [no-test]\n")[0], 65)
+        check("A-C04b", "가위선 아래의 [no-test] → 무시(차단)",
+              run_git_hook(g1, "feat: x\n# ------------------------ >8 ------------------------\n"
+                               "+see [no-test] docs\n")[0], 65)
+        check("A-C04c", "본문의 [no-test] + 주석 줄 → 통과",
+              run_git_hook(g1, "chore: fmt [no-test]\n# Please enter the commit message\n")[0], 0)
+        sh(g1, "config", "core.commentChar", ";")
+        check("A-C04d", "core.commentChar=; 주석 줄의 [no-test] → 무시(차단)",
+              run_git_hook(g1, "feat: x\n; [no-test]\n")[0], 65)
+        sh(g1, "config", "--unset", "core.commentChar")
+
+        # A-C04e: 실커밋 재현 — 마커를 언급한 문서가 `git commit -v` diff로 메시지
+        # 파일에 들어가도 확인 없는 면제가 되면 안 된다.
+        gv = make_repo(os.path.join(tmp, "gv"))
+        put(gv, "app.py"); put(gv, "NOTES.md", "see [no-test] marker docs\n")
+        sh(gv, "add", "-A")
+        editor = put(tmp, "prepend-editor.py",
+                     "import sys\np = sys.argv[1]\nold = open(p).read()\n"
+                     "open(p, 'w').write('feat: add app\\n' + old)\n")
+        pv = run(["git", "-c", "core.hooksPath=%s" % GITHOOKS, "commit", "-q", "-v"],
+                 cwd=gv, env={**os.environ, "GIT_EDITOR": "%s %s" % (
+                     shlex.quote(sys.executable), shlex.quote(os.path.join(tmp, editor)))})
+        check("A-C04e", "commit -v diff 속 [no-test] → 차단", pv.returncode != 0, True)
+
+        # A-C04f: core.commentChar=auto — 메시지에 `#`로 시작하는 줄이 있으면 git은
+        # 다른 후보(`;` 등)를 주석 문자로 골라 가위선도 `; … >8 …`이 된다. 훅이 `#`로
+        # 가정하면 가위선 아래 diff의 마커가 면제가 된다(리뷰 V-02 실커밋 재현).
+        sh(gv, "config", "core.commentChar", "auto")
+        pf = run(["git", "-c", "core.hooksPath=%s" % GITHOOKS, "commit", "-q", "-v", "-e",
+                  "-m", "#123 feat: add app"],
+                 cwd=gv, env={**os.environ, "GIT_EDITOR": "true"})
+        check("A-C04f", "commentChar=auto + `#` 줄 메시지의 commit -v diff 속 [no-test] → 차단",
+              pf.returncode != 0, True)
+        sh(gv, "config", "--unset", "core.commentChar")
+
+        # A-C04h: 실커밋 — core.commentString을 설정해도 git <2.45는 `#` 가위선을 쓴다.
+        # 훅이 commentString만 따르면 `#` 가위선을 놓쳐 diff 속 마커가 면제가 된다(리뷰
+        # V2-01).
+        sh(gv, "config", "core.commentString", "//")
+        ph = run(["git", "-c", "core.hooksPath=%s" % GITHOOKS, "commit", "-q", "-v"],
+                 cwd=gv, env={**os.environ, "GIT_EDITOR": "%s %s" % (
+                     shlex.quote(sys.executable), shlex.quote(os.path.join(tmp, editor)))})
+        check("A-C04h", "commentString=// + commit -v diff 속 [no-test] → 차단",
+              ph.returncode != 0, True)
+        sh(gv, "config", "--unset", "core.commentString")
+
+        # A-C04i·j: git ≥2.45가 쓰는 가위선을 훅 수준에서 재현 — 뒤 공백 접두 "// "의
+        # `//  --- >8 ---`(V2-02), `#`이 가릴 수 있는 더 긴 접두 "##"(V3-01). 가위선 아래
+        # 마커는 무시돼야 한다.
+        for cid, val in (("A-C04i", "// "), ("A-C04j", "##")):
+            sh(g1, "config", "core.commentString", val)
+            check(cid, "commentString=%r 가위선 아래 [no-test] → 무시(차단)" % val,
+                  run_git_hook(g1, "feat: x\n%s %s\n[no-test]\n" % (val, "------------------------ >8 ------------------------"))[0], 65)
+            sh(g1, "config", "--unset", "core.commentString")
+
+        # A-C04g: core.commentString(git ≥2.45)도 주석 접두에 더한다 — 접두는 `#`·commentChar·
+        # commentString의 합집합이다(리뷰 V-03, V2-01).
+        sh(g1, "config", "core.commentChar", ";")
+        sh(g1, "config", "core.commentString", "//")
+        check("A-C04g", "core.commentString=// 주석 줄의 [no-test] → 무시(차단)",
+              run_git_hook(g1, "feat: x\n// [no-test]\n")[0], 65)
+        sh(g1, "config", "--unset", "core.commentString")
+        sh(g1, "config", "--unset", "core.commentChar")
 
         # C13: 게이트 스크립트 부재 → shim이 fail-open (하네스 이동·삭제 시
         # 머신 전역 커밋이 막히면 안 된다 — reviewer F2 회귀)

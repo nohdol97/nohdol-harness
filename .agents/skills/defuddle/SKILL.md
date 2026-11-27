@@ -13,7 +13,7 @@ However, this is an **external CLI dependency** (not bundled into the mono-works
 
 ## Procedure
 
-1. **Check negative triggers first** (the `Do NOT use for` in the description): for URLs ending in `.md`, authenticated/paid/private pages, and `claude.ai/.../artifact/` URLs, do not use this skill — go straight to **WebFetch**. defuddle works over anonymous GET, so login and artifact pages yield empty results or a login wall.
+1. **Check negative triggers first** (the `Not for` boundary in the description): for URLs ending in `.md`, authenticated/paid/private pages, and `claude.ai/.../artifact/` URLs, do not use this skill — go straight to **WebFetch**. defuddle works over anonymous GET, so login and artifact pages yield empty results or a login wall.
 
 2. **Check the dependency**: `command -v defuddle`.
    - Present → step 3.

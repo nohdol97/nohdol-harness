@@ -1,9 +1,9 @@
 # ADR 060: Paseo에서 로컬 Paperclip 패널 제공
 
-> 폐기: 2026-11-24 [ADR 061](061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 아래 내용은 당시 결정의 이력이며 현재 실행 지침이 아니다.
+> 폐기: 2026-11-24 [ADR 066](066-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 아래 내용은 당시 결정의 이력이며 현재 실행 지침이 아니다.
 
 - 날짜: 2026-10-15
-- 상태: 폐기 — ADR 061
+- 상태: 폐기 — ADR 066
 
 ## 배경
 폰에서 Paperclip을 조작하기 위해 사용자가 Paseo 패널 방식을 선택했다. 채팅 경유 방식은 조회 결과를 모델에 보내며, 두 앱이 개발 작업을 배정하면 중복 실행이 발생할 수 있다.

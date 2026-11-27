@@ -20,7 +20,7 @@
 
 ## 요구사항
 
-- R1: `_common.py`는 `utf8_stdio()`를 제공한다 — stdout·stderr를 UTF-8(errors=replace)로 재구성, 재구성 불가 스트림은 무시. 동작은 기존 훅 내장 구현과 동일(각 훅 스펙의 cp949 완료 기준이 회귀 기준).
+- R1: `_common.py`는 `utf8_stdio()`를 제공한다 — stdin·stdout·stderr를 UTF-8(errors=replace)로 재구성, 재구성 불가 스트림은 무시. 동작은 기존 훅 내장 구현과 동일(각 훅 스펙의 cp949 완료 기준이 회귀 기준). **stdin 포함(2026-11-27 하네스 전수 점검 C-05)**: 훅 입력 JSON의 생산자도 CLI(UTF-8)인데 cp949 로케일이 stdin을 cp949로 디코딩하면 한글 프롬프트에서 판독이 실패해 stdin을 읽는 훅(tier-gate·gate-reminder)이 fail-open으로 꺼졌다. 그래서 stdin을 읽기 **전에** 호출해야 효과가 있다. stdin을 읽지 않는 호출자(tdd-gate·secret-gate·agentsview-daemon·worklog-reminder·integrity-check)에는 동작 변화가 없다.
 - R2: 훅 4종은 내장 정의를 제거하고 `_common`에서 import한다(worklog-reminder는 2026-07-16 신설과 함께 편입). 세션 훅 3종(agentsview-daemon·harness-review-reminder·worklog-reminder)은 같은 디렉토리라 스크립트 직접 실행(`sys.path[0]`=훅 디렉토리)만으로 충분하고, git 훅 계층의 `githooks/tdd-gate.py`(ADR 015)와 각 테스트 스위트(`_common_test.py`·`githooks/tdd-gate_test.py`)는 hooks/ 디렉토리가 sys.path[0]이 아니므로 **파일 위치 기준 sys.path 삽입** 후 import한다.
 - R3: import는 fail-open이어야 한다 — `_common.py` 부재·손상 시 no-op 폴백으로 대체하고 훅 본연의 동작은 계속한다(cp949 보호만 상실, 세션·커밋은 막지 않음).
 - R4: 훅 4종의 기존 회귀 테스트(cp949 케이스 포함)가 수정 없이 전부 통과한다 — 동작 불변 리팩토링임의 증명.
@@ -34,9 +34,9 @@
 
 ## 완료 기준 (테스트 가능한 형태)
 
-- [x] C1 (R1): cp949 TextIOWrapper를 stdout으로 두고 `utf8_stdio()` 호출 후 em dash 포함 문자열을 print하면 UTF-8 바이트로 실제 출력된다.
+- [x] C1 (R1): cp949 TextIOWrapper를 stdout으로 두고 `utf8_stdio()` 호출 후 em dash 포함 문자열을 print하면 UTF-8 바이트로 실제 출력된다(`test_c1_cp949_stdout_reconfigured_to_utf8`). **입력 방향(2026-11-27)**: UTF-8 바이트를 담은 cp949 TextIOWrapper를 stdin으로 두고 `utf8_stdio()` 호출 후 읽으면 한글·em dash가 원문 그대로 읽힌다(`test_c1_cp949_stdin_reconfigured_to_utf8`). 실제 프로세스 경계의 회귀는 tier-gate 스펙 C24와 `gate-reminder_test.py`의 `test_utf8_payload_arms_under_a_cp949_locale`.
 - [x] C2 (R1): reconfigure 불가 스트림(StringIO)에서 `utf8_stdio()`가 예외 없이 통과한다.
-- [x] C3 (R2): 훅 4종이 로드 시 `_common.utf8_stdio`와 동일 객체를 사용한다(복제본 아님 — worklog-reminder 포함, 2026-07-16 감사 HOOK-F5로 편입).
+- [x] C3 (R2): 훅 4종이 로드 시 `_common.utf8_stdio`와 동일 객체를 사용한다(복제본 아님 — worklog-reminder 포함, 2026-07-16 감사 HOOK-F5로 편입). 현재 검사 목록 `HOOK_FILES`는 tdd-gate·agentsview-daemon·worklog-reminder·tier-gate·gate-reminder 5종이다 — gate-reminder는 stdin을 읽는 두 번째 소비자라 2026-11-27에 편입(`test_c3_hooks_share_single_source`).
 - [x] C4 (R3): `_common` import가 차단된 상태로 훅을 로드해도 로드가 성공하고 `utf8_stdio()` 호출이 예외를 던지지 않는다.
 - [x] C5 (R4): 훅 4종 기존 테스트 전 케이스 통과(`harness-review-reminder_test.py` 18, `agentsview-daemon_test.py` 14, `tdd-gate_test.py` 25 — C15는 2026-07-15 로케일 수정에서 추가, tdd-gate 스펙 소관).
 
@@ -52,3 +52,4 @@
 | 2026-07-16 | worklog-reminder를 단일 원본 보증 범위에 편입 — HOOK_FILES 4종화, 문서 수치 갱신 | R2·R4, C3·C5, _common.py, _common_test.py | 하네스 전체 감사 HOOK-F5 — 4번째 훅이 보증 밖에 있어 복제 발산이 재발할 지점. 사용자 승인 |
 | 2026-07-15 | tdd-gate의 git 계층 이동(main ADR 014·015)과 병합 — R2를 세션 훅 동일 디렉토리 / githooks 교차 디렉토리(sys.path 삽입)로 개정 | R2, 훅 경로 | main 선반영 개편과의 충돌 해소 — 의도(단일 원본)를 새 구조로 번역 |
 | 2026-07-15 | 문서 정합 정정 — C5의 tdd-gate 테스트 수 24→25(C15 추가 반영), R2에 테스트 스위트 importer 명시, `_common.py` docstring을 세션 훅/git 훅/테스트 importer 구분으로 정확화 | C5, R2, _common.py docstring | 문서화 누락 정리(사용자 요청) — 로케일 수정 이후 낡은 수치·불완전 서술 |
+| 2026-11-27 | R1·C1을 stdin까지 확장(입력 방향 케이스 추가), C3 검사 목록에 gate-reminder 편입 | R1, C1·C3, `_common.py`, `_common_test.py` | 하네스 전수 점검 C-05 — cp949 로케일의 stdin 디코딩이 한글 프롬프트에서 훅 입력 판독을 깨 tier-gate가 fail-open으로 꺼짐(실측). 새 번호를 만들지 않고 C1을 확장한 이유: 테스트가 이미 `C1 (R1)`로 표기하고, C6~C9는 `_common_test.py`에서 tier-gate 스펙 C16의 판독기 케이스가 쓰고 있다 |

@@ -27,7 +27,7 @@ When every document has a different format, the reading cost is paid anew each t
 | **README (repository root)** | The first screen of a repository someone can clone or install | Repository root — template 3A |
 | **README (directory / internal)** | A directory or module below that root | That directory — template 3B |
 | **Runbook (operational procedure)** | Recurring ops procedures (deploy, recovery, inspection) | Target project repo `docs/runbooks/` |
-| **PR body** | On PR creation (branch-workflow finish procedure, step 5) | `gh pr create --body` input |
+| **PR body** | On PR creation (branch-workflow finish procedure, step 4) | `gh pr create --body` input |
 
 ADRs and change-history tables are not this skill's target — the single source of their format is root AGENTS.md section 6 (keeping it in two places makes them drift).
 

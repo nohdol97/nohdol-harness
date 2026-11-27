@@ -13,6 +13,8 @@ tier: design | implement | explore   # model mapping: the table in root AGENTS.m
 ---
 ```
 
+**Optional `review-tier`** — only for a role that also serves as a verifier in a named review mode (today `infra-specialist: review-tier: design`). `tier-gate` judges a dispatch at that tier when its prompt says `review mode`, so the lightweight ban on verification holds even with `[light-ok]`; the issuing skill must therefore write those words (team-review infra protocol).
+
 **The CLI does not interpret `tier`** — actual application happens when the orchestrator specifies the `model` parameter per the §9 table at team-member creation (Agent call) time (orchestrate "tier application" rule). `tier-gate` does not enforce that the parameter is present; it blocks only the lightweight grade REGISTRY.md names, since omitting the parameter inherits the session model and cannot reach that grade (ADR 040). The table's second column, reasoning effort, has **no parameter on the Claude Code Agent path** (measured 2026-08-03) — it applies only where a path expresses it, so declaring a tier does not let you pass an effort here. Why no concrete model name is pinned in the definition file: model names change over time, but roles do not (§9).
 
 ## Codex custom-agent adapter (mandatory for root agents)

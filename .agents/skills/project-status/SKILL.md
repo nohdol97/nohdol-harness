@@ -22,14 +22,14 @@ In a multi-project management harness, "what state is everything in right now" i
 
 ### Phase 1 — Parallel collection (**execution mode:** subagents)
 
-Deploy one explorer per registry row in parallel (orchestrate mode B, cap 10–20 — **dispatch all of them simultaneously in one turn**, the mode-B simultaneous-dispatch rule). Fixed collection items for each explorer:
+Partition the registry rows across explorers per the orchestrate mode-B agent count (default 1–3 explorers, each given a disjoint set of projects; more than 3 only when the partitions cannot be covered within the work cap, with that reason in the Phase 0 budget) and **dispatch all of them simultaneously in one turn** (the mode-B concurrent-issuing rule). Each prompt carries the mode-B fetch instruction, because the `project/<name>/` checkout is nobody's refresh target and root §5 forbids asserting state from an unrefreshed read. Fixed collection items for each project:
 
-1. git state: whether it is an independent repository, branch, uncommitted changes, 3 most recent commits
+1. git state: whether it is an independent repository; `git -C project/<name> fetch origin` first, then the 3 most recent commits from `origin/main`; then `git -C project/<name> worktree list` and, for each entry, its branch and `git -C <entry> status --short` (uncommitted work lives in worktrees, invisible from the main checkout). A fetch that fails is reported as unverified, not as "no change"
 2. Harness: whether root `.agents/projects/<name>/AGENTS.md` exists, plus the list of lazily created `skills/`·`agents/` (root AGENTS.md section 12 — the harness lives centrally, not in the project directory). If harness files are found inside `project/<name>/`, report it as a bypass signal
 3. Registry cross-check: whether the actual directory layout matches the registry row (stack, sub-structure)
 4. Notable findings: only those with evidence (bloated build artifacts, signs of abandonment, etc.)
 
-Output: `phase1_explorer-<project>_status.md`
+Output: `phase1_explorer-<project>_status.md` (one file per project, even when one explorer covers several)
 
 ### Phase 2 — Integration (**execution mode:** integrator solo)
 

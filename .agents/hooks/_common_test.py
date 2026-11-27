@@ -47,6 +47,8 @@ HOOK_FILES = [
     # 발행 게이트도 _common 소비자다. tier-gate는 ADR 037 때 이 목록에
     # 들어오지 않아 C3·C4(공통 사용·유실 폴백)가 검사되지 않고 있었다(독립 검증 F6).
     ("tier_gate_hook", "tier-gate.py"),
+    # stdin까지 재구성하게 된 뒤(C-05) 입력을 읽는 두 번째 소비자도 단일 원본을 써야 한다.
+    ("gate_reminder_hook", "gate-reminder.py"),
 ]
 
 
@@ -59,6 +61,12 @@ class TestUtf8Stdio(unittest.TestCase):
             print("리마인더 — em dash 포함")  # cp949였다면 U+2014에서 예외
             sys.stdout.flush()
         self.assertIn("리마인더 — em dash 포함".encode("utf-8"), buf.getvalue())
+
+    def test_c1_cp949_stdin_reconfigured_to_utf8(self):  # C1 (R1) — 입력 방향(C-05)
+        cp949 = io.TextIOWrapper(io.BytesIO("검증 — 리뷰".encode("utf-8")), encoding="cp949")
+        with mock.patch("sys.stdin", cp949):
+            common.utf8_stdio()
+            self.assertEqual(sys.stdin.read(), "검증 — 리뷰")
 
     def test_c2_unreconfigurable_stream_passes(self):  # C2 (R1)
         with contextlib.redirect_stdout(io.StringIO()), \

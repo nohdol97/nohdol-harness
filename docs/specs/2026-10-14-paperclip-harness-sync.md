@@ -1,6 +1,6 @@
 # Paperclip 하네스 동기화
 
-> 폐기: 2026-11-24 [ADR 061](../adr/061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 이 스펙이 가리키는 코드는 저장소에 없으며, 아래는 당시 기록이다.
+> 폐기: 2026-11-24 [ADR 066](../adr/066-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 이 스펙이 가리키는 코드는 저장소에 없으며, 아래는 당시 기록이다.
 
 ## 배경·목표
 사용자가 nohdol-harness의 역할과 스킬을 Paperclip에서 직접 관리하도록 이식을 요청했다. 하네스 원본을 유지하면서 반복 적용 가능한 동기화와 실행 방식 연결을 제공한다.

@@ -1,6 +1,6 @@
 # ADR 035 — 하위 프로젝트 작업의 worktree 선행 생성과 정리
 
-> 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
+> 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다. 2026-11-24 [ADR 062](062-corporate-dispatch-unblocked.md)가 사내 발행 차단 자체를 폐기해 발행·리뷰 예외는 무의미해졌고 worktree 선택권만 남는다.
 
 
 - 날짜: 2026-07-29

@@ -55,16 +55,60 @@ def git(args, cwd):
     )
 
 
+# 마커 판정은 최종 커밋 메시지가 될 부분만 본다(감사 1127 C-04). git은 commit-msg
+# 훅을 주석 제거 전에 부르므로, 메시지 파일엔 주석 줄(템플릿 안내 등)과
+# `commit -v`의 가위선 아래 diff가 남아 있다 — 마커를 언급한 문서의 diff가 확인 없는
+# 면제가 되면 안 된다. 주석 접두는 `#`·core.commentChar·core.commentString의
+# 합집합이다 — git 버전마다 실제로 쓰는 쪽이 달라(commentString은 ≥2.45만) 훅이 하나를
+# 고르면 git이 쓴 가위선을 놓친다(감사 1127 V2-01). `auto`면 후보 전부를 더한다. 접두가
+# 늘수록 줄을 더 버리고 더 일찍 자를 뿐이라 판정은 차단 쪽으로만 기운다.
+CUT_LINE = " ------------------------ >8 ------------------------"
+AUTO_COMMENT_CHARS = "#;@!$%^&|:"  # git builtin/commit.c adjust_comment_line_char 후보
+
+
+def comment_prefixes(cwd):
+    prefixes = {"#"}
+    for key in ("core.commentChar", "core.commentString"):
+        value = git(["config", "--get", key], cwd).stdout.strip()
+        if value == "auto":
+            prefixes.update(AUTO_COMMENT_CHARS)
+        elif value:
+            prefixes.add(value)
+    return tuple(sorted(prefixes))
+
+
+def message_text(msg_path, cwd):
+    prefixes = comment_prefixes(cwd)
+    with open(msg_path, encoding="utf-8", errors="replace") as f:
+        lines = f.read().splitlines()
+    kept = []
+    for line in lines:
+        # 가위선은 일치하는 접두 전부에 대해 본다 — `#`이 `##`·`#!` 같은 더 긴 접두를
+        # 가리면 가위선을 놓친다(감사 1127 V3-01).
+        if any(line.startswith(p) and line[len(p):].strip() == CUT_LINE.strip()
+               for p in prefixes):
+            break
+        if not line.startswith(prefixes):
+            kept.append(line)
+    return "\n".join(kept)
+
+
 def scan(diff_text):
     """diff의 추가 줄만 검사해 (파일, 줄 번호, 패턴명) 목록을 돌려준다(R1).
     삭제 줄은 보지 않는다 — 시크릿 제거 커밋을 막으면 안 된다."""
     findings = []
     path, lineno = None, 0
+    # `+++ `는 `diff --git`과 첫 `@@` 사이(파일 헤더 구간)에서만 헤더다 — 헝크 안의
+    # `+++ …`는 내용이 `++ `로 시작하는 추가 줄이다(감사 1127 C-09).
+    in_header = False
     for line in diff_text.splitlines():
-        if line.startswith("+++ "):
+        if line.startswith("diff --git "):
+            in_header = True
+        elif in_header and line.startswith("+++ "):
             p = line[4:]
             path = p[2:] if p.startswith("b/") else p
         elif line.startswith("@@"):
+            in_header = False
             m = re.search(r"\+(\d+)", line)
             lineno = int(m.group(1)) if m else 0
         elif line.startswith("+"):
@@ -98,11 +142,10 @@ def git_hook_main(msg_path):
     최초 커밋도 검사한다(R3) — `diff --cached`는 HEAD 없이 빈 트리 대비로 동작하며,
     첫 커밋이야말로 .env가 딸려 들어가는 전형적 시점이다."""
     utf8_stdio()
-    with open(msg_path, encoding="utf-8", errors="replace") as f:
-        if "[secret-ok]" in f.read():
-            return 0
-
     cwd = os.getcwd()
+    if "[secret-ok]" in message_text(msg_path, cwd):
+        return 0
+
     repo = git(["rev-parse", "--show-toplevel"], cwd)
     if repo.returncode != 0:
         return 0
@@ -116,7 +159,11 @@ def git_hook_main(msg_path):
         if any(os.path.exists(os.path.join(gd, m)) for m in SEQUENCER_MARKERS):
             return 0
 
-    r = git(["diff", "--cached", "-U0", "--diff-filter=ACMR"], repo_dir)
+    # 사용자 diff 설정이 파서가 읽는 출력 형식을 바꾸지 못하게 고정한다(감사 1127
+    # C-02): color.ui=always는 줄 앞에 ANSI 코드를 붙여 `+` 판정을 깨고, diff.external·
+    # textconv는 내용 자체를 다른 프로그램 출력으로 바꾼다 — 어느 쪽이든 조용한 통과다.
+    r = git(["diff", "--cached", "-U0", "--no-color", "--no-ext-diff", "--no-textconv",
+             "--diff-filter=ACMR"], repo_dir)
     if r.returncode != 0:
         return 0
     return judge(scan(r.stdout))

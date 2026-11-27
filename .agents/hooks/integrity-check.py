@@ -5,8 +5,9 @@
 (루트 AGENTS.md 8절 승격 원칙 — tdd-gate·secret-gate 계보). 검사: 심링크(R1)·
 `.claude/` 실파일 침입(R2)·스킬/에이전트 frontmatter(R3·R4)·MOC 정합(R5)·CLAUDE.md
 첫 줄(R6)·gitignore 필수 항목(R7)·Codex agent 어댑터 정합(R12)·AGENTS.md 32KB
-안전 예산(R14)·항상-온 문서의 ADR 참조 실재(R15)·한글 뷰 드리프트(R16·R17,
-ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19)·경량 목록 상태(R20).
+안전 예산(R14)·항상-온 문서의 ADR 참조 실재와 ADR 번호 유일성(R15)·한글 뷰 드리프트(R16·R17,
+ADR 030)·Codex 프로젝트 설정 계약(R18)·상시 노출 토큰 예산(R19)·경량 목록 상태(R20)·
+Claude 훅 등록 계약(R21).
 심링크 불가 설치처는 R1·R2를 SKIP한다(R11).
 
 실행: python3 .agents/hooks/integrity-check.py [--root <경로>]
@@ -396,15 +397,39 @@ CODEX_HOOK_MATCHERS = {
     "PreToolUse": {"apply_patch"} | CODEX_AGENT_TOOL_NAMES,
     "PostToolUse": {"Bash", "shell", "local_shell"},
 }
-# Claude 쪽 필수 등록(R21). Codex 목록과 일부러 따로 둔다 — 두 런타임의
-# 이벤트·매처 규약이 다르고, 한쪽을 다른 쪽에서 유도하면 어느 한쪽이 바뀔 때
-# 검사가 조용히 헐거워진다.
-CLAUDE_HOOK_COMMANDS = {
-    "SessionStart": ["agentsview-daemon.py",
-                     "worklog-reminder.py"],
-    "PreToolUse": ["gate-reminder.py", "tier-gate.py"],
-    "PostToolUse": ["gate-reminder.py"],
+# Claude 쪽 필수 등록(R21) — (그 커맨드가 든 항목의 매처 토큰, 커맨드 조각).
+# Codex 목록과 일부러 따로 둔다 — 두 런타임의 이벤트·매처 규약이 다르고, 한쪽을
+# 다른 쪽에서 유도하면 어느 한쪽이 바뀔 때 검사가 조용히 헐거워진다. 스크립트
+# 이름만 보던 동안 매처를 `NoSuchTool`로 바꾸거나 `--check`를 지워도 PASS였다
+# (독립 검증 2026-11-27 C-08). 첫 조각이 스크립트 이름이며 출력 라벨이 된다.
+CLAUDE_SESSION_MATCHERS = frozenset({"startup", "resume", "clear"})
+CLAUDE_HOOK_REGISTRATIONS = {
+    "SessionStart": [
+        (CLAUDE_SESSION_MATCHERS, ("agentsview-daemon.py",)),
+        (CLAUDE_SESSION_MATCHERS, ("worklog-reminder.py",)),
+    ],
+    "PreToolUse": [
+        (frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"}),
+         ("gate-reminder.py", "--check")),
+        (frozenset({"Agent"}), ("tier-gate.py",)),
+    ],
+    "PostToolUse": [(frozenset({"Bash"}), ("gate-reminder.py", "--record"))],
 }
+
+# 등록 래퍼의 존재 가드(R18·R21). 경로가 안 풀리면(빈 `CLAUDE_PROJECT_DIR`, Codex
+# `$PWD`가 루트 아님, 파일 유실·권한) 인터프리터가 exit 2로 죽고, PreToolUse에서
+# 그 값은 도구 호출 차단이다 — fail-open 훅이 모든 Edit/Write·발행을 막는
+# fail-closed로 뒤집힌다(tier-gate 스펙 R11이 실측한 위험, gate-reminder에는 빠져
+# 있었다 — 독립 검증 2026-11-27 C-07). 확인한 `$f`를 실행해야 가드가 유효하다.
+_SHIM_GUARD_RE = re.compile(
+    r'^\s*f="[^"]+"\s*;\s*\[\s+-r\s+"\$f"\s+\]\s*\|\|\s*exit\s+0\s*;(?P<rest>.*)$', re.S)
+SHIM_GUARD_HINT = ('existence guard `f="<hook>"; [ -r "$f" ] || exit 0;` then exec "$f" — '
+                   'an unresolvable path exits 2, which PreToolUse treats as a block')
+
+
+def _shim_guarded(command):
+    m = _SHIM_GUARD_RE.match(command)
+    return bool(m) and '"$f"' in m.group("rest")
 
 CODEX_HOOK_COMMANDS = {
     "SessionStart": [
@@ -491,6 +516,10 @@ def check_codex_config(root):
                 out.append(("R18 Codex config", FAIL,
                             "%s command missing contract: %s"
                             % (event, " + ".join(fragments))))
+        for command in commands:
+            if not _shim_guarded(command):
+                out.append(("R18 Codex config", FAIL,
+                            "%s command lacks the %s: %s" % (event, SHIM_GUARD_HINT, command)))
     for filename in ("tier-gate.py",):
         path = os.path.join(root, ".agents", "hooks", filename)
         try:
@@ -544,13 +573,21 @@ ADR_REF_DOCS = ("CLAUDE.md", "AGENTS.md")
 def check_adr_refs(root):
     """R15: 항상-온 문서(CLAUDE.md·AGENTS.md)가 참조하는 ADR 번호의 파일 실재 검사."""
     adr_dir = os.path.join(root, "docs", "adr")
-    existing = set()
+    by_number = {}
     if os.path.isdir(adr_dir):
         for fn in os.listdir(adr_dir):
             m = re.match(r"^(\d{3})-.+\.md$", fn)
             if m:
-                existing.add(m.group(1))
+                by_number.setdefault(m.group(1), []).append(fn)
+    existing = set(by_number)
     out = []
+    # 번호 유일성 — 참조 실재의 전제다. 집합으로만 모으면 한 번호의 두 파일이
+    # 통과하고, 맨 "ADR 061" 인용은 결정 둘을 가리킨다(독립 검증 2026-11-27 D-01).
+    for number, files in sorted(by_number.items()):
+        if len(files) > 1:
+            out.append(("R15 ADR number %s" % number, FAIL,
+                        "%d files share the number: %s — renumber the later one (§6)"
+                        % (len(files), ", ".join(sorted(files)))))
     for rel in ADR_REF_DOCS:
         path = os.path.join(root, rel)
         if not os.path.isfile(path):
@@ -671,8 +708,13 @@ def check_claude_hook_registrations(root):
     전환점 포착, 세션 훅이 남고, 유실이 조용하다는 성질도 그대로다. 조용히 사라질
     수 있는 판정 장치는 무결성이 이름을 불러 줘야 한다(R18·R20과 같은 이유).
 
-    커맨드 문자열 전체를 고정하지는 않는다 — shim은 인터프리터 탐색 형태가 바뀔
-    수 있고, 여기서 잡으려는 것은 **등록의 유실**이지 표기 변화가 아니다.
+    R18과 같은 깊이로 본다 — 스크립트 이름만 보면 매처가 엉뚱한 도구를 가리키거나
+    `--check`가 빠져도 PASS였다(독립 검증 2026-11-27 C-08). 그래서 필수 등록마다
+    **그 커맨드가 든 항목의 매처**가 필요한 토큰을 갖는지, 커맨드가 mode 조각을
+    갖는지 대조하고, 모든 커맨드에 존재 가드를 요구한다(C-07). 커맨드 문자열
+    전체는 고정하지 않는다 — 인터프리터 탐색 형태는 바뀔 수 있고, 여기서 잡으려는
+    것은 **등록의 유실·무력화**이지 표기 변화가 아니다. 와일드카드 매처는 받지
+    않는다(R18과 같다) — 쓰려면 이 표를 함께 고친다.
     """
     path = os.path.join(root, ".claude", "settings.json")
     if not os.path.exists(path):
@@ -686,16 +728,38 @@ def check_claude_hook_registrations(root):
     if not isinstance(hooks, dict):
         return [("R21 Claude hooks", FAIL, "no 'hooks' object")]
     out = []
-    for event, required in CLAUDE_HOOK_COMMANDS.items():
-        blob = repr(hooks.get(event, []))
-        for script in required:
-            label = "R21 Claude hooks %s" % script
-            if script in blob:
-                out.append((label, PASS, ""))
-            else:
+    for event, required in CLAUDE_HOOK_REGISTRATIONS.items():
+        pairs = []  # (그 항목의 매처 토큰, 커맨드)
+        entries = hooks.get(event)
+        for entry in entries if isinstance(entries, list) else []:
+            if not isinstance(entry, dict):
+                continue
+            tokens = {part for part in str(entry.get("matcher") or "").split("|") if part}
+            handlers = entry.get("hooks")
+            for handler in handlers if isinstance(handlers, list) else []:
+                if isinstance(handler, dict) and isinstance(handler.get("command"), str):
+                    pairs.append((tokens, handler["command"]))
+        for tokens, fragments in required:
+            label = "R21 Claude hooks %s" % fragments[0]
+            named = [(t, c) for t, c in pairs if fragments[0] in c]
+            contract = [(t, c) for t, c in named if all(f in c for f in fragments)]
+            if not named:
                 out.append((label, FAIL,
                             "not registered under %s in .claude/settings.json — "
                             "the hook silently stops firing (R21)" % event))
+            elif not contract:
+                out.append((label, FAIL, "%s command missing contract: %s"
+                            % (event, " + ".join(fragments))))
+            elif not any(tokens <= t for t, _ in contract):
+                missing = tokens - set().union(*(t for t, _ in contract)) or tokens
+                out.append((label, FAIL, "%s matcher missing: %s — the hook never fires"
+                            % (event, ", ".join(sorted(missing)))))
+            else:
+                out.append((label, PASS, ""))
+        for _, command in pairs:
+            if not _shim_guarded(command):
+                out.append(("R21 Claude hooks %s" % event, FAIL,
+                            "command lacks the %s: %s" % (SHIM_GUARD_HINT, command)))
     return out or [("R21 Claude hooks", PASS, "")]
 
 

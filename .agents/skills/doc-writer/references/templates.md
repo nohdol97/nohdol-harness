@@ -239,7 +239,7 @@ Title: commit-convention format `type(프로젝트스코프): 요약` (root AGEN
 <이 PR이 무엇을 왜 바꾸는가 — 3줄 이내. 리뷰어가 이것만 읽고 diff를 열 수 있게>
 
 ## 변경 내용
-<번호 목록 = diff 읽기 가이드(§13-0 사용자 성장): 파일 나열이 아니라 변경 단위를 **읽어야 할 순서로** 나열하고, 각 항목에 **왜 이 부분이 중요한지 한 줄**을 붙인다 — 사용자가 순서대로 읽고 이해하도록.
+<번호 목록 = diff 읽기 가이드(루트 §13 머리말 — 사용자 이해): 파일 나열이 아니라 변경 단위를 **읽어야 할 순서로** 나열하고, 각 항목에 **왜 이 부분이 중요한지 한 줄**을 붙인다 — 사용자가 순서대로 읽고 이해하도록.
 **다이어그램 발동 조건과 임계값은 스펙 템플릿과 같다**(`diagram` 스킬 1절 정본) — 이 변경이 순서·상태·분기·구조 중 하나를 **임계값을 넘겨** 바꿨으면 Mermaid로 그린다. **PR 본문은 저장소 상대 경로 이미지를 못 걸므로** 15노드를 넘으면 SVG로 escalate하지 말고 **다이어그램을 쪼갠다**>
 
 ## 연결
@@ -251,7 +251,7 @@ Title: commit-convention format `type(프로젝트스코프): 요약` (root AGEN
 - 독립 검증: <reviewer 라운드 수와 판정(PASS/BLOCK·반영 내용). **독립 검증을 돌리지 못했으면 「독립 검증 없음 — <사유>」라고 적고, 그 자리를 무엇으로 메웠는지**(직접 재실행한 명령·확인 범위)를 잇는다. **이 줄은 비워 두거나 생략할 수 없다** — 검증을 못 한 PR과 조용히 건너뛴 PR이 사후에 구분되지 않기 때문이다. **설치 프로필과 무관하게 요구한다**(ADR 062)>
 
 ## 리뷰 포인트
-<판단이 필요한 지점·자율 결정·트레이드오프. 각 항목은 **결과만("X로 함")이 아니라 결정 공간을 가르친다**: 무엇 대 무엇의 갈림길이었고, 이 맥락에서 이 선택인 이유(§13-0 사용자 성장 — 자명한 결정은 생략). 없으면 "없음">
+<판단이 필요한 지점·자율 결정·트레이드오프. 각 항목은 **결과만("X로 함")이 아니라 결정 공간을 가르친다**: 무엇 대 무엇의 갈림길이었고, 이 맥락에서 이 선택인 이유(루트 §13 머리말 사용자 이해 — 자명한 결정은 생략). 없으면 "없음">
 ```
 
 Check: does 변경 내용 read as an ordered reading-guide with a "why it matters" line per item / does 리뷰 포인트 teach the decision space (fork + reason) not just the outcome / does the verification section contain actual commands and numbers / are spec/issue links stated (with a reason if absent) / can the PR's purpose be understood from the summary alone.

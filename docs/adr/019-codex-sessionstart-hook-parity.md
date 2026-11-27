@@ -2,6 +2,8 @@
 
 > **부분 대체(→029·031, 2026-07-25)**: 확인된 이벤트만 등록한다는 자세와 agentsview-daemon 제외는 ADR 029가, `.codex/hooks.json` 위치·`codex_hooks` 키·clone 즉시 활성 주장은 ADR 031이 대체했다. SessionStart 파리티·공용 스크립트·`$PWD` 경로·macOS/Linux 범위는 유효하다.
 
+> **부분 폐기(→056, 2026-10-08)**: [ADR 056](056-retire-harness-review.md)이 `harness-review` 스킬과 `harness-review-reminder` 훅을 삭제해 이 ADR의 그 훅 등록은 현재 규칙이 아니다. `worklog-reminder` 등록은 그대로다.
+
 - **날짜**: 2026-07-16
 - **변경 내용**: `.claude/settings.json`에만 등록돼 있던 SessionStart 세션 훅 중 **리마인더 2종**(`harness-review-reminder`·`worklog-reminder`)을 **`.codex/hooks.json`(추적)** 에도 등록해 Claude Code·Codex 두 CLI에서 같은 리마인더가 뜨게 한다. 훅 스크립트는 **무변경**(이미 도구 무관). 활성화(`[features] codex_hooks = true`)는 **`.codex/config.toml`(추적)로 저장소에 커밋해 클론 즉시 항상 켜지게** 한다(2026-07-16 사용자 지시).
 - **대상**: `.codex/hooks.json`·`.codex/config.toml`(신설), `.gitignore`(`.codex/*` 추적 예외 2개), AGENTS.md 5·11절, `.agents/skills/harness-install/SKILL.md`, docs/specs/2026-07-14-harness-review-reminder-hook.md·2026-07-16-worklog-reminder-hook.md(Codex 노트)

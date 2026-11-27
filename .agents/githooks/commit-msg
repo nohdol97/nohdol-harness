@@ -24,6 +24,7 @@ for p in python3 python py; do
 done
 # 전역 hooksPath는 저장소 로컬 훅(.git/hooks)을 가리므로 같은 이름의 로컬 훅에 체인한다.
 # `--git-path hooks/`는 core.hooksPath를 따라 자기 자신을 돌려주므로 쓰지 않는다(무한 재귀).
-gd=$(git rev-parse --git-dir 2>/dev/null) || exit 0
+# 로컬 훅은 공통 디렉토리에 있다 — linked worktree의 --git-dir(.git/worktrees/<n>)엔 없다.
+gd=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
 [ -x "$gd/hooks/commit-msg" ] && exec "$gd/hooks/commit-msg" "$@"
 exit 0

@@ -28,10 +28,11 @@ claude-mem(github.com/thedotmack/claude-mem, Apache-2.0)은 이 "세션 경계 �
 - R4: fail-open — git 미설치·비저장소·명령 실패·예외는 전부 무출력 exit 0(세션 시작을 막지 않는다). git 조회 실패는 침묵(변경 수 None → 무출력). 시작 시 stdout을 **UTF-8(errors=replace)로 재구성**한다(cp949 콘솔에서 em dash가 print 예외를 던져 fail-open이 삼키는 장애 방지 — 리마인더 스펙 R4와 동일 원인). 재구성 로직의 단일 원본은 `_common.py`(스펙 2026-07-15-hooks-common-bootstrap), 유실 시 no-op 폴백.
 - R5: 읽기 전용 — 마커·상태 파일을 쓰지 않는다. work-tracker의 상태 영속(이슈·backlog)은 스킬의 몫이고 이 훅은 트리거만 한다.
 - R6: 회귀 테스트가 `.agents/hooks/worklog-reminder_test.py`로 영속되어야 한다.
+- R7 (등록 존재 가드): 등록 커맨드는 `f="<기준 경로>/.agents/hooks/worklog-reminder.py"; [ -r "$f" ] || exit 0;`로 시작하고 탐색 체인은 확인한 `"$f"`를 실행한다(Claude `$CLAUDE_PROJECT_DIR`, Codex `$PWD`). 이유: 경로가 안 풀리면(빈 `CLAUDE_PROJECT_DIR`, Codex `$PWD`가 루트 아님, 파일 유실) 인터프리터가 비0으로 죽어 매 세션 시작에 hook error가 남는다 — 모든 등록 커맨드를 tier-gate 스펙 R11의 형태로 통일했다(2026-11-27 하네스 전수 점검 C-07). 등록 형태의 회귀는 integrity-check R18·R21(스펙 2026-07-19-integrity-check-script 4b — `test_every_claude_command_needs_the_existence_guard`·`test_every_codex_command_needs_the_existence_guard`·`test_live_registrations_carry_the_guard`)이 맡는다.
 
 ## 인터페이스 / 설계 개요
 
-- 등록: 루트 `.claude/settings.json` → SessionStart, command는 인터프리터 탐색 체인 `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/worklog-reminder.py"; done; exit 0`(리마인더·agentsview-daemon과 같은 방식 — `.py` 직접 실행의 Windows 실패와 Store 스텁을 실행 확인 `-c ""`로 회피).
+- 등록: 루트 `.claude/settings.json` → SessionStart, command는 인터프리터 탐색 체인 `f="$CLAUDE_PROJECT_DIR/.agents/hooks/worklog-reminder.py"; [ -r "$f" ] || exit 0; for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$f"; done; exit 0`(앞머리 존재 가드는 R7)(리마인더·agentsview-daemon과 같은 방식 — `.py` 직접 실행의 Windows 실패와 Store 스텁을 실행 확인 `-c ""`로 회피).
 - 입력: 없음(stdin 무시). 출력: 미커밋 변경이 있으면 stdout 한 줄(세션 컨텍스트로 주입), 아니면 무출력. 항상 exit 0.
 - 부수 효과 없음 — 로컬 git 조회뿐(네트워크 없음, R5: 쓰기 없음).
 
@@ -52,3 +53,4 @@ claude-mem(github.com/thedotmack/claude-mem, Apache-2.0)은 이 "세션 경계 �
 | 2026-07-16 | 초안 작성 및 구현 | 전체 | claude-mem 분석·채택(제안서 2026-07-16, ADR 018) — 세션 경계 진행-기록 유실 공백을 무의존 SessionStart 로컬 git 감지로 메움 |
 | 2026-07-16 | Codex 세션 트리거 채택 — 비목표에서 in-scope로, `.codex/hooks.json` 등록(스크립트 무변경) | 비목표 | 사용자 요청(맥북 Codex 병행). Codex v0.114+ 동일 포맷 지원. docs/adr/019 |
 | 2026-07-25 | Codex 등록을 인라인 config로 전환하고 trust·developer context 실측 반영 | 비목표 | ADR 031, CLI 0.145.0 macOS 검증 |
+| 2026-11-27 | 등록 존재 가드 R7 신설, 설계 개요의 등록 커맨드 인용을 가드형으로 갱신 | R7, 설계 개요, `.claude/settings.json`, `.codex/config.toml` | 하네스 전수 점검 C-07 — 가드 없는 등록이 경로 미해결 시 인터프리터 비0 종료(PreToolUse 훅에서는 전면 차단으로 실측된 같은 결함 클래스). 등록 4종을 tier-gate 형태로 통일 |

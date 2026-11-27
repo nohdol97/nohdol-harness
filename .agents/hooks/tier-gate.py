@@ -33,6 +33,8 @@ ADR 037의 방향을 뒤집었다). 미지정은 통과시키고, REGISTRY.md �
 `[no-test]`·`[secret-ok]`와 같은 계열). **단 design 티어에는
 닿지 않는다** — 전역 정책은 예외와 **별도로** 검증·리뷰·최종 확인의 경량
 사용을 절대 금지하고, 에이전트 정의들도 예외 없이 그렇게 적혀 있다.
+작성 역할이 검증 모드를 겸하는 정의(`review-tier` 키 — infra-specialist의
+review mode)는 발행 프롬프트가 review mode를 밝히면 그 티어로 판정한다.
 
 `inherit`에는 분기가 없다. 경량 목록에 없는 문자열이라 일반 경로에서 통과하며,
 따로 처리하면 죽은 분기가 된다(초판에서는 차단 대상이라 분기가 필요했다).
@@ -89,7 +91,13 @@ OVERRIDE = "[light-ok]"
 # 에이전트 정의도 예외 없이 적혀 있다: reviewer.md·integrator.md는 "never"·
 # "absolutely forbidden"이라 하고 어떤 우회도 달지 않는다.
 NO_OVERRIDE_TIERS = frozenset({"design"})
-_TIER_RE = re.compile(r"^tier:\s*([A-Za-z_-]+)\s*$", re.MULTILINE)
+# **모드별 티어.** 작성 역할이 검증 모드를 겸하는 정의는 frontmatter에
+# `review-tier`를 선언한다(현재 infra-specialist: 작성 implement, team-review의
+# review mode는 design — 그 정의의 1·10절). 정적 `tier`만 읽으면 review mode
+# 발행이 `[light-ok]`로 경량에 열렸다(독립 검증 2026-11-27 C-06 실측). 발행
+# 프롬프트가 review mode를 밝힐 때만 그 티어로 판정하며, 이름은 데이터에 있다.
+REVIEW_TIER_KEY = "review-tier"
+_REVIEW_MODE_RE = re.compile(r"review[\s_-]*mode", re.IGNORECASE)
 _SAFE_NAME = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
@@ -106,8 +114,8 @@ def matches(name, model):
                      model) is not None
 
 
-def read_tier(base, subagent_type):
-    """`.agents/agents/<name>.md` frontmatter의 tier. 없거나 못 읽으면 None.
+def read_tier(base, subagent_type, key="tier"):
+    """`.agents/agents/<name>.md` frontmatter의 `key`(기본 tier). 없거나 못 읽으면 None.
 
     티어를 코드에 매핑하지 않고 에이전트 정의에서 읽는다 — 정의 파일이 티어
     선언의 원본이고(10절), 로스터가 늘어도 훅을 고칠 필요가 없다.
@@ -123,7 +131,8 @@ def read_tier(base, subagent_type):
     if not head.startswith("---"):
         return None
     end = head.find("\n---", 3)
-    m = _TIER_RE.search(head[:end] if end > 0 else head)
+    m = re.search(r"^%s:\s*([A-Za-z_-]+)\s*$" % re.escape(key),
+                  head[:end] if end > 0 else head, re.MULTILINE)
     return m.group(1) if m else None
 
 
@@ -177,10 +186,12 @@ def main():
                     if matches(name, normalized)), None)
         if not hit:
             return 0  # 경량 목록에 없는 모델·절 부재 — 판정 대상이 아니다
+        prompt = tool_input.get(AGENT_PROMPT_FIELDS[data["tool_name"]])
+        if _REVIEW_MODE_RE.search(str(prompt or "")):
+            tier = read_tier(base, subagent_type, REVIEW_TIER_KEY) or tier
         # **우회 판정은 티어를 안 뒤에 한다.** 앞에 두면 절대 금지 티어까지
         # 표식 한 줄로 열린다(독립 검증 F1).
         overridable = tier.strip().lower() not in NO_OVERRIDE_TIERS
-        prompt = tool_input.get(AGENT_PROMPT_FIELDS[data["tool_name"]])
         if overridable and OVERRIDE in str(prompt or ""):
             return 0  # 사용자 명시 요청 — 9절 경량 예외가 닿는 티어다
         print(message(subagent_type, tier, model, hit, overridable), file=sys.stderr)

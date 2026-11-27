@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/gate-reminder.py\" --record; done; exit 0"
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/gate-reminder.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\" --record; done; exit 0"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/gate-reminder.py\" --check; done; exit 0"
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/gate-reminder.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\" --check; done; exit 0"
           }
         ]
       },
@@ -37,11 +37,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/agentsview-daemon.py\"; done; exit 0"
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/agentsview-daemon.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
           },
           {
             "type": "command",
-            "command": "for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$CLAUDE_PROJECT_DIR/.agents/hooks/worklog-reminder.py\"; done; exit 0"
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.agents/hooks/worklog-reminder.py\"; [ -r \"$f\" ] || exit 0; for p in python3 python py; do \"$p\" -c \"\" >/dev/null 2>&1 && exec \"$p\" \"$f\"; done; exit 0"
           }
         ]
       }

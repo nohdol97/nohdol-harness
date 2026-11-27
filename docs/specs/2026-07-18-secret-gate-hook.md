@@ -1,6 +1,6 @@
 # 스펙: secret-gate 훅 — 3절 시크릿 기록 금지의 커밋 게이트
 
-- 날짜: 2026-07-18 / 상태: 구현됨
+- 날짜: 2026-07-18 / 상태: 구현됨 / 개정: 2026-11-27(하네스 전수 점검 — R7~R9·C13~C16, 알려진 한계 ③ 해소)
 - 관련: docs/adr/023-secret-gate-hook.md, 루트 AGENTS.md 3절(시크릿·자격증명 기록 금지), 8절(훅 승격 원칙), docs/specs/2026-07-13-tdd-gate-hook.md(전례 — shim·fail-open·exit 65 규약 공유)
 
 ## 배경
@@ -23,19 +23,22 @@
 
 ## 요구사항
 
-- R1: **git commit-msg 훅** — `secret-gate.py --commit-msg <메시지 파일>`로 진입, 기존 `.agents/githooks/commit-msg` shim이 tdd-gate에 이어 실행한다(각 게이트의 exit 65만 차단으로 전파, 그 외 비0 rc는 fail-open — tdd-gate R6 규약 동일). 판정 대상은 `diff --cached -U0 --diff-filter=ACMR`의 **추가 줄(`+` 시작, `+++` 헤더 제외)**만 — 삭제 줄의 시크릿 제거 커밋을 막으면 안 된다.
+- R1: **git commit-msg 훅** — `secret-gate.py --commit-msg <메시지 파일>`로 진입, 기존 `.agents/githooks/commit-msg` shim이 tdd-gate에 이어 실행한다(각 게이트의 exit 65만 차단으로 전파, 그 외 비0 rc는 fail-open — tdd-gate R6 규약 동일). 판정 대상은 `diff --cached -U0 --diff-filter=ACMR`의 **추가 줄(`+` 시작, `+++` 헤더 제외)**만 — 삭제 줄의 시크릿 제거 커밋을 막으면 안 된다. 출력 형식 고정 플래그는 R7, 헤더 판별 범위는 R9.
 - R2: 탐지 패턴(고신뢰 형식 확정 패턴만): ① 개인키 블록 `-----BEGIN …PRIVATE KEY` ② AWS Access Key ID `(AKIA|ASIA)[0-9A-Z]{16}` ③ GitHub 토큰 `gh[pousr]_[A-Za-z0-9]{36,}`·`github_pat_[A-Za-z0-9_]{22,}` ④ Slack `xox[baprs]-[0-9A-Za-z-]{10,}` ⑤ Google API `AIza[0-9A-Za-z_-]{35}` ⑥ Stripe `[sr]k_(live|test)_[0-9a-zA-Z]{20,}` ⑦ OpenAI/Anthropic 계열 `sk-[A-Za-z0-9_-]{20,}`. 패턴 추가·제거는 이 스펙 개정으로만 한다.
-- R3: 예외(통과) — ① 메시지 파일에 `[secret-ok]` 포함(사용자 확인 전제) ② merge/cherry-pick/revert/rebase 진행 상태(sequencer 마커 — 이미 게이트를 지난 커밋의 재조합, tdd-gate R2 ⑤ 동일). **최초 커밋은 예외가 아니다** — `diff --cached`는 HEAD 없이도 빈 트리 대비로 동작하며, 첫 커밋이야말로 `.env`가 딸려 들어가는 전형적 시점이다.
+- R3: 예외(통과) — ① 메시지에 `[secret-ok]` 포함(사용자 확인 전제, 판정 범위는 R8) ② merge/cherry-pick/revert/rebase 진행 상태(sequencer 마커 — 이미 게이트를 지난 커밋의 재조합, tdd-gate R2 ⑤ 동일). **최초 커밋은 예외가 아니다** — `diff --cached`는 HEAD 없이도 빈 트리 대비로 동작하며, 첫 커밋이야말로 `.env`가 딸려 들어가는 전형적 시점이다.
 - R4: fail-open — 메시지 파일 없음, git 실패, 저장소 아님, 예외, 알 수 없는 인자 → 전부 exit 0. 시작 시 stdio를 UTF-8(errors=replace)로 재구성한다(tdd-gate R4의 cp949 장애 교훈 공유). 의도적 차단은 exit 65 전용(인터프리터 실패 코드 1·2와 구분 — tdd-gate R1 근거 동일).
 - R5: 차단 시 stderr에 파일명·패턴 종류·해당 줄 번호 힌트와 조치(① 시크릿 제거 후 재커밋 ② 오탐이면 사용자 확인 후 `[secret-ok]`)를 안내한다. **시크릿 값 자체는 출력하지 않는다**(마스킹 — 터미널 로그도 기록면이다).
 - R6: 회귀 테스트 `.agents/githooks/secret-gate_test.py` — 훅 수정 시 반드시 통과(tdd-gate R7 동일).
+- R7: **diff 출력 형식 고정** — 판정용 diff는 `--no-color --no-ext-diff --no-textconv`를 붙여 실행한다. 사용자·저장소 git 설정이 파서가 읽는 출력을 바꾸면 안 된다: `color.ui=always`는 줄 앞에 ANSI 코드를 붙여 `+` 판정을 깨고, `diff.external`·textconv 드라이버(`.gitattributes` `diff=<드라이버>`)는 내용 자체를 다른 프로그램 출력으로 바꾼다 — 어느 쪽이든 차단해야 할 커밋이 조용히 통과한다(2026-11-27 하네스 전수 점검 C-02, 수정 전 실측 exit 0).
+- R8: **승인 마커 판정 범위** — `[secret-ok]`는 최종 커밋 메시지가 될 부분에서만 인정한다. git은 commit-msg 훅을 주석 제거 전에 부르므로 메시지 파일에는 주석 줄(템플릿 안내)과 `git commit -v`의 가위선(`<주석 문자> ------------------------ >8 ------------------------`) 아래 diff가 남아 있다. 그래서 주석 문자로 시작하는 줄은 버리고 가위선에서 읽기를 멈춘 뒤 마커를 찾는다. 주석 접두는 `#`·`core.commentChar`·`core.commentString`의 **합집합**이다 — git 버전마다 실제로 쓰는 쪽이 달라(`commentString`은 ≥2.45만 쓰고 그 전에는 무시한다) 하나만 고르면 git이 쓴 가위선을 놓친다(독립 검증 V2-01: "나중 값 우선"으로 `commentString`만 따르자 git 2.39에서 `#` 가위선 아래 diff의 마커가 다시 면제가 됐다). `auto`면 후보 `#;@!$%^&|:` 전부를 더한다. 가위선은 일치하는 접두 **전부**에 대해 보며(`#`이 `##`·`#!`를 가리지 않게 — V3-01), 접두 뒤 공백은 가위선 판정에서 무시한다. 접두가 늘면 줄을 더 버리고 더 일찍 자를 뿐이라 판정은 차단 쪽으로만 기운다. 이유: 마커를 언급한 문서를 스테이징하고 `commit -v`로 커밋하면 그 diff가 확인 없는 면제가 됐다(2026-11-27 하네스 전수 점검 C-04). tdd-gate R8과 같은 규약이다.
+- R9: **파일 헤더 판별 범위** — `+++ `는 `diff --git` 줄과 첫 `@@` 사이(파일 헤더 구간)에서만 헤더로 읽는다. 헝크 안의 `+++ …`는 내용이 `++ `로 시작하는 추가 줄이므로 검사 대상이다(2026-11-27 하네스 전수 점검 C-09 — 알려진 한계 ③의 해소).
 
 ## 인터페이스 / 설계 개요
 
 - 등록: 기존 전역 `core.hooksPath` → `.agents/githooks/`를 그대로 사용 — **신규 머신 설정 불필요**(shim에 게이트 하나가 추가될 뿐). shim은 게이트 파일 부재 시 통과(R4).
 - 입력: argv `--commit-msg <메시지 파일>`, cwd = 워크트리 루트. 출력: exit 0(통과) / exit 65 + stderr 안내(차단).
 - 부수 효과 없음 — git 조회 명령만 실행.
-- **알려진 한계**: ① 형식 없는 시크릿(평문 비밀번호, 사내 규격 토큰)은 잡지 못한다(비목표 — 문서 규칙·리뷰 몫). ② `[secret-ok]`가 메시지에 있으면 그 커밋의 다른 진짜 시크릿도 통과한다(태그는 커밋 단위 — 부분 승인 없음, tdd-gate `[no-test]`와 동일한 한계). ③ `++`로 시작하는 추가 줄은 diff 원문에서 `+++`가 되어 파일 헤더로 파싱되므로 그 줄의 스캔이 누락된다(fail-open 방향의 희귀 케이스 — 리뷰어 F3, 2026-07-18).
+- **알려진 한계**: ① 형식 없는 시크릿(평문 비밀번호, 사내 규격 토큰)은 잡지 못한다(비목표 — 문서 규칙·리뷰 몫). ② `[secret-ok]`가 메시지에 있으면 그 커밋의 다른 진짜 시크릿도 통과한다(태그는 커밋 단위 — 부분 승인 없음, tdd-gate `[no-test]`와 동일한 한계). ③ ~~`++`로 시작하는 추가 줄은 diff 원문에서 `+++`가 되어 파일 헤더로 파싱되므로 그 줄의 스캔이 누락된다(fail-open 방향의 희귀 케이스 — 리뷰어 F3, 2026-07-18).~~ → **해소(2026-11-27, R9·C16)**. ④ `core.commentChar=auto`에서는 후보 문자(`#;@!$%^&|:`)로 시작하는 본문 줄도 주석으로 버려지므로, 그런 줄에만 둔 `[secret-ok]`는 무시된다(차단 방향 — 수용한 절충). `core.commentString`을 git 자신이 쓰는 경우(≥2.45)는 호스트 git 2.39에서 실측하지 못했다 — 2.39에서는 그 설정이 있어도 `#` 가위선에서 잘림을 실커밋으로 확인했다(A-C04h). ⑤ `--cleanup=verbatim|whitespace`는 `#` 줄을 최종 메시지에 남기지만, 그런 줄에만 둔 마커는 무시된다(차단 방향 — 수용한 절충).
 
 ## 완료 기준 (테스트 가능한 형태)
 
@@ -51,3 +54,7 @@
 - [x] C10 (R4): 바이너리 파일 스테이징 → exit 0 (크래시 없음).
 - [x] C11 (R1·R6): shim 통합 — `core.hooksPath` 경유 `git commit` 시 시크릿 커밋이 실제 차단되고, `[secret-ok]` 메시지로는 통과한다.
 - [x] C12 (R5): 차단 stderr에 시크릿 원문이 포함되지 않는다.
+- [x] C13 (R7): AWS 키를 스테이징한 저장소에 `color.ui=always`(A-C02a)·`diff.external=<아무것도 출력하지 않는 스크립트>`(A-C02b)·textconv 드라이버 `diff=hide` + `diff.hide.textconv=true`(A-C02c)를 각각 설정해도 exit 65. 세 플래그를 하나씩 지우면 대응 케이스만 red가 된다(2026-11-27 변이 실측).
+- [x] C14 (R8): 마커가 `#` 주석 줄에만 있음(A-C04a)·가위선 아래에만 있음(A-C04b)·`core.commentChar=;`에서 `;` 줄에만 있음(A-C04d)·`core.commentChar=;`와 `core.commentString=//`를 함께 설정하고 `//` 줄에만 있음(A-C04g) → exit 65. 실커밋 `commit -v`에 `core.commentString=//`를 설정해도 diff 속 마커로는 통과하지 못함(A-C04h, V2-01 회귀). git ≥2.45가 쓰는 가위선을 훅 수준에서 재현해, 뒤 공백 접두 `"// "`(A-C04i, V2-02)와 `#`에 가려질 수 있는 긴 접두 `##`(A-C04j, V3-01)의 가위선 아래 마커도 무시됨. 본문의 마커 + 주석 줄(A-C04c) → exit 0.
+- [x] C15 (R8·R1): 실커밋 재현 — 마커를 언급한 문서와 시크릿을 함께 스테이징하고 shim 경유 `git commit -v`(제목만 덧붙이는 `GIT_EDITOR`)를 실행하면 커밋이 실패한다(A-C04e). `core.commentChar=auto`에서 `-v -e -m "#123 feat: …"`로 git이 `;`를 고르게 해도 커밋이 실패한다(A-C04f).
+- [x] C16 (R9): 내용이 `++ `로 시작하는 줄의 AWS 키 → exit 65(A-C09).

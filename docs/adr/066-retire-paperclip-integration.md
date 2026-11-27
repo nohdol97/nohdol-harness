@@ -1,4 +1,6 @@
-# ADR 061: Paperclip 연동 폐기
+# ADR 066: Paperclip 연동 폐기
+
+> 번호 변경: 2026-11-27 [ADR 061](061-knowledge-notes-explicit-request.md)과 번호가 겹쳐 061에서 066으로 바꿨다. 2026-11-24~27 사이의 기록에 나오는 「ADR 061(Paperclip)」은 이 문서다.
 
 - 날짜: 2026-11-24
 - 상태: 활성

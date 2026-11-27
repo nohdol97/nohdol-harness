@@ -1,9 +1,9 @@
 # ADR 057: Paperclip 역할·스킬 동기화
 
-> 폐기: 2026-11-24 [ADR 061](061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 아래 내용은 당시 결정의 이력이며 현재 실행 지침이 아니다.
+> 폐기: 2026-11-24 [ADR 066](066-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 아래 내용은 당시 결정의 이력이며 현재 실행 지침이 아니다.
 
 - 날짜: 2026-10-14
-- 상태: 폐기 — ADR 061
+- 상태: 폐기 — ADR 066
 
 ## 배경
 사용자가 큰 개발 스펙의 구현·검토를 Paperclip에서 관리하기 위해 기존 하네스의 스킬과 표준 역할을 복제·연결하도록 요청했다. 기존 autoloop 실행기 하나만 보이는 구조 대신 역할별 작업을 Paperclip에서 볼 수 있도록 한다.

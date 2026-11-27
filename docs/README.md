@@ -8,19 +8,19 @@
 
 - [목표·범위 기반 자율 진행](specs/2026-10-15-autonomous-execution.md) — 가역적 선택은 직접 결정하고 중요한 경계에서만 질문
 
-## Paperclip 연결 (폐기 2026-11-24 — ADR 061, 연동 코드·규칙 삭제)
+## Paperclip 연결 (폐기 2026-11-24 — ADR 066, 연동 코드·규칙 삭제)
 
-- [ADR 061](adr/061-retire-paperclip-integration.md) — 활성: Paperclip 연동 폐기
-- [ADR 057](adr/057-paperclip-harness-sync.md) — 폐기(ADR 061). 당시 기록: 원본 기반 역할·스킬 동기화
-- [도입 스펙](specs/2026-10-14-paperclip-harness-sync.md) — 폐기(ADR 061). 당시 기록: 구현·로컬 설치 검증 완료
-- [ADR 058](adr/058-paperclip-registry-privacy.md) — 폐기(ADR 061). 당시 기록: 로컬 레지스트리 연결·운영사 수집 비활성화
-- [레지스트리·수집 설정 스펙](specs/2026-10-15-paperclip-registry-privacy.md) — 폐기(ADR 061). 당시 기록: 구현·로컬 검증 완료; 모델 통신 범위 확인 전 에이전트 일시 정지
-- [ADR 059](adr/059-paperclip-native-coordination.md) — 폐기(ADR 061). 당시 기록: Paperclip 협업과 CLI orchestration 분리
-- [Paperclip 자율 판단](specs/2026-10-15-paperclip-autonomous-decisions.md) — 폐기(ADR 061). 당시 기록: 세부 개발 결정·스펙 확정 위임, 필요한 인간 결정과 독립 검토 보존
-- [협업 규칙 스펙](specs/2026-10-15-paperclip-native-coordination.md) — 폐기(ADR 061). 당시 기록: 구현·로컬 반영·독립 검증 완료
-- [ADR 060](adr/060-paseo-paperclip-panel.md) — 폐기(ADR 061). 당시 기록: Paseo의 직접 API 기반 Paperclip 패널
-- [Paseo 패널 스펙](specs/2026-10-15-paseo-paperclip-panel.md) — 폐기(ADR 061). 당시 기록: 로컬 설치·RPC·390px 웹 화면·독립 검토 완료; 실물 폰 미검증
-- [Paseo 작업·응답 확장 스펙](specs/2026-10-15-paseo-paperclip-actions.md) — 폐기(ADR 061). 당시 기록: 작업 제출·응답함·질문/승인·차단별 후속 조치
+- [ADR 066](adr/066-retire-paperclip-integration.md) — 활성: Paperclip 연동 폐기
+- [ADR 057](adr/057-paperclip-harness-sync.md) — 폐기(ADR 066). 당시 기록: 원본 기반 역할·스킬 동기화
+- [도입 스펙](specs/2026-10-14-paperclip-harness-sync.md) — 폐기(ADR 066). 당시 기록: 구현·로컬 설치 검증 완료
+- [ADR 058](adr/058-paperclip-registry-privacy.md) — 폐기(ADR 066). 당시 기록: 로컬 레지스트리 연결·운영사 수집 비활성화
+- [레지스트리·수집 설정 스펙](specs/2026-10-15-paperclip-registry-privacy.md) — 폐기(ADR 066). 당시 기록: 구현·로컬 검증 완료; 모델 통신 범위 확인 전 에이전트 일시 정지
+- [ADR 059](adr/059-paperclip-native-coordination.md) — 폐기(ADR 066). 당시 기록: Paperclip 협업과 CLI orchestration 분리
+- [Paperclip 자율 판단](specs/2026-10-15-paperclip-autonomous-decisions.md) — 폐기(ADR 066). 당시 기록: 세부 개발 결정·스펙 확정 위임, 필요한 인간 결정과 독립 검토 보존
+- [협업 규칙 스펙](specs/2026-10-15-paperclip-native-coordination.md) — 폐기(ADR 066). 당시 기록: 구현·로컬 반영·독립 검증 완료
+- [ADR 060](adr/060-paseo-paperclip-panel.md) — 폐기(ADR 066). 당시 기록: Paseo의 직접 API 기반 Paperclip 패널
+- [Paseo 패널 스펙](specs/2026-10-15-paseo-paperclip-panel.md) — 폐기(ADR 066). 당시 기록: 로컬 설치·RPC·390px 웹 화면·독립 검토 완료; 실물 폰 미검증
+- [Paseo 작업·응답 확장 스펙](specs/2026-10-15-paseo-paperclip-actions.md) — 폐기(ADR 066). 당시 기록: 작업 제출·응답함·질문/승인·차단별 후속 조치
 
 ## ADR (구조적 결정 기록) — `docs/adr/`
 
@@ -46,7 +46,7 @@
 | [016](adr/016-internal-communication-language.md) | 2026-07-15 | 활성 | 내부 통신 언어 정책 (모델만 읽으면 영어, 사용자면 한국어) |
 | [017](adr/017-code-minimalism-product-code.md) | 2026-07-16 | 활성 | 코드 최소주의 — 제품 코드 (ponytail 이식) |
 | [018](adr/018-claude-mem-adoption.md) | 2026-07-16 | 활성 | claude-mem 최소 채택 (세션 경계 리마인더·점진적 공개·private 마커) |
-| [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 부분 대체(→029·031) | Codex SessionStart 훅 병행 (파리티·공용 스크립트는 유효, 등록 위치·키·활성화 주장은 대체) |
+| [019](adr/019-codex-sessionstart-hook-parity.md) | 2026-07-16 | 부분 대체(→029·031·056) | Codex SessionStart 훅 병행 (파리티·공용 스크립트는 유효, 등록 위치·키·활성화 주장은 대체, `harness-review-reminder` 등록은 056으로 폐기) |
 | [020](adr/020-infra-domain-review-specialization.md) | 2026-07-16 | 활성 | 인프라 도메인 리뷰 특화 (team-review 인프라 관점을 infra-specialist가 리뷰 모드로) |
 | [021](adr/021-claude-md-agents-import.md) | 2026-07-16 | 활성 | CLAUDE.md `@AGENTS.md` 임포트 (단일 원본 항상-온) + 변경 이력 분리 |
 | [022](adr/022-superpowers-adoption.md) | 2026-07-17 | 활성 | superpowers 규율 착안 3건 이식 (압박 테스트·신선한 증거·리뷰 수신 규율) |
@@ -72,7 +72,7 @@
 | [042](adr/042-corporate-profile-dispatch-block.md) | 2026-08-04 | **대체됨(→062)** (045가 폐기했다가 046이 되살림) | **사내 프로필에서 서브에이전트 발행 전면 차단**(038 범위 확장) — 검증 축만 끄던 것을 **역할 무관 발행 축 전체**로 넓혔다: 빌드 측·모든 `integrator` 용도·로스터 밖 타입·`subagent_type` 미지정까지 포함하고, `infra-specialist` 하나만 통과(비용이 아니라 블라스트 반경으로 판정하는 축 — 7절 5항 admission 선확인). **우회 표식 폐기**(`[review-ok]`). `orchestrate` 판정은 항상 「직접 수행」으로 수렴하고, 팬아웃이 절차인 스킬(`project-status`·`team-review`·`harness-review`)은 정지가 아니라 **메인 루프 순차 수행으로 저하**한다. 훅 개명 `review-gate.py` → `dispatch-gate.py` |
 | [043](adr/043-corporate-branch-in-checkout-and-worktree-bootstrap.md) | 2026-08-05 | 부분 대체(→052) | worktree별 의존성 부트스트랩. 작업 위치는 052·053을 따르며 철회된 지시 본문은 제거 |
 | [044](adr/044-mattpocock-skills-partial-adoption.md) | 2026-08-07 | 부분 대체(→056, 정기 점검 경로 폐기) | **mattpocock/skills 부분 채택** — 통설치 기각(ADR 022와 동일 범주: 25개 description 고정 로드·트리거 전면 충돌·§11 심링크 제약), 착안 4건만 이식: ① `harness-review` 신호 ④에 죽은 규칙 판정 방법(무동작·환경-캐시 테스트, 새 의무 아님) ② §13-0을 「1회 일괄」에서 **프론티어 라운드**로 정련(독립 질문은 종전대로 한 라운드) ③ `wait-what` 스킬 신설(슬래시 전용 — ADR 041이 남긴 이해도 요건의 당기는 쪽) ④ `orchestrate/references/product-design.md` 신설(deep module 어휘·폐기 전제 프로토타입, 참고·허용). ①④를 의무로 안 적은 이유는 공통규칙 15 ②의 실측 실패 부재 |
-| [045](adr/045-corporate-profile-dispatch-restored.md) | 2026-08-07 | **폐기(→046)** | **사내 프로필의 발행 차단 폐기**(042·038 대체) — 설치처 프로필을 발행의 판정 입력에서 빼고 `dispatch-gate`를 삭제했다. 같은 날 046이 철회해 커밋이 revert됐으므로 **현재 규칙이 아니다**. 남겨 둔 이유는 §6 규약과, 「프로필 분기를 넣고 빼는 데 무엇이 드는가」의 실측치(35개 파일)를 046이 이 파일에서 인용하기 때문 |
+| [045](adr/045-corporate-profile-dispatch-restored.md) | 2026-08-07 | **폐기(→046)** | **사내 프로필의 발행 차단 폐기**(042·038 대체) — 설치처 프로필을 발행의 판정 입력에서 빼고 `dispatch-gate`를 삭제했다. 같은 날 046이 철회해 커밋이 revert됐으므로 **현재 규칙이 아니다**. 남겨 둔 이유는 §6 규약과, 「프로필 분기를 넣고 빼는 데 무엇이 드는가」의 실측치(35개 파일)를 046이 이 파일에서 인용하기 때문. 같은 해제는 2026-11-24 [062](adr/062-corporate-dispatch-unblocked.md)가 재채택 |
 | [046](adr/046-corporate-profile-dispatch-block-restored.md) | 2026-08-07 | **대체됨(→062)** | **ADR 045 철회 — 사내 발행 차단 복원**(042·038 다시 활성) — 사용자 판정 「비용 때문에 안 되겠다」로 `1b1779f`를 revert. **되돌리지 않은 것 3건**: 045를 검증하다 발견된 테스트 결함(C4b 대상 선택을 파일명 → `read_profile` 보유 여부, R18 어서션을 게이트 이름 → 고유 문구, R21 `gate-reminder` 어서션을 개수로) — 전부 042 시절부터 있던 것이라 차단 여부와 무관하다. 독립 검증 발행 없음(비용이 롤백 사유 — 사용자 결정) |
 | [047](adr/047-autoloop-observation-dashboard.md) | 2026-08-19 | **폐기(→063)** | autoloop 표시 상태를 게이트 체크포인트에서 분리하고 loopback 전용 읽기 대시보드 추가 |
 | [048](adr/048-autoloop-structured-orchestration.md) | 2026-08-19 | **폐기(→063)** | autoloop 구조화 task DAG·ready-set 병렬 dispatch·writer별 worktree 격리·agent/task dashboard 투영 |
@@ -80,7 +80,7 @@
 | [050](adr/050-autoloop-plan-repair-and-scope-aware-waves.md) | 2026-08-20 | **폐기(→063)** | 잘못된 planner DAG의 1회 자동 수정과 겹치는 writer `file_scope`의 wave 직렬화 |
 | [051](adr/051-evaluation-independence-review.md) | 2026-08-26 | 활성 | 평가·지표·실험·벤치마크의 성공 기준이 설계자에게 순환하지 않는지 `team-review` Tests 관점에서 조건부 확인 — 새 reviewer 호출 없음 |
 | [052](adr/052-corporate-worktrees-restored.md) | 2026-09-08 | 활성(autoloop 조항은 063이 대체) | 사내 worktree 복원 — 시작·재개·정리·autoloop 안내를 공통 절차로 통합 |
-| [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 부분 대체(→062·064) | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
+| [053](adr/053-pi-profile-exception.md) | 2026-09-28 | 부분 대체(→062·063·064) | Pi에서 사내 서브에이전트 제한 해제·독립 리뷰 복원과 worktree 선택권 |
 | [054](adr/054-corporate-pi-workers.md) | 2026-10-05 | 폐기 → 055 | 사내 호스트 설계·검토와 내부 Pi 탐색·구현 병렬 위임 |
 | [055](adr/055-retire-corporate-pi-workers.md) | 2026-10-07 | 부분 대체(→062) | 사내 내부 Pi 위임 폐기·호스트 직접 수행 복원(직접 수행 부분은 062가 대체) |
 | [056](adr/056-retire-harness-review.md) | 2026-10-08 | 활성 | 일일·주간 하네스 리뷰 스킬과 자동 알림 제거, 수동 무결성 검사·관찰 신호 유지 |
@@ -118,7 +118,7 @@
 | [2026-08-19-autoloop-orchestration-runtime](specs/2026-08-19-autoloop-orchestration-runtime.md) | 폐기(063) | `.agents/skills/autoloop/scripts/{driver.py,dashboard.py}` | 025·047·048 |
 | [2026-08-19-autoloop-dashboard-operator-ux](specs/2026-08-19-autoloop-dashboard-operator-ux.md) | 폐기(063) | `.agents/skills/autoloop/{dashboard-ui/,scripts/dashboard.py,scripts/dashboard_test.py}` | 047·048·049 |
 | [2026-08-26-evaluation-independence-review](specs/2026-08-26-evaluation-independence-review.md) | 구현됨 | `.agents/skills/team-review/SKILL.md`, `.agents/hooks/eval-independence-contract_test.py` | 051 |
-| [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨 | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052 |
+| [2026-09-08-corporate-worktrees](specs/2026-09-08-corporate-worktrees.md) | 구현됨(autoloop 조항은 063이 대체) | 사내 worktree 복원과 autoloop 프로필 공통 안내 | 052·063 |
 | [2026-09-28-pi-profile-exception](specs/2026-09-28-pi-profile-exception.md) | 구현됨(사내 발행 예외 부분은 062로 무의미) | Pi 시스템 지침·공용 정책·브랜치 체크아웃 절차 | 053·062 |
 | [2026-10-05-corporate-pi-workers](specs/2026-10-05-corporate-pi-workers.md) | 폐기 → 055 | 사내 전용 Pi 배치 실행·실패 회수·호스트 검토 | 054 |
 | [2026-10-06-pi-worker-cli-compatibility](specs/2026-10-06-pi-worker-cli-compatibility.md) | 폐기 → 055 | 기존 Pi·AX CLI 분리와 정상·오류·빈 응답 판정 | 054 |
@@ -127,6 +127,7 @@
 | [2026-10-07-retire-corporate-pi](specs/2026-10-07-retire-corporate-pi.md) | 구현·검증 완료(직접 수행 부분은 062가 대체) | 사내 직접 수행 복원·전용 실행기 제거·기존 안전 경계 보존 | 055·062 |
 | [2026-10-08-retire-harness-review](specs/2026-10-08-retire-harness-review.md) | 구현됨 | 일일·주간 리뷰 스킬·알림·활성 참조 제거 | 056 |
 | [2026-10-07-long-command-logs](specs/2026-10-07-long-command-logs.md) | 구현됨 | 장기 명령 원본 로그·전체 스위트 공유 한도 | — |
+| [2026-11-28-inflight-stopped-test-cli-class](specs/2026-11-28-inflight-stopped-test-cli-class.md) | 초안(미구현) | in-flight survey 정지 판정을 작성자 CLI 종류에 맞추기 — 노트에 작성자 CLI 기록 | — |
 
 ## 운영 절차 — `docs/runbooks/`
 
@@ -154,13 +155,13 @@
 | [2026-07-26-clew-review](proposals/2026-07-26-clew-review.md) | 기각(실측 미달) | Clew 멀티에이전트 트레이스 낭비 탐지 CLI — 57세션·3,759 툴 스팬 실측: 하네스 세션 낭비 0건, 전체 0.05%(2건)이고 그 2건도 도구 리포트 자체가 정당한 재실행 가능성 명시. 절감 상한 $0.50 대비 `[detect]` 경량 설치가 낭비 검출 시 크래시해 실질 757MB 강제. 증폭 비용의 계산 구조(측정값 아닌 상한)만 ADR 032 사유로 반영 |
 | [2026-07-26-context-engineering-rules-review](proposals/2026-07-26-context-engineering-rules-review.md) | 부분 채택(Layer 1 적용 완료 2026-07-26, Layer 2·3 보류) | Anthropic "Claude 5 세대 컨텍스트 엔지니어링 규칙" 1차 출처 대조 — 원문 8축 중 6축 기수렴 실측(상시 32,637B : 지연 197,590B = 1:6.1). "80% 감축"은 제품 시스템 프롬프트 대상이라 범주 오적용으로 기각, AGENTS.md 스킬 분산은 §11·§12 Codex 가드레일 소실로 기각. **Layer 1(미설치 도구명 SuperClaude·gstack 정리)만 적용 — reviewer PASS, 사실 오류 정정이라 ADR 무개정.** Layer 2(순수 중복 앵커 3개 1,039B=상시의 3.2%)는 ADR 021 개정이 선행 조건이라 보류, Layer 3(rubric·비-markdown 스펙)은 프로젝트 등록 시 재평가 |
 | [2026-07-26-harness-design-sources-review](proposals/2026-07-26-harness-design-sources-review.md) | 전건 규칙 무변경(후보 1건은 관측 후 규칙화로 보류) | 하네스 설계 자료 5건(이슈 #41 A-2~A-6) 1차 출처 대조. A-2 OpenAI 하네스 엔지니어링 기각(§11 Codex 축 미접촉·자동 머지 등 §5·§13 정면 충돌·원문 자체가 고처리량 한정), A-3 Anthropic 장기 실행 부분 채택(generate-verify 불변식 보강, 단 품질 주장은 전부 N=1 미반복), A-4 HyperAgents 기각(**논문에 "harness" 0회 — 표제가 블로거 프레임**·CC BY-NC-SA·100반복 8,860만 토큰), A-5 Managed Agents 기각(두뇌/손은 모델 분리가 아니라 하네스/샌드박스 분리라 §9 근거 불가), A-6 동적 워크플로우 기각(실축이 §7이고 orchestrate 기수렴). **유일한 규칙 변경 후보: A-3·A-5가 독립 도달한 "모델 업그레이드 시 우회 장치는 죽은 코드가 된다" → 신호 ④ 주간 점검에 모델 버전 변경 발화 조건 편입(신호 신설 아님). 2026-07-26 사용자 결정으로 관측 후 규칙화 보류 — 손해 관측 0건이라 §8 선제 생성 금지 원칙 적용, 발화 경로는 규칙이 아니라 메모리 `model-upgrade-dead-workarounds`** |
-| [2026-07-30-loop-graph-engineering-review](proposals/2026-07-30-loop-graph-engineering-review.md) | 부분 채택(autoloop 3건 — 스펙 R16·R5-1·R17) · 신규 스킬 기각 | 루프·그래프 엔지니어링(사용자 제공 글, 자체적으로 떠도는 수치 5종을 가짜로 판정 — 수치 무이식) 대조. 원시개념 9종 중 7종 기수렴, 부분 2종은 기록된 결정(orchestrate 팀 비영속·work-tracker 체크포인트 반대편 배치). **채택은 개념이 아니라 우리 구현 누수 3개**: R16 체크포인트(재개가 노트만 물려받아 정체·누적비용·피드백이 재기동마다 초기화 → 게이트 우회 가능), R5-1 결과 3분류(러너 고장을 red로 뭉개 오타 난 `--test-cmd`가 반복 예산 소각), R17 테스트 래칫(`acceptEdits` Edit으로 단정을 지우면 드라이버가 스스로 green 보고). **신규 `graph` 스킬 기각** — A-6 동적 워크플로우 선례 기각 + §8 신호 부재 + orchestrate 트리거 충돌. autoloop 팬아웃·사전 정적 검사·rewind도 기각 |
+| [2026-07-30-loop-graph-engineering-review](proposals/2026-07-30-loop-graph-engineering-review.md) | 부분 채택(autoloop 3건 — 스펙 R16·R5-1·R17, 2026-11-24 ADR 063으로 폐기) · 신규 스킬 기각 | 루프·그래프 엔지니어링(사용자 제공 글, 자체적으로 떠도는 수치 5종을 가짜로 판정 — 수치 무이식) 대조. 원시개념 9종 중 7종 기수렴, 부분 2종은 기록된 결정(orchestrate 팀 비영속·work-tracker 체크포인트 반대편 배치). **채택은 개념이 아니라 우리 구현 누수 3개**: R16 체크포인트(재개가 노트만 물려받아 정체·누적비용·피드백이 재기동마다 초기화 → 게이트 우회 가능), R5-1 결과 3분류(러너 고장을 red로 뭉개 오타 난 `--test-cmd`가 반복 예산 소각), R17 테스트 래칫(`acceptEdits` Edit으로 단정을 지우면 드라이버가 스스로 green 보고). **신규 `graph` 스킬 기각** — A-6 동적 워크플로우 선례 기각 + §8 신호 부재 + orchestrate 트리거 충돌. autoloop 팬아웃·사전 정적 검사·rewind도 기각 |
 | [2026-07-26-harness-tool-candidates-review](proposals/2026-07-26-harness-tool-candidates-review.md) | 전건 미채택(3 기각·1 연기) | 도구 후보 4건(이슈 #41 B) tool-eval. B-1 VHK 기각 — **`vhk sync`가 AGENTS.md를 자동 생성물로 덮어쓰고(`sync.ts:512`) `core.hooksPath`를 점유해 tdd-gate·secret-gate를 무력화**, 소스에서 확인(README 미기재). B-2 DeerFlow·B-4 OpenHarness 기각 — 범주 불일치(독립 런타임·Claude Code Python 포트), Hermes 선례 동일. B-3 Impeccable 연기 — 프론트엔드 전용이 원문으로 확인됐고 등록 프로젝트 0건이라 대상 부재(재평가 시 `impeccable.style` 텔레메트리·`settings.local.json` 훅 설치 확인 필요). 일반화 후보: 외부 도구가 AGENTS.md·CLAUDE.md·`.agents/`·`core.hooksPath`를 쓰기 대상으로 삼으면 기능 평가 이전에 구조 침해로 기각 |
 | [2026-07-27-gist-mirror-readonly](proposals/2026-07-27-gist-mirror-readonly.md) | 검토 중(사용자 결정 대기) | 2026-07-26 철회한 하위 하네스 secret gist 미러를 **단방향 read-only형**으로 재도입 제안 — 철회 사유였던 §3 방향 통제를 사내 무자격증명(secret gist는 인증 없이 URL로 읽힘, `gist` 스코프는 write 전용)으로 기계 해결 |
 | [2026-07-30-change-record-check-mechanization](proposals/2026-07-30-change-record-check-mechanization.md) | 기각(실측 미달) | 공통 규칙 14를 `integrity-check.py`로 기계화하는 검토 — **원안 술어는 측정 가능한 실사례(`c66e5f6:158`)를 놓친다**(그 행이 근거 커밋 6개를 인용해 "해시 없음" 판별자가 먼저 꺼지며, 측정을 적는 행이 곧 근거를 대는 행이라 구조적이다). 그것을 잡는 술어는 `2a6fe3b`에서 12건 중 1건만 진짜 — 처방·서사·저장소 밖 측정이 대량 오탐. 재제안은 정밀도 해법 동반을 조건으로 한다. 이 문서 자신이 규칙 14의 시험대가 돼 2라운드 연속 BLOCK을 받았고, 「BLOCK 2회+ → 선정리」에 따라 불안정한 수치를 걷어내는 쪽으로 정리했다 |
 | [2026-07-31-gitignored-record-confirmation](proposals/2026-07-31-gitignored-record-confirmation.md) | 보류(선정리 — 규칙 변경 없음) | 대상 컬럼이 적은 gitignore 경로(ops-log 등)의 줄이 끝내 안 쓰이는 실패 3회(신호 ②)에 대한 공통 규칙 11 조항. 1안 순서·2안 마감 검사 모두 독립 검증 BLOCK — 근본 미결은 "gitignore 기록의 due가 언제인가"이고 규칙 11 단독 범위로는 못 푼다. 후보 3안과 근거 기록 |
 | [2026-08-01-harness-semantic-search-pilot](proposals/2026-08-01-harness-semantic-search-pilot.md) | 기각(파일럿 미달) | 로컬 임베딩(ollama)으로 하네스 문서 104건·1.19MB를 의미 검색하는 안. `vault-search`의 `semantic.py`를 경로 파라미터화해 포팅하고 **사전 고정한 3축 바**로 실측 — `bge-m3`가 재현율 5/8(62.5%)·퇴행 4/4(100%)로 ①②를 통과했으나 **초기 빌드 644.47초가 300초 바의 2.15배**라 기각(사후 바 조정 없음, graphify 선례). 증분 catch-up은 3.0초로 통과. **모델 가설은 방향이 맞고 이유가 달랐다** — 코퍼스 언어 가설은 반증(`nomic`은 한국어·영어 코퍼스 양쪽 0점)이고 진짜 축은 **질의 언어**였다(`nomic` 한국어 질의 0/12 대 영어 2/3, rank-1 문서 3종·점수 폭 0.063의 순위 붕괴). 바보다 큰 제약은 **반환 단위** — `bge-m3` 히트 9건 중 실제 답 구절은 4~5건이라 235KB changelog에서는 파일 지목만으로 부족. 재검토는 ①빌드 실측 통과 ②구절 수준 반환을 함께 요구하며 질의 30건 이상으로 표본 보강. `nomic-embed-text`는 재검토 대상 아님 |
-| [2026-08-07-mattpocock-skills-review](proposals/2026-08-07-mattpocock-skills-review.md) | 부분 채택(→044) | aihero.dev/skills(25스킬, MIT) 대조 — 워크플로 척추는 orchestrate·team-review·troubleshooter·doc-writer·§13+tdd-gate가 이미 상회하거나 겹쳐 통설치 기각(ADR 022와 동일 범주, 다른 점 미발견). `grep` 실측으로 확인한 잔여 공백 4건만 이식하고, `wayfinder`(결정 티켓·fog of war)와 `CONTEXT.md` 용어집은 실사용 관찰 시 재검토로 남김 | 022·041·044 |
+| [2026-08-07-mattpocock-skills-review](proposals/2026-08-07-mattpocock-skills-review.md) | 부분 채택(→044, 관련 022·041) | aihero.dev/skills(25스킬, MIT) 대조 — 워크플로 척추는 orchestrate·team-review·troubleshooter·doc-writer·§13+tdd-gate가 이미 상회하거나 겹쳐 통설치 기각(ADR 022와 동일 범주, 다른 점 미발견). `grep` 실측으로 확인한 잔여 공백 4건만 이식하고, `wayfinder`(결정 티켓·fog of war)와 `CONTEXT.md` 용어집은 실사용 관찰 시 재검토로 남김 |
 | [2026-08-26-paperthin-review](proposals/2026-08-26-paperthin-review.md) | 부분 채택(→051) | Paperthin 통설치는 고정 context 17,862B·라우팅 중복·hook/config 충돌로 기각. `mandela`의 평가 독립성만 기존 `team-review` Tests 관점에 조건부 이식해 model·scorer·designer·dataset과 외부 정답을 확인하며 새 스킬·agent·호출은 만들지 않음 |
 | [2026-11-25-rea-adoption](proposals/2026-11-25-rea-adoption.md) | 채택(명시 호출 전용) | REA 역분석 CLI를 얇은 루트 스킬 `rea`로 채택 — 상시 MCP·자동 트리거 등록은 제외, 6.7.0 고정. CLI 실행은 미검증 |
 | [2026-11-26-pstack-review](proposals/2026-11-26-pstack-review.md) | 부분 채택(→065) | pstack(cursor/plugins) 통설치는 poteto-mode의 라우팅 대체·모델명 고정 상시 규칙 파일로 기각(자동 호출은 최상위 스킬 59개 중 58개 꺼짐). 실측 실패가 기록된 축 3건만 역할 파일에 이식, 나머지는 재검토 조건과 함께 기각·보류 |

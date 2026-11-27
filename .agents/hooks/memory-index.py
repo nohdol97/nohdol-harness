@@ -31,7 +31,7 @@ def main(argv):
     config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
     index = os.path.join(config, "projects", slug(root), "memory", "MEMORY.md")
     try:
-        with open(index, encoding="utf-8") as f:
+        with open(index, encoding="utf-8", errors="replace") as f:
             text = f.read()
     except OSError:
         return 0

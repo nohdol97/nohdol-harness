@@ -9,7 +9,7 @@ description: "Wrap up before clearing: route durable work to work-tracker or car
 
 `/clear` is a Claude Code **built-in CLI command**, so the context is emptied the instant it runs, and the model has no turn to intervene at that moment. As a result, "gathering what this session should leave behind, right before clear" gets missed every time — work spanning multiple sessions goes unregistered, notes meant for the next session vanish, and **harness/project improvement signals surfaced in this session evaporate along with the context.**
 
-This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as a **wrap-up gate placed in front of `/clear`** — it sweeps this session's work, **judges the save target by scope** and handles it (local saves are automatic without confirmation; only work-tracker registration gets a just-before confirmation), **captures improvement signals and records a recommended action if any exist**, then guides the user to run `/clear`.
+This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as a **wrap-up gate placed in front of `/clear`** — it sweeps this session's work, **judges the save target by scope** and handles it (local saves are automatic; a work-tracker registration is a provisional decision reported with how to undo it), **captures improvement signals and records a recommended action if any exist**, then guides the user to run `/clear`.
 
 **It is a thin orchestrator — it does not re-implement save/apply logic.** Work saving is delegated to `work-tracker`·`carryover`, and actual application of harness/project improvements to `metaskill`. What this skill does is ⓐ collect session work and branch to the save target ⓑ capture improvement signals and record a recommended action ⓒ guide the clear. Reason: duplicating save/apply logic drifts from the source skills and becomes debt — keep only assets whose need is proven and reuse the rest (ADR 007 lazy creation).
 
@@ -18,7 +18,7 @@ This skill fills that gap. Since `/clear` itself cannot be fixed, it operates as
 ## Two core constraints
 
 1. **Cannot auto-clear**: this skill cannot run `/clear` on the user's behalf (a CLI built-in). When processing is done, it finishes by **guiding the user to type `/clear` themselves**. It never promises anything like "I'll do the clear for you automatically."
-2. **Cannot auto-apply improvements**: the retrospective step goes only as far as **capturing, recording, and recommending** signals. It does **not modify the harness or projects directly** — unauthorized harness/project changes bypass the evolution gate (root AGENTS.md §8, §12 lazy creation: application runs through `metaskill` in a later session under §13-0), and metaskill reports every applied change (the harness is the user's operating asset). Actual application goes only through **the metaskill path after user approval** (same as the existing evolution gate).
+2. **Cannot auto-apply improvements**: the retrospective step goes only as far as **capturing, recording, and recommending** signals. It does **not modify the harness or projects directly** — unauthorized harness/project changes bypass the evolution gate (root AGENTS.md §8, §12 lazy creation: application runs through `metaskill` in a later session under §13-0), and metaskill reports every applied change (the harness is the user's operating asset). Actual application goes only through **`metaskill` in a later session, as a provisional decision under root §8/§13-0**, reported at completion (same as the existing evolution gate).
 
 ## Procedure
 
@@ -41,7 +41,7 @@ Look back over this session and **lightly check only whether improvement signals
 **If there are no signals, move on with the one line "이번 세션 개선 신호 없음" (no improvement signals this session)** — a heavy retrospective gets bypassed every time (minimalism). Do not fabricate signals.
 
 **If there are signals**:
-- **Record lessons immediately, now** (no waiting for proposal — §8 "record mistakes immediately"): in Claude sessions, record to auto-memory (feedback type), but **the index line carries the triggering situation, not the lesson's gist** (in what kind of work this should be recalled). In Codex sessions, write the lesson file and the MEMORY.md index line in the same repository directly.
+- **Record lessons immediately, now** (no waiting for proposal — §8 "record mistakes immediately"): in Claude sessions, record to auto-memory (feedback type), but **the index line carries the triggering situation, not the lesson's gist** (in what kind of work this should be recalled). In Codex and Pi sessions, write the lesson file and the MEMORY.md index line directly in the shared memory directory root §8 names (`~/.claude/projects/<slug>/memory/`, slug = root path with every non-alphanumeric character as `-`) — never into the repository.
 - **For anything requiring harness/project application, record signal + recommended action, and do not edit in this session** — wrapup runs at a session boundary, so edits here would land unverified. State the recommendation as a decision, not a question ("이번 세션에서 〈신호〉를 관찰 — metaskill로 〈조치〉 반영 권장; 다음 세션이 잠정 결정으로 적용"), and for projects record it in the sub AGENTS.md "스킬 후보" (skill candidates) section. The next session applies it through `metaskill` under root §13-0 without asking again.
 
 
@@ -51,14 +51,14 @@ Hold the scope collected in step 1 (change size, commit/push status, unfinished 
 
 - **Nothing to leave**: all changes committed/pushed and no unfinished work/handoff crossing the session → skip the saving in step 4 and continue at step 5 (no confirmation). **"Nothing to leave" does not skip the worktree sweep** — a fully merged and pushed task is precisely the state whose worktree is now removable.
 - **carryover**: there is a **local handoff** the next session will pick up (in-progress work, unfinished memos, this-machine-only context) → **auto-run** `carryover` (save mode) (local, gitignored, low-cost, easy to undo → no confirmation).
-- **work-tracker**: a formal epic spanning multiple PRs/days, or **cross-machine tracking** is needed → **the judgment is automatic, but confirm once just before registering** ("이 에픽을 work-tracker에 등록할까요?"). Whether the store is a GitHub issue or `docs/backlog.md`, it is git-tracked and externally oriented, and registering everything creates an issue graveyard (§14) — never write without confirmation.
-- **Both**: if formal tracking and a local handoff coexist, split them (formal → work-tracker, local memo → carryover — no duplicate loading of the same content). Only the work-tracker part goes through the confirmation above.
+- **work-tracker**: a formal epic spanning multiple PRs/days, or **cross-machine tracking** is needed → register it as a provisional decision (root §13-0) and report the issue/backlog entry and how to undo it (close the issue, revert the backlog commit). The store is git-tracked and externally oriented, so hold registration to §14's criterion — registering everything creates an issue graveyard.
+- **Both**: if formal tracking and a local handoff coexist, split them (formal → work-tracker, local memo → carryover — no duplicate loading of the same content).
 
 **Tell the user the verdict and its basis in one line** (e.g. "전부 커밋·푸시됨 + 미완 없음 → 남길 것 없음"). If the user overrides, follow that. **When the scope signals are too ambiguous to tell carryover from work-tracker, choose carryover (local, reversible) and say so** — registering a tracker issue is an external publication, so it is never the guess.
 
 ### 4. Delegate per the verdict
 
-Invoke the judged target's skill as-is (no duplicate implementation): carryover → `carryover` (save mode); work-tracker → `work-tracker` (register mode) **after user confirmation**; both → invoke sequentially but **never load the same content into both** (formal tracking to work-tracker, local memos to carryover — table below). Move on only after each skill completes.
+Invoke the judged target's skill as-is (no duplicate implementation): carryover → `carryover` (save mode); work-tracker → `work-tracker` (register mode); both → invoke sequentially but **never load the same content into both** (formal tracking to work-tracker, local memos to carryover — table below). Move on only after each skill completes.
 
 ### 5. Sweep subproject worktrees (delegated — `branch-workflow` owns the rule)
 
@@ -118,7 +118,7 @@ The prompt is **in Korean** (a sentence the user types — root §15), and the t
 
 | | work-tracker | carryover |
 |---|---|---|
-| Store | GitHub Issues / `docs/backlog.md` (git-tracked, cross-machine) | `_workspace/carryover/*.md` (gitignored, **local to the same machine**) |
+| Store | GitHub Issues / `docs/backlog.md` (git-tracked, cross-machine) | `_workspace/carryover/{backlog,progress}/*.md` (gitignored, **local to the same machine**) |
 | Target | Multi-PR/multi-day epics, formal | **Light handoff memo** from this session to the next |
 | Loss risk | Low (remote backup) | Local only — cannot leave the machine |
 
@@ -130,7 +130,7 @@ The prompt is **in Korean** (a sentence the user types — root §15), and the t
 |---|---|---|
 | Pre-clear wrap-up | Regret ("should have registered") only after the context is emptied | The gate right before clear forces the save decision |
 | Improvement signals | Fresh end-of-session signals evaporate | Captured while context is alive → recorded/proposed immediately |
-| Save-target judgment | Confusion between work-tracker and carryover, asked every time | Auto-judged by scope (local saves unconfirmed, only work-tracker confirmed just before), asking back only when ambiguous |
+| Save-target judgment | Confusion between work-tracker and carryover, asked every time | Auto-judged by scope and reported in one line; an ambiguous scope defaults to carryover (local, reversible) |
 | Duplicate implementation | Wrap-up/apply logic improvised every time | Reuses existing skills (work-tracker·carryover·metaskill·branch-workflow) |
 | Worktrees | Finished ones accumulate; work inside them is invisible to a root `git status` and gets swept up as "nothing to leave" | Enumerated during the sweep, removed only after a measured merge check |
 | Project checkouts | Left behind indefinitely once worktrees took over; a later read-only survey reports the stale tree as current | A touched checkout on `main` is caught up at wrap-up, so the stale-read window narrows to the three gaps step 6 names |

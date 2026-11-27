@@ -2,7 +2,7 @@
 
 > **대체됨(→062, 2026-11-24)**: [ADR 062](062-corporate-dispatch-unblocked.md)가 이 ADR이 되살린 사내 발행 차단을 다시 폐기했다. 아래는 시점 기록이며 현재 규칙이 아니다.
 
-> 후속: [ADR 055](055-retire-corporate-pi-workers.md)가 ADR 054의 사내 호스트 위임 경로를 폐기하고 호스트 직접 수행을 복원했다. 네이티브 차단과 Pi 자체 세션 정책은 유지한다.
+> 후속: [ADR 055](055-retire-corporate-pi-workers.md)가 ADR 054의 사내 호스트 위임 경로를 폐기하고 호스트 직접 수행을 복원했다. 네이티브 차단과 Pi 자체 세션 정책은 유지한다(네이티브 사내 발행 차단은 2026-11-24 [ADR 062](062-corporate-dispatch-unblocked.md)가 폐기).
 
 > 부분 대체: [ADR 053](053-pi-profile-exception.md)이 Pi 세션의 사내 발행 제한·독립 리뷰 면제와 전용 worktree 의무에 예외를 둔다. 그 밖의 결정과 당시 기록은 유지한다.
 

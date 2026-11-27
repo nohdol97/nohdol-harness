@@ -34,6 +34,6 @@ def render(data):
 
 
 try:
-    print(render(json.load(sys.stdin)))
+    print(render(json.loads(sys.stdin.buffer.read())))  # 바이트로 읽어 로캘 코덱(cp949 등) 오디코딩을 피한다
 except Exception:
     print("[claude]")  # 파싱 불가·예상 밖 모양 모두 폴백

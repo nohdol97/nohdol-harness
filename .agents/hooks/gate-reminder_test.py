@@ -72,6 +72,21 @@ class RecordTest(unittest.TestCase):
             run_hook("--record", bash_event(cmd, sid=sid), self.dir)
             self.assertEqual(read_state(self.dir, sid), "diag", cmd)
 
+    def test_utf8_payload_arms_under_a_cp949_locale(self):
+        """R1·R4: 한글 Windows(cp949) 로케일에서도 원 바이트 UTF-8 입력을 판독한다.
+
+        stdin이 로케일 코덱으로 디코딩되면 한글이 든 진단 명령이 판독 실패로
+        fail-open되어 전환점을 놓친다(독립 검증 2026-11-27 C-05).
+        """
+        raw = json.dumps(bash_event("kubectl get pods  # 상태 확인 — 진단"),
+                         ensure_ascii=False).encode("utf-8")
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=self.dir,
+                   PYTHONIOENCODING="cp949", PYTHONUTF8="0")
+        r = subprocess.run([sys.executable, HOOK, "--record"], input=raw,
+                           capture_output=True, env=env, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(read_state(self.dir), "diag")
+
     def test_plain_command_does_not_arm(self):
         """R1: 비진단 명령은 상태를 만들지 않는다."""
         r = run_hook("--record", bash_event("ls -la && git status"), self.dir)

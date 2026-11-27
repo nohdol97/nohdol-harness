@@ -14,7 +14,7 @@ Pi Coding Agent도 루트에서 실행할 수 있으며 자체 세션 규칙은 
 
 ## 시작하기
 
-1. 이 저장소의 루트에서 Claude Code 또는 Codex를 연다.
+1. 이 저장소의 루트에서 Claude Code·Codex·Pi 중 하나를 연다.
 2. 새 컴퓨터라면 **“하네스 설치”**라고 요청한다.
 3. 설치가 끝나면 원하는 작업을 평소 말하듯 요청한다.
 
@@ -50,7 +50,7 @@ agent-eval-gate의 실패 원인을 조사해줘
 python3 .agents/hooks/integrity-check.py
 ```
 
-필요할 때 구조 무결성을 검사한다. 작업 중 관찰된 개선 신호는 사용자 승인 뒤 `metaskill`로 반영한다.
+필요할 때 구조 무결성을 검사한다. 작업 중 관찰된 개선 신호는 `metaskill`이 잠정 결정으로 적용하고 완료 시 보고한다(미추적 하위 하네스 삭제와 설치된 외부 도구 제거만 사용자 확인).
 
 ## 동작 방식
 
@@ -72,7 +72,7 @@ python3 .agents/hooks/integrity-check.py
 | `.agents/hooks/` | Claude Code·Codex 세션 훅과 무결성 검사 |
 | `.agents/githooks/` | 테스트 없는 코드와 시크릿 커밋을 막는 git 훅 |
 | `.agents/projects/` | 하위 프로젝트 하네스의 설치처별 원본 |
-| `.codex/`, `.claude/` | 두 CLI가 같은 하네스 자산을 읽게 하는 연결 계층 |
+| `.codex/`, `.claude/`, `.pi/` | 세 CLI(Claude Code·Codex·Pi)가 같은 하네스 자산을 읽게 하는 연결 계층 |
 | `docs/` | ADR, 스펙, 제안서, 변경 이력 |
 | `_workspace/` | 팀 보고서와 세션 운영 산출물. git 미추적 |
 | `project/` | 실제 제품 저장소들. 루트 저장소에서는 미추적 |

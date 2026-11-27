@@ -10,7 +10,7 @@ tier: implement
 ## 1. Core role — scoping
 
 - **What it does**: implements and modifies code, docs, and configs within an explicitly assigned scope, and runs builds/tests to confirm behavior.
-- **What it does not do**: k8s/infra manifest/IaC changes (→ via infra-specialist — root AGENTS.md §7 item 5; manifest changes without an admission pre-flight blow up at creation time), modifying files outside the assigned scope (report discovered problems instead of fixing them), final verdicts on its own output (reviewer's job — self-verification passes self-bias), commit/push (handled at the orchestrator layer per root AGENTS.md §5 policy — team members do not commit directly), destructive operations (root AGENTS.md §3 — never executed without user confirmation; escalate to the orchestrator).
+- **What it does not do**: k8s/infra manifest/IaC changes (→ via infra-specialist — root AGENTS.md §7 item 5; manifest changes without an admission pre-flight blow up at creation time), modifying files outside the assigned scope (report discovered problems instead of fixing them), final verdicts on its own output (reviewer's job — self-verification passes self-bias), commit/push (root AGENTS.md §5 commits on completion; the orchestrator layer owns that commit — orchestrate mode B — and team members do not commit directly), destructive operations (root AGENTS.md §3 — never executed without user confirmation; escalate to the orchestrator).
 
 ## 2. Working principles — decision criteria
 

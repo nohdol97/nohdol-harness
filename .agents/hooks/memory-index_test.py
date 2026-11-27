@@ -53,6 +53,16 @@ class MemoryIndex(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("- [a](a.md) — 상황", r.stdout)
 
+    def test_non_utf8_index_still_exits_zero(self):
+        # The docstring promises exit 0 always; a stray non-UTF-8 byte used to raise
+        # UnicodeDecodeError (rc=1) at session start (review 2026-11-27 C-10).
+        d = Path(self.config, "projects", mod.slug(self.root), "memory")
+        d.mkdir(parents=True)
+        (d / "MEMORY.md").write_bytes(b"\xff\xfe bad\n- [ok](ok.md)\n")
+        r = self.run_script("--root", self.root)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("- [ok](ok.md)", r.stdout)
+
     def test_default_root_is_this_harness(self):
         here = os.path.abspath(os.path.join(os.path.dirname(SCRIPT), "..", ".."))
         d = Path(self.config, "projects", mod.slug(here), "memory")

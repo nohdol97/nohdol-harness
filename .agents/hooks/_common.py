@@ -92,12 +92,16 @@ def read_lightweight_models(base):
 
 
 def utf8_stdio():
-    """stdout/stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의
+    """stdin/stdout/stderr를 UTF-8(errors=replace)로 재구성한다 — 한글 Windows 콘솔의
     기본 인코딩(cp949)은 em dash(U+2014) 등을 못 담아 print/write가 예외를 던지고,
     fail-open이 그것을 삼켜 훅이 무출력으로 죽거나(리마인더) 차단해야 할 커밋을
     통과시킨다(tdd-gate) — 2026-07-14 장애. 훅 출력의 소비자는 콘솔이 아니라
-    Claude Code(UTF-8)다."""
-    for stream in (sys.stdout, sys.stderr):
+    Claude Code(UTF-8)다.
+
+    stdin도 같은 이유로 포함한다 — 훅 입력 JSON의 생산자도 CLI(UTF-8)인데, cp949로
+    디코딩하면 한글 프롬프트에서 판독이 실패해 tier-gate가 fail-open으로 꺼졌다
+    (독립 검증 2026-11-27 C-05). 읽기 전에 호출해야 효과가 있다."""
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:

@@ -1,6 +1,6 @@
 # Paperclip 레지스트리 연결·외부 수집 비활성화
 
-> 폐기: 2026-11-24 [ADR 061](../adr/061-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 이 스펙이 가리키는 코드는 저장소에 없으며, 아래는 당시 기록이다.
+> 폐기: 2026-11-24 [ADR 066](../adr/066-retire-paperclip-integration.md)로 Paperclip 연동을 제거했다. 이 스펙이 가리키는 코드는 저장소에 없으며, 아래는 당시 기록이다.
 
 ## 목표
 사용자가 요청한 로컬 REGISTRY.md의 프로젝트·경로·규칙·관계·이관 정보를 Paperclip에 반영하고, Paperclip의 선택적 외부 데이터 수집을 비활성화한다.

@@ -57,6 +57,44 @@ def git(args, cwd):
     )
 
 
+# 마커 판정은 최종 커밋 메시지가 될 부분만 본다(감사 1127 C-04). git은 commit-msg
+# 훅을 주석 제거 전에 부르므로, 메시지 파일엔 주석 줄(템플릿 안내 등)과
+# `commit -v`의 가위선 아래 diff가 남아 있다 — 마커를 언급한 문서의 diff가 확인 없는
+# 면제가 되면 안 된다. 주석 접두는 `#`·core.commentChar·core.commentString의
+# 합집합이다 — git 버전마다 실제로 쓰는 쪽이 달라(commentString은 ≥2.45만) 훅이 하나를
+# 고르면 git이 쓴 가위선을 놓친다(감사 1127 V2-01). `auto`면 후보 전부를 더한다. 접두가
+# 늘수록 줄을 더 버리고 더 일찍 자를 뿐이라 판정은 차단 쪽으로만 기운다.
+CUT_LINE = " ------------------------ >8 ------------------------"
+AUTO_COMMENT_CHARS = "#;@!$%^&|:"  # git builtin/commit.c adjust_comment_line_char 후보
+
+
+def comment_prefixes(cwd):
+    prefixes = {"#"}
+    for key in ("core.commentChar", "core.commentString"):
+        value = git(["config", "--get", key], cwd).stdout.strip()
+        if value == "auto":
+            prefixes.update(AUTO_COMMENT_CHARS)
+        elif value:
+            prefixes.add(value)
+    return tuple(sorted(prefixes))
+
+
+def message_text(msg_path, cwd):
+    prefixes = comment_prefixes(cwd)
+    with open(msg_path, encoding="utf-8", errors="replace") as f:
+        lines = f.read().splitlines()
+    kept = []
+    for line in lines:
+        # 가위선은 일치하는 접두 전부에 대해 본다 — `#`이 `##`·`#!` 같은 더 긴 접두를
+        # 가리면 가위선을 놓친다(감사 1127 V3-01).
+        if any(line.startswith(p) and line[len(p):].strip() == CUT_LINE.strip()
+               for p in prefixes):
+            break
+        if not line.startswith(prefixes):
+            kept.append(line)
+    return "\n".join(kept)
+
+
 # 구분자 규약 밖의 주류 테스트 관행 — 정확 일치만 인정한다(R3). substring 판정은
 # latest/backtest 오분류를 다시 연다(contest.py는 여전히 코드).
 TEST_BASENAMES = {"tests.py", "conftest.py"}
@@ -129,11 +167,10 @@ def git_hook_main(msg_path):
     임시 인덱스(GIT_INDEX_FILE 상속)에 스테이징을 끝낸 상태라 명령 파싱이 필요 없다.
     """
     utf8_stdio()
-    with open(msg_path, encoding="utf-8", errors="replace") as f:
-        if "[no-test]" in f.read():
-            return 0
-
     cwd = os.getcwd()
+    if "[no-test]" in message_text(msg_path, cwd):
+        return 0
+
     repo = git(["rev-parse", "--show-toplevel"], cwd)
     if repo.returncode != 0:
         return 0

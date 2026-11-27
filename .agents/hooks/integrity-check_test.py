@@ -31,6 +31,14 @@ def write(path, text):
         f.write(text)
 
 
+def shim(base, script, mode=""):
+    """등록 래퍼의 존재 가드 형태(C-07). 해석 못 하는 경로에서 인터프리터가 exit 2로
+    죽으면 PreToolUse가 모든 Edit/Write·발행을 막으므로 파일을 먼저 확인한다."""
+    tail = (" " + mode) if mode else ""
+    return ('f="%s/.agents/hooks/%s"; [ -r "$f" ] || exit 0; '
+            'exec python3 "$f"%s' % (base, script, tail))
+
+
 def write_codex_adapter(root, name="foo", description="A test agent", contract="foo", extra=""):
     write(os.path.join(root, ".codex/agents/%s.toml" % name),
           'name = "%s"\n'
@@ -61,6 +69,10 @@ def write_korean_views(root):
           "# 에이전트 한글 요약\n\n" + "".join("## %s\n요약.\n\n" % n for n in stems))
 
 
+CPD = "$CLAUDE_PROJECT_DIR"
+REPO = os.path.dirname(os.path.dirname(HERE))
+
+
 def make_good_fixture(root):
     """규약을 모두 지키는 최소 하네스 구조 + git init(.gitignore 판정용)."""
     # 원본 디렉토리
@@ -83,23 +95,23 @@ def make_good_fixture(root):
           "[[hooks.SessionStart]]\n"
           'matcher = "startup|resume|clear"\n'
           "[[hooks.SessionStart.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/agentsview-daemon.py"\n'
+          "type = \"command\"\ncommand = '%s'\n" % shim("$PWD", "agentsview-daemon.py") +
           "[[hooks.SessionStart.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/worklog-reminder.py"\n\n'
+          "type = \"command\"\ncommand = '%s'\n\n" % shim("$PWD", "worklog-reminder.py") +
           "[[hooks.PreToolUse]]\n"
           'matcher = "apply_patch"\n'
           "[[hooks.PreToolUse.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/gate-reminder.py --check"\n\n'
+          "type = \"command\"\ncommand = '%s'\n\n" % shim("$PWD", "gate-reminder.py", "--check") +
           # 발행 게이트(ADR 037) — R18이 `Agent` 매처 블록을 보게 된 뒤
           # 정상 픽스처도 이것을 갖고 있어야 한다.
           "[[hooks.PreToolUse]]\n"
           'matcher = "Agent|Task|spawn_agent"\n'
           "[[hooks.PreToolUse.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/tier-gate.py"\n\n'
+          "type = \"command\"\ncommand = '%s'\n\n" % shim("$PWD", "tier-gate.py") +
           "[[hooks.PostToolUse]]\n"
           'matcher = "Bash|shell|local_shell"\n'
           "[[hooks.PostToolUse.hooks]]\n"
-          'type = "command"\ncommand = "python3 .agents/hooks/gate-reminder.py --record"\n')
+          "type = \"command\"\ncommand = '%s'\n" % shim("$PWD", "gate-reminder.py", "--record"))
     # .claude 심링크
     claude = os.path.join(root, ".claude")
     os.makedirs(claude, exist_ok=True)
@@ -110,18 +122,18 @@ def make_good_fixture(root):
     # 할 수 없었다.
     write(os.path.join(claude, "settings.json"), json.dumps({
         "hooks": {
-            "SessionStart": [{"hooks": [
-                {"type": "command", "command": "python3 .agents/hooks/agentsview-daemon.py"},
-                {"type": "command", "command": "python3 .agents/hooks/worklog-reminder.py"},
+            "SessionStart": [{"matcher": "startup|resume|clear", "hooks": [
+                {"type": "command", "command": shim(CPD, "agentsview-daemon.py")},
+                {"type": "command", "command": shim(CPD, "worklog-reminder.py")},
             ]}],
             "PreToolUse": [
-                {"matcher": "Edit|Write", "hooks": [
-                    {"type": "command", "command": "python3 .agents/hooks/gate-reminder.py --check"}]},
+                {"matcher": "Edit|Write|MultiEdit|NotebookEdit", "hooks": [
+                    {"type": "command", "command": shim(CPD, "gate-reminder.py", "--check")}]},
                 {"matcher": "Agent", "hooks": [
-                    {"type": "command", "command": "python3 .agents/hooks/tier-gate.py"}]},
+                    {"type": "command", "command": shim(CPD, "tier-gate.py")}]},
             ],
             "PostToolUse": [{"matcher": "Bash", "hooks": [
-                {"type": "command", "command": "python3 .agents/hooks/gate-reminder.py --record"}]}],
+                {"type": "command", "command": shim(CPD, "gate-reminder.py", "--record")}]}],
         }
     }, ensure_ascii=False, indent=2) + "\n")
     # CLAUDE.md / AGENTS.md
@@ -609,12 +621,122 @@ class TestIntegrityCheck(unittest.TestCase):
         # 살아남는다 — 개수로 고정한다(독립 검증 2026-08-07 C-02).
         self.assertEqual(out.count("PASS R21 Claude hooks gate-reminder.py"), 2, out)
 
+    def _edit_claude_settings(self, mutate):
+        path = os.path.join(self.root, ".claude/settings.json")
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        mutate(data["hooks"])
+        write(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+    def test_claude_settings_wrong_tier_gate_matcher_fails(self):
+        """R21: 등록이 남아도 매처가 발행 도구를 놓치면 게이트는 조용히 안 걸린다.
+
+        스크립트 이름만 보던 동안 `Agent`→`NoSuchTool`이 PASS였다(독립 검증
+        2026-11-27 C-08 실측). R18이 Codex 쪽에서 하는 매처 대조를 Claude에도 건다.
+        """
+        def mutate(hooks):
+            for entry in hooks["PreToolUse"]:
+                if entry["matcher"] == "Agent":
+                    entry["matcher"] = "NoSuchTool"
+        self._edit_claude_settings(mutate)
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R21 Claude hooks tier-gate.py", out)
+        self.assertIn("PreToolUse matcher missing: Agent", out)
+
+    def test_claude_settings_dropped_check_mode_fails(self):
+        """R21: `--check`를 잃은 gate-reminder는 mode 없이 0을 돌려 무력해진다(C-08)."""
+        def mutate(hooks):
+            for entry in hooks["PreToolUse"]:
+                for h in entry["hooks"]:
+                    h["command"] = h["command"].replace(" --check", "")
+        self._edit_claude_settings(mutate)
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R21 Claude hooks gate-reminder.py", out)
+        self.assertIn("PreToolUse command missing contract: gate-reminder.py + --check", out)
+
+    def test_claude_matcher_binds_to_its_own_command(self):
+        """R21: 매처와 커맨드는 같은 항목이어야 한다 — 두 항목의 커맨드를 맞바꾸면
+        각 스크립트가 남의 도구에 걸려 둘 다 조용히 헛돈다."""
+        def mutate(hooks):
+            a, b = hooks["PreToolUse"]
+            a["hooks"], b["hooks"] = b["hooks"], a["hooks"]
+        self._edit_claude_settings(mutate)
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R21 Claude hooks tier-gate.py", out)
+        self.assertIn("FAIL R21 Claude hooks gate-reminder.py", out)
+
+    def test_every_claude_command_needs_the_existence_guard(self):
+        """R21: 존재 가드 없는 래퍼는 경로가 안 풀리면 exit 2 — PreToolUse에선 전면 차단이다.
+
+        tier-gate만 가드를 갖고 gate-reminder `--check`는 없어서 빈
+        `CLAUDE_PROJECT_DIR`이 모든 Edit/Write를 막았다(독립 검증 2026-11-27 C-07·F1).
+        일관성을 위해 등록된 커맨드 전부에 요구한다.
+        """
+        with open(os.path.join(self.root, ".claude/settings.json"), encoding="utf-8") as f:
+            original = f.read()
+        commands = [h["command"] for entries in json.loads(original)["hooks"].values()
+                    for entry in entries for h in entry["hooks"]]
+        self.assertEqual(len(commands), 5)
+        for command in commands:
+            with self.subTest(command=command):
+                bare = command.replace('[ -r "$f" ] || exit 0; ', "")
+                self.assertNotEqual(bare, command)
+                write(os.path.join(self.root, ".claude/settings.json"),
+                      original.replace(json.dumps(command), json.dumps(bare)))
+                code, out = run_check(self.root)
+                self.assertEqual(code, 1, out)
+                self.assertIn("existence guard", out)
+                self.assertIn("FAIL R21", out)
+        write(os.path.join(self.root, ".claude/settings.json"), original)
+
+    def test_every_codex_command_needs_the_existence_guard(self):
+        """R18: Codex 래퍼도 같다 — `$PWD`가 루트가 아니면 경로가 안 풀린다(C-07)."""
+        path = os.path.join(self.root, ".codex/config.toml")
+        with open(path, encoding="utf-8") as f:
+            original = f.read()
+        guard = '[ -r "$f" ] || exit 0; '
+        self.assertEqual(original.count(guard), 5)
+        start = 0
+        for _ in range(5):
+            i = original.index(guard, start)
+            with self.subTest(offset=i):
+                write(path, original[:i] + original[i + len(guard):])
+                code, out = run_check(self.root)
+                self.assertEqual(code, 1, out)
+                self.assertIn("FAIL R18", out)
+                self.assertIn("existence guard", out)
+            start = i + len(guard)
+        write(path, original)
+
+    def test_guard_must_cover_the_executed_path(self):
+        """가드가 있어도 실행 경로가 `$f`가 아니면 확인한 파일과 실행한 파일이 다르다."""
+        def mutate(hooks):
+            for entry in hooks["PreToolUse"]:
+                for h in entry["hooks"]:
+                    h["command"] = h["command"].replace(
+                        '"$f" --check', '"$CLAUDE_PROJECT_DIR/.agents/hooks/gate-reminder.py" --check')
+        self._edit_claude_settings(mutate)
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("existence guard", out)
+
+    def test_live_registrations_carry_the_guard(self):
+        """실제 `.claude/settings.json`·`.codex/config.toml`이 R18·R21을 통과한다."""
+        _, out = run_check(REPO)
+        self.assertNotIn("FAIL R18", out)
+        self.assertNotIn("FAIL R21", out)
+        self.assertIn("PASS R18", out)
+
     def test_codex_config_wrong_command_fails(self):
         """R18: handler가 실제 스크립트·mode를 잃으면 FAIL한다."""
         path = os.path.join(self.root, ".codex/config.toml")
         with open(path, encoding="utf-8") as f:
             text = f.read()
-        write(path, text.replace("gate-reminder.py --check", "gate-reminder.py --record"))
+        self.assertIn('"$f" --check', text)
+        write(path, text.replace('"$f" --check', '"$f" --record'))
         code, out = run_check(self.root)
         self.assertEqual(code, 1, out)
         self.assertIn("FAIL R18", out)
@@ -651,6 +773,23 @@ class TestIntegrityCheck(unittest.TestCase):
         code, out = run_check(self.root)
         self.assertEqual(code, 0)
         self.assertNotIn("FAIL R15", out)
+
+    def test_adr_duplicate_number_fails(self):
+        """R15: 한 번호에 ADR 파일이 둘이면 FAIL — 번호 인용이 결정 하나를 못 가리킨다.
+
+        번호를 집합으로만 모으던 동안 061이 두 파일이어도 통과했다(독립 검증
+        2026-11-27 D-01). 두 파일 모두 MOC에 링크해 R5는 통과시키고 R15만 본다.
+        """
+        write(os.path.join(self.root, "docs/adr/001-another.md"), "# ADR 001\n")
+        write(os.path.join(self.root, "docs/README.md"),
+              "# MOC\n- [001](adr/001-initial.md)\n- [001b](adr/001-another.md)\n"
+              "- [thing](specs/2026-07-19-thing.md)\n")
+        code, out = run_check(self.root)
+        self.assertEqual(code, 1, out)
+        self.assertIn("FAIL R15 ADR number 001", out)
+        self.assertIn("001-another.md", out)
+        self.assertIn("001-initial.md", out)
+        self.assertNotIn("FAIL R5", out)
 
     def test_adr_ref_four_digit_number_not_matched(self):
         """R15: 'ADR 2026' 같은 4자리+ 숫자는 참조로 추출하지 않는다(F2 경계)."""

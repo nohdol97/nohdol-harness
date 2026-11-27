@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -65,10 +66,11 @@ def fixture(lightweight="- **haiku** — 최저가 등급\n", heading="## 경량
     with tempfile.TemporaryDirectory() as d:
         agents = os.path.join(d, ".agents", "agents")
         os.makedirs(agents)
-        for name, tier in (("collector", "explore"), ("judge", "design")):
+        for name, tier, extra in (("collector", "explore", ""), ("judge", "design", ""),
+                                  ("builder", "implement", "review-tier: design\n")):
             with open(os.path.join(agents, name + ".md"), "w", encoding="utf-8") as f:
-                f.write("---\nname: %s\ndescription: x\ntier: %s\n---\n본문\n"
-                        % (name, tier))
+                f.write("---\nname: %s\ndescription: x\ntier: %s\n%s---\n본문\n"
+                        % (name, tier, extra))
         body = "# 레지스트리\n\n## 설치처 프로필\n\n- **개인** — 설명\n\n"
         if lightweight is not None:
             body += "%s\n\n%s\n" % (heading, lightweight)
@@ -157,6 +159,53 @@ class Blocking(unittest.TestCase):
         self.assertEqual(err, "")
 
 
+    def test_c23_review_mode_takes_the_declared_review_tier(self):
+        # C23 — infra-specialist는 작성 역할이라 `tier: implement`지만 team-review의
+        # review mode에서는 design 티어 검증자다(infra-specialist.md 1·10절).
+        # frontmatter 티어만 읽으면 `[light-ok]`가 그 검증을 경량으로 연다
+        # (독립 검증 2026-11-27 C-06 — 실측 rc=0). 정의가 `review-tier`를
+        # 선언하고 프롬프트가 review mode를 밝히면 그 티어로 판정한다.
+        with fixture() as d:
+            for prompt in ("[light-ok] REVIEW MODE: read-only manifest review",
+                           "infra review mode — %s" % hook.OVERRIDE):
+                rc, err = run(payload("builder", model="haiku", prompt=prompt), d)
+                self.assertEqual(rc, hook.BLOCK_EXIT, prompt)
+                self.assertIn("우회가 없습니다", err)
+            rc, _ = run(codex_payload("builder", model="haiku",
+                                      message="Review mode %s" % hook.OVERRIDE), d)
+            self.assertEqual(rc, hook.BLOCK_EXIT)
+
+    def test_c23_review_mode_spelling_variants_are_recognized(self):
+        # C23 — 표기 변형(하이픈·밑줄·붙여 쓰기, 대소문자)도 review mode다. 리터럴
+        # "review mode"만 잡으면 `Review-Mode`로 쓴 검증 발행이 경량에 열린다
+        # (독립 검증 2026-11-27 V-05 — 리터럴 변이가 생존했다).
+        with fixture() as d:
+            for prompt in ("Review-Mode: manifest diff %s" % hook.OVERRIDE,
+                           "review_mode %s" % hook.OVERRIDE,
+                           "%s REVIEWMODE" % hook.OVERRIDE):
+                rc, err = run(payload("builder", model="haiku", prompt=prompt), d)
+                self.assertEqual(rc, hook.BLOCK_EXIT, prompt)
+                self.assertIn("우회가 없습니다", err)
+
+    def test_c24_utf8_payload_decides_under_a_cp949_locale(self):
+        # C24 — 한글 Windows(cp949) 로케일은 stdin도 cp949로 디코딩한다. 한글
+        # 프롬프트가 깨져 JSON 판독이 실패하면 게이트가 fail-open으로 꺼진다
+        # (독립 검증 2026-11-27 C-05 — UTF-8 rc=2, cp949 rc=0 실측). 훅 입력의
+        # 생산자는 콘솔이 아니라 CLI(UTF-8)다. 실제 프로세스 경계에서 잰다.
+        # ensure_ascii=False — CLI는 한글을 \u 이스케이프 없이 원 바이트로 보낸다.
+        # 이스케이프된 ASCII 입력이면 로케일과 무관하게 초록이라 아무것도 못 잡는다.
+        raw = json.dumps(json.loads(payload("judge", model="haiku", prompt="검증해줘 — 리뷰",
+                                            description="한글 설명")),
+                         ensure_ascii=False).encode("utf-8")
+        with fixture() as d:
+            for enc in ("utf-8", "cp949"):
+                env = dict(os.environ, CLAUDE_PROJECT_DIR=d,
+                           PYTHONIOENCODING=enc, PYTHONUTF8="0")
+                r = subprocess.run([sys.executable, os.path.join(HERE, "tier-gate.py")],
+                                   input=raw, capture_output=True, env=env, timeout=30)
+                self.assertEqual(r.returncode, hook.BLOCK_EXIT, (enc, r.stderr))
+
+
 class Passing(unittest.TestCase):
     def test_c3_unset_model_passes(self):
         # C3 — 반전의 핵심. 미지정은 부모 세션 모델 상속이고 세션은 상위·표준
@@ -193,6 +242,17 @@ class Passing(unittest.TestCase):
                                   prompt="빠른 확인 %s" % hook.OVERRIDE), d)
         self.assertEqual(rc, 0)
         self.assertEqual(err, "")
+
+    def test_c25_review_tier_needs_the_review_mode_marker(self):
+        # C25 — `review-tier`는 review mode 발행에만 닿는다. 작성·진단 발행은
+        # 선언된 implement 티어 그대로라 사용자 명시 예외가 계속 통한다.
+        with fixture() as d:
+            rc, err = run(payload("builder", model="haiku",
+                                  prompt="manifest 작성 %s" % hook.OVERRIDE), d)
+            self.assertEqual((rc, err), (0, ""))
+            rc, err = run(payload("builder", model="haiku", prompt="manifest 작성"), d)
+            self.assertEqual(rc, hook.BLOCK_EXIT)
+            self.assertIn("implement", err)
 
     def test_c7_roster_external_type_passes(self):
         with fixture() as d:
@@ -242,6 +302,12 @@ class Wiring(unittest.TestCase):
         self.assertEqual(hook.read_tier(REPO, "reviewer"), "design")
         self.assertIsNone(hook.read_tier(REPO, "general-purpose"))
         self.assertIsNone(hook.read_tier(REPO, "../../etc/passwd"))
+
+    def test_infra_specialist_declares_design_review_tier(self):
+        # C23의 판정 입력도 실제 정의에서 온다 — 코드에 에이전트 이름이 없다.
+        self.assertEqual(hook.read_tier(REPO, "infra-specialist"), "implement")
+        self.assertEqual(hook.read_tier(REPO, "infra-specialist", "review-tier"), "design")
+        self.assertIsNone(hook.read_tier(REPO, "implementer", "review-tier"))
 
     def test_lightweight_list_comes_from_real_registry(self):
         # REGISTRY.md는 미추적이라 설치처마다 다르다. 목록의 내용이 아니라

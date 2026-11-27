@@ -15,7 +15,7 @@ However, this is an **external MCP dependency**. If it is missing or fails, **al
 
 ## Procedure
 
-1. **Check negative triggers first** (the `Do NOT use for` in the description):
+1. **Check negative triggers first** (the `Not for` boundary in the description):
    - **Anthropic/Claude/LLM, model-ID, or pricing** questions → go to the **`claude-api` skill (Claude Code built-in)**, not this skill (context7 is for third-party libraries).
    - **Reading a specific user-given URL** → go to **`defuddle`/WebFetch** (context7 is a library index, not a URL reader).
    - **General programming concepts / business-logic debugging** → judge directly without tools (not a documentation-lookup target).

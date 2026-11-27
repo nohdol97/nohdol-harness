@@ -25,10 +25,11 @@ agentsview의 세션 인덱싱(로컬 SQLite 동기화)은 데몬이 떠 있어�
 - R3: 미실행이면 `agentsview daemon start`를 **분리(detached)** 실행한다 — 훅 프로세스가 데몬을 기다리지 않는다. POSIX는 새 세션, Windows는 DETACHED_PROCESS.
 - R4: fail-open — status 타임아웃(10초)·예외·기동 실패 전부 exit 0, 예외 경로는 무출력. **nominal 경로(미설치·이미 실행 중)도 침묵한다** — 매 세션 상태 줄은 노이즈다(2026-07-16 사용자 결정, 세션 훅 공통 원칙 "nominal은 침묵" — worklog 스펙·리마인더 스펙과 정렬. 2026-07-14의 "정상 경로 상태 한 줄" 가시화 결정을 재개정: 특히 agentsview 미설치 설치처는 그 줄이 영구 반복된다). 출력이 남는 유일한 경로는 **상태 전이(재기동) 한 줄**이다. **print를 포함한 main 전 구간이 try 안**이어야 하고, 시작 시 stdout/stderr를 **UTF-8(errors=replace)로 재구성**한다 — 한글 Windows 콘솔(cp949)은 기동 줄의 em dash를 인코딩하지 못해 print 자체가 예외를 던진다(2026-07-14 장애: try 밖 print가 크래시 → 매 세션 hook error).
 - R5: 회귀 테스트가 `.agents/hooks/agentsview-daemon_test.py`로 영속되어야 하며, 훅 수정 시 통과해야 한다.
+- R6 (등록 존재 가드): 등록 커맨드는 `f="<기준 경로>/.agents/hooks/agentsview-daemon.py"; [ -r "$f" ] || exit 0;`로 시작하고 탐색 체인은 확인한 `"$f"`를 실행한다(Claude `$CLAUDE_PROJECT_DIR`, Codex `$PWD`). 이유: 경로가 안 풀리면(빈 `CLAUDE_PROJECT_DIR`, Codex `$PWD`가 루트 아님, 파일 유실) 인터프리터가 비0으로 죽어 매 세션 시작에 hook error가 남는다 — 모든 등록 커맨드를 tier-gate 스펙 R11의 형태로 통일했다(2026-11-27 하네스 전수 점검 C-07). 등록 형태의 회귀는 integrity-check R18·R21(스펙 2026-07-19-integrity-check-script 4b — `test_every_claude_command_needs_the_existence_guard`·`test_every_codex_command_needs_the_existence_guard`·`test_live_registrations_carry_the_guard`)이 맡는다.
 
 ## 인터페이스 / 설계 개요
 
-- 등록: 루트 `.claude/settings.json` → SessionStart, command는 **인터프리터 탐색 체인** `for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$CLAUDE_PROJECT_DIR/.agents/hooks/agentsview-daemon.py"; done; exit 0` — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 인터프리터 부재 시 exit 0(fail-open).
+- 등록: 루트 `.claude/settings.json` → SessionStart, command는 **인터프리터 탐색 체인** `f="$CLAUDE_PROJECT_DIR/.agents/hooks/agentsview-daemon.py"; [ -r "$f" ] || exit 0; for p in python3 python py; do "$p" -c "" >/dev/null 2>&1 && exec "$p" "$f"; done; exit 0`(앞머리 존재 가드는 R6) — `.py` 직접 실행은 Windows(파일 연결·PATHEXT 부재)에서 인터프리터 진입 전에 실패하고, 존재 확인(`command -v`)만으로는 Windows Store App Execution Alias 스텁(PATH에 있지만 실행하면 "Python was not found" exit 49)을 통과시킨다 — 그래서 **실행 확인**(`-c ""`)으로 판별한다. 인터프리터 부재 시 exit 0(fail-open).
 - 입력: 사용하지 않음(stdin JSON 무시 — 판정에 불필요). 출력: 항상 exit 0. 재기동 시에만 상태 한 줄, 그 외(미설치·실행 중·예외)는 무출력(R4).
 - 부수 효과: 데몬 프로세스 기동뿐. 데이터는 agentsview 기본값대로 로컬(`~/.agentsview/`)에만 쓰인다.
 
@@ -58,3 +59,4 @@ agentsview의 세션 인덱싱(로컬 SQLite 동기화)은 데몬이 떠 있어�
 | 2026-07-15 | utf8_stdio를 `_common.py` import로 전환(유실 시 no-op 폴백) | 훅 구현 | 일일 점검 신호 ②(공통 로직 복제로 fix 3연쇄) — 스펙 2026-07-15-hooks-common-bootstrap. Codex 훅 계층 대기 관찰은 리마인더 스펙 미해결 질문에 일원 기록 |
 | 2026-07-15 | status 서브프로세스에 `encoding="utf-8"` 명시(errors=replace) | 훅 구현 | tdd-gate C15와 동일 클래스(로케일 의존 자식 출력 디코딩) 일괄 점검 — 출력이 ASCII라 동작 변화는 없으나 비의존을 규약으로 고정 |
 | 2026-07-16 | nominal(미설치·실행 중) 무출력 재개정 — 출력은 재기동 한 줄만(2026-07-14 상태 한 줄 결정 되돌림), 인터페이스 "무출력" 모순 문구 정합, 중복 완료 기준 ID C5→C6·C7 재부여, 관련 포인터를 harness-changelog.md로 갱신 | R4, C1·C2·C6·C7, 인터페이스, 훅·테스트 | 사용자 결정(2026-07-16, 하네스 전체 감사 HOOK-F4) — "이미 했다/미설치" 상태 줄이 매 세션 노이즈. 리마인더·worklog 훅과 같은 "nominal은 침묵" 원칙으로 정렬 |
+| 2026-11-27 | 등록 존재 가드 R6 신설, 설계 개요의 등록 커맨드 인용을 가드형으로 갱신 | R6, 설계 개요, `.claude/settings.json`, `.codex/config.toml` | 하네스 전수 점검 C-07 — 가드 없는 등록이 경로 미해결 시 인터프리터 비0 종료(PreToolUse 훅에서는 전면 차단으로 실측된 같은 결함 클래스). 등록 4종을 tier-gate 형태로 통일 |

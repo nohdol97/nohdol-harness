@@ -3,7 +3,7 @@
 - **날짜**: 2026-07-26
 - **대상**: 상시 로드 구성(`CLAUDE.md`, `AGENTS.md`, 스킬 description), ADR 021·032
 - **1차 출처**: [The new rules of context engineering for Claude 5 generation models](https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models) (Anthropic)
-- **결론**: **부분 채택** — 미설치 도구명 정리 + 순수 중복 앵커 축소는 채택, 상시 로드 구조 개편은 기각(구조적 제약), 80% 감축 목표는 범주 오적용으로 기각
+- **결론**: **부분 채택** — Layer 1(미설치 도구명 정리)만 채택·적용, Layer 2(순수 중복 앵커 축소)는 보류(10절), 상시 로드 구조 개편은 기각(구조적 제약), 80% 감축 목표는 범주 오적용으로 기각
 
 ## 1. 배경
 

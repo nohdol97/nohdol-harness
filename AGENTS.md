@@ -46,7 +46,7 @@ The harness reaches infrastructure (k8s, AWS), so mistake blast radius exceeds t
 - Harness change commits **include the file's change-history update in the same commit.** Reason: once history and code diverge, nobody trusts the history.
 - **On completion, commit and push by default**; destructive git still needs §3 confirmation. The corporate exception below affects only tracked root-harness files, never sub-project repos.
 - **Installation profile** in REGISTRY.md: `개인` allows root edits/commit/push; `사내` forbids all three for tracked root files—queue improvements in `_workspace/harness-updates.md` for personal-site metaskill application (ADR 012). Sub-project repos remain normal. If missing, confirm and record the profile before root edits; remote PR sessions count as personal.
-- **Root harness changes commit straight to `main` and push — no branch, no PR** — in every local session; only this repo commits directly to `main`.
+- **Root harness changes commit straight to `main` and push — no branch, no PR** — in every local session whose profile allows root commits; only this repo commits directly to `main`.
 - **Root remote PR cycle — remote sessions only** (claude.ai/code and the like, where `main` is not committable): one designated branch, realigned to `origin/main` only after proving `origin/main..origin/<branch>` empty. Commit/push → PR; the user merges. Before follow-ups, fetch and check the PR — stack only while it is open. Never force-push.
 - **Verify before asserting merge/deploy state**: before stating PR-merge, deploy, GitOps-sync, issue or pipeline status for any project (hedged or flat), check it now; if you cannot, say it is unverified. Never infer from conversation recency or an unrefreshed read. Local checkout: `git fetch`, then read the remote-tracking ref (`git log origin/<branch>`, `git show origin/<branch>:<path>`) — fetch alone leaves the working tree stale, and `git status -sb` means something only on a branch with an upstream. Remote-hosted state: its own surface (gh/curl). Cluster: read the cluster, not the GitOps manifests — the controller's sync status and the live workload's revision/image must match your commit; `kubectl rollout status` alone shows only that the applied spec rolled out, not which commit (`--revision` is the ReplicaSet revision). `release` covers the deploy-time procedure.
 - **Sub-project branch rule**: file-changing work starts in an `origin/main` feature worktree at `<ROOT>/project/.worktrees/<name>/<branch>/`; verify its location before edits. Follow `branch-workflow`; keep session cwd at root, rebase before PR, push. **The owning session merges its own sub-project PR** without waiting for the user or CI, on every project and profile, once `branch-workflow` 「Session merge」 holds (independent review PASS, full suite green; §3 still binds a merge that deploys — ADR 064). Remove only after a measured merge. Pi's checkout option: §11, ADR 053.
@@ -85,7 +85,7 @@ On a signal observed during work, judge it and apply tracked-asset creation/impr
 
 ①–③ detect demand; ④ detects bloat. Declared-but-unimplemented rules are integrity defects, not usage signals. Keep the signal set fixed.
 
-**Record recurrence-preventing lessons on first occurrence.** Claude and Codex share `~/.claude/projects/<root-path-with-slashes-as-hyphens>/memory/`; MEMORY.md index lines name the triggering situation. Promote cross-tool lessons to harness rules/roles—and, when mechanical, hooks—via metaskill. Do not build searchable lesson databases (ADR 018).
+**Record recurrence-preventing lessons on first occurrence.** Claude and Codex share `~/.claude/projects/<slug>/memory/` (slug = root path with every non-alphanumeric character as `-`; `.agents/hooks/memory-index.py` applies the same rule); MEMORY.md index lines name the triggering situation. Promote cross-tool lessons to harness rules/roles—and, when mechanical, hooks—via metaskill. Do not build searchable lesson databases (ADR 018).
 
 ## 9. Tier→Model Mapping (the only mapping source)
 
@@ -141,7 +141,7 @@ Sub-project harnesses are managed only here; project repos contain no harness co
 - **Documents are the carrier of rules**: guardrails/mandatory rules must ride in the sub AGENTS.md (a document). Skills/hooks/settings load only relative to session cwd — convenience devices, never the sole carrier.
 - Create sub-project skills/agents lazily after observed need; pre-made assets drift.
 - Sub skills/agents stay untracked and must be listed with paths in sub AGENTS.md; promote only cross-project/install generalizations to root.
-- **Hooks**: sub-project-specific hooks go only into root `.claude/settings.json` as path-branching hooks (script inspects the target path), because only session-root hooks execute.
+- **Hooks**: sub-project-specific hooks go only into root `.claude/settings.json` (mirrored in `.codex/config.toml`, §11) as path-branching hooks (script inspects the target path), because only session-root hooks execute.
 - **Session start practice**: all work, sub-project included, starts sessions at the root. Opening in `project/<name>/` loads no harness at all.
 
 ## 13. Development Methodology — Spec-Driven (SDD) + Test-Driven (TDD)
