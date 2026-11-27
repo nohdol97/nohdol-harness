@@ -68,6 +68,12 @@ class TokenEfficiencyContractTest(unittest.TestCase):
                 self.assertIn(phrase, text)
         root = read("AGENTS.md")
         self.assertIn("opens a successor at any context size, until the user stops the chain", root)
+        # The always-loaded line must name the mechanism: Pi sessions that read only it
+        # spawned successors as raw paseo/pi processes (two cases, 2026-11-27).
+        for phrase in ("only via `python3 .agents/hooks/session-handoff.py spawn --prompt-file <file>`",
+                       "never a raw `paseo`/`pi` process"):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, root)
 
     def test_continues_below_threshold_on_every_project(self):  # ADR 064
         text = section(".agents/skills/orchestrate/SKILL.md",

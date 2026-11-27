@@ -4,21 +4,30 @@
 Usage: suite-slot.py [--slots N] [--wait-limit SECONDS] -- <command> [args...]
 
 Runs <command> once one of N machine-wide slots is free (default 2, env
-SUITE_SLOTS). Slots are flock files under SUITE_SLOT_DIR (default
-/tmp/harness-suite-slots), so a crashed holder frees its slot by itself.
-The child inherits the lock descriptor: the slot stays taken until the
-child and everything it left running exit, not just until this wrapper does.
+SUITE_SLOTS). Slots are locked files under SUITE_SLOT_DIR (default
+/tmp/harness-suite-slots; on Windows the per-user temp directory),
+so a crashed holder frees its slot by itself. POSIX uses flock and the child
+inherits the lock descriptor: the slot stays taken until the child and
+everything it left running exit, not just until this wrapper does. Windows has
+no fcntl and uses msvcrt.locking, held by this wrapper only: it frees the slot
+when the wrapper exits even if a child it left behind is still running.
 Exit code: the command's own code (128+N when killed by signal N); 75 when no
 slot freed within the wait limit (default 3600 s, the suite never ran, and
 stderr says so); 64 on usage or environment-variable error; 71 when the slot
 directory or the command cannot be used. Those three are never a suite result.
 A nested call (SUITE_SLOT_HELD set by an outer wrapper) runs directly.
 """
-import fcntl
 import os
 import subprocess
 import sys
+import tempfile
 import time
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
+    import msvcrt
 
 EX_USAGE, EX_TEMPFAIL, EX_OSERR = 64, 75, 71
 
@@ -57,7 +66,10 @@ def try_acquire(slot_dir, slots):
         except OSError:
             pass
         try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if fcntl:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)  # byte 0; fd is fresh, so at offset 0
             return fd
         except OSError:
             os.close(fd)
@@ -67,7 +79,7 @@ def try_acquire(slot_dir, slots):
 def launch(cmd, fd):
     env = dict(os.environ, SUITE_SLOT_HELD="1")
     try:
-        rc = subprocess.call(cmd, env=env, pass_fds=(fd,) if fd is not None else ())
+        rc = subprocess.call(cmd, env=env, pass_fds=(fd,) if fd is not None and fcntl else ())
     except OSError as e:
         print(f"suite-slot: cannot run {cmd[0]}: {e}", file=sys.stderr)
         return EX_OSERR
@@ -87,7 +99,8 @@ def main(argv):
         return EX_USAGE
     if os.environ.get("SUITE_SLOT_HELD"):
         return launch(cmd, None)
-    slot_dir = os.environ.get("SUITE_SLOT_DIR", "/tmp/harness-suite-slots")
+    default_dir = "/tmp" if fcntl else tempfile.gettempdir()
+    slot_dir = os.environ.get("SUITE_SLOT_DIR", os.path.join(default_dir, "harness-suite-slots"))
     start = time.monotonic()
     announced = False
     try:

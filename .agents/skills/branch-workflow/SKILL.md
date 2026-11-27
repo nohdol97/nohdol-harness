@@ -54,6 +54,27 @@ Use the chosen absolute checkout path wherever Finish procedure says `<worktree>
    - **Resuming an existing branch** (work-tracker resume, review rework): drop `-b` and `--no-track` — `worktree add <abs-path> <type>/<description>`.
    - **No remote** (local-only repository): branch off local `main` instead of `origin/main`.
    - **`origin/main` cannot be fetched**: stop and report. Branching from a stale base reintroduces exactly the drift this skill prevents.
+   - **`core.autocrlf` is `true`** (`git -C project/<name> config --get core.autocrlf`; the usual Git for Windows global): a plain `worktree add` checks every text file out as CRLF while the long-lived checkout may hold LF, so LF-enforcing linters fail across the whole worktree (observed 2026-11-27 on a corporate Windows host: Prettier failed on 1,131 files). Create it unchecked out, scope LF settings to that worktree, then check out — chained, so nothing after a failed `add` can touch an existing worktree:
+     ```bash
+     git -C project/<name> config extensions.worktreeConfig true &&
+     git -C project/<name> worktree add --no-checkout "$worktree" -b <type>/<description> --no-track origin/main &&
+     git -C "$worktree" config --worktree core.autocrlf false &&
+     git -C "$worktree" config --worktree core.eol lf &&
+     git -C "$worktree" checkout -f HEAD -- .
+     test "$(git -C "$worktree" rev-parse --show-toplevel)" = "$worktree"
+     ! git -C "$worktree" ls-files --eol | grep -q 'w/crlf'   # succeeds when no CRLF file is left
+     ```
+     `core.eol lf` is needed because with `autocrlf` off a `text=auto` attribute falls back to `core.eol`, whose default `native` is CRLF on Windows; an explicit `eol=` in `.gitattributes` overrides both, so a nonzero count there is the repository's own choice. The settings live in that worktree's own config, so later rebases there also write LF, and the repository's `true` stays for everything else. To repair a worktree already checked out as CRLF, the uncommitted-work check must come **before** the settings change (afterwards every CRLF file reads as modified), and the index must be dropped first — a forced checkout skips files whose stat still matches the index, which left CRLF in place in a `text=auto` repository (measured); deleting the files instead breaks on submodule directories:
+     ```bash
+     test -n "$worktree" && test "$(git -C "$worktree" rev-parse --show-toplevel)" = "$worktree" &&
+     test -z "$(git -C "$worktree" status --porcelain)" &&
+     git -C project/<name> config extensions.worktreeConfig true &&
+     git -C "$worktree" config --worktree core.autocrlf false &&
+     git -C "$worktree" config --worktree core.eol lf &&
+     git -C "$worktree" rm -r -q --cached . &&
+     git -C "$worktree" reset -q --hard HEAD
+     ```
+     The first line stops on a wrong or empty `$worktree`, a non-empty status on uncommitted work; resolve that first, since this rewrites every tracked file.
 
    **Location is `project/.worktrees/<name>/<branch>/`**, and each part of that is load-bearing: `project/` is gitignored (REGISTRY.md path convention), so the root repository stays clean; the leading dot keeps it out of the `project/*/` glob that project scans use; and it sits **outside `_workspace/`**, which holds session artifacts — a worktree holding uncommitted work must remain separate from artifact cleanup. **The worktree path must be absolute**: a relative path is resolved against `-C`'s directory, not the root. The final `test` is a start gate: if it fails, inspect `git -C project/<name> worktree list --porcelain` and stop before editing. Preserve any worktree created at the wrong path; do not silently move or remove it. On resume, derive the expected path from the root, project name, and branch as above, then compare the registered worktree's actual path to it; an existing branch at a different path is not an exemption.
 2. **Uncommitted changes in `project/<name>/` no longer block the start.** The old rule stopped here and asked the user, because `git checkout main` would have moved work that might not be yours. Nothing moves now — `worktree add` does not touch that checkout. Still **report the leftover changes in one line** so they are not forgotten, and if they belong to the task you are about to start, ask before working around them in a second directory. The old resume-time `git branch --show-current` re-check is gone with the same cause: a worktree holds one branch, so there is no branch to have silently landed on (the 2026-07-22 case it guarded is recorded in ADR 035).
